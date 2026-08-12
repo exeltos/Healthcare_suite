@@ -79,17 +79,6 @@ function programState(program) {
   if (days <= Number(program.reminderDays || 0)) return { label: `Σε ${days} ημέρ${days === 1 ? 'α' : 'ες'}`, tone: 'warning', key: 'due-soon' }
   return { label: 'Προγραμματισμένο', tone: 'success', key: 'scheduled' }
 }
-function surveillanceRecurrenceLabel(program, language) {
-  if (program.recurrence === 'once') return 'Μία φορά'
-  const amount = Number(program.interval || 1)
-  const unit = {
-    days: amount === 1 ? 'ημέρα' : 'ημέρες',
-    weeks: amount === 1 ? 'εβδομάδα' : 'εβδομάδες',
-    months: amount === 1 ? 'μήνα' : 'μήνες',
-    years: amount === 1 ? 'έτος' : 'έτη',
-  }[program.recurrence]
-  return `Κάθε ${amount} ${unit || ''}`
-}
 const programExportColumns = [
   { label: 'Έλεγχος', value: (row) => row.title || '' },
   { label: 'Κατηγορία', value: (row) => row.category || '' },
@@ -97,7 +86,7 @@ const programExportColumns = [
   { label: 'Τμήμα', value: (row) => row.department || '' },
   { label: 'Χώρος', value: (row) => row.location || '' },
   { label: 'Σημεία ελέγχου', value: (row) => (row.controlPoints || []).join(' · ') },
-  { label: 'Συχνότητα', value: (row) => recurrenceLabel(row) },
+  { label: 'Συχνότητα', value: (row) => surveillanceRecurrenceLabel(row, 'el') },
   { label: 'Επόμενος έλεγχος', value: (row) => row.nextDueDate || '' },
   { label: 'Υπεύθυνος', value: (row) => row.owner || '' },
   { label: 'Κατάσταση', value: (row) => programState(row).label },
