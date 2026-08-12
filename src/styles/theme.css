@@ -1,0 +1,705 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+
+  --primary: #0a6f78;
+  --primary-hover: #075f67;
+  --primary-dark: #064c53;
+  --primary-soft: #e6f4f5;
+  --primary-softer: #f2f9f9;
+
+  --background: #f3f7f8;
+  --surface: #ffffff;
+  --surface-subtle: #f8fbfb;
+  --surface-muted: #edf4f5;
+  --text: #17333a;
+  --text-soft: #3d5960;
+  --muted: #70848a;
+  --border: #dbe7e9;
+  --border-strong: #c4d7da;
+
+  --success: #15835b;
+  --success-dark: #0e6847;
+  --success-soft: #e9f7f0;
+  --success-border: #b9e2ce;
+  --warning: #b7791f;
+  --warning-dark: #8d5b12;
+  --warning-soft: #fff7e7;
+  --warning-border: #ecd39d;
+  --danger: #c64b47;
+  --danger-dark: #963a37;
+  --danger-soft: #fff0ef;
+  --danger-border: #efc0bd;
+  --info: #237b94;
+  --info-dark: #195e72;
+  --info-soft: #ebf7fa;
+  --info-border: #b9dfe8;
+
+  --font-size-xs: .75rem;
+  --font-size-sm: .875rem;
+  --font-size-body: .96rem;
+  --font-size-section-title: 1.13rem;
+  --font-size-page-title: clamp(1.72rem, 2.2vw, 2.22rem);
+  --modal-font-size: .82rem;
+  --modal-title-size: 1.18rem;
+  --modal-tab-size: .75rem;
+  --modal-width-wide: 1000px;
+  --modal-height-stable: 720px;
+  --font-weight-medium: 600;
+  --font-weight-semibold: 700;
+  --font-weight-bold: 800;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --radius-sm: 8px;
+  --radius-md: 11px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-pill: 999px;
+
+  --shadow-xs: 0 1px 2px rgba(12, 54, 62, .04);
+  --shadow-soft: 0 8px 24px rgba(12, 54, 62, .055);
+  --shadow: 0 14px 36px rgba(12, 54, 62, .085);
+  --shadow-hover: 0 18px 44px rgba(12, 54, 62, .13);
+  --shadow-lg: 0 26px 68px rgba(12, 45, 52, .16);
+
+  --control-height-sm: 36px;
+  --control-height: 44px;
+  --control-height-lg: 50px;
+  --toolbar-height: 60px;
+  --focus-ring: color-mix(in srgb, var(--primary) 24%, transparent);
+
+  --sidebar-width: 286px;
+  --sidebar-collapsed: 78px;
+  --topbar-height: 72px;
+  --footer-height: 42px;
+
+  --page-padding-x: 26px;
+  --page-padding-y: 24px;
+  --page-padding-bottom: 38px;
+  --page-back-gap: 18px;
+  --page-header-gap: 24px;
+  --page-section-gap: 22px;
+  --page-gap: 22px;
+
+  --surface-radius: 16px;
+  --surface-border: 1px solid var(--border);
+  --surface-shadow: var(--shadow-soft);
+  --menu-item-height: 62px;
+  --menu-item-radius: 12px;
+  --menu-item-padding: 10px 12px;
+
+  --z-base: 1;
+  --z-sticky: 20;
+  --z-header: 30;
+  --z-overlay: 80;
+  --z-modal: 100;
+  --z-toast: 120;
+
+  color: var(--text);
+  background: var(--background);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { min-height: 100%; margin: 0; }
+body { min-width: 320px; background: var(--background); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+::selection { color: #fff; background: var(--primary); }
+:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+
+@media (max-width: 700px) {
+  :root {
+    --page-padding-x: 16px;
+    --page-padding-y: 18px;
+    --page-padding-bottom: 28px;
+    --page-back-gap: 16px;
+    --page-header-gap: 20px;
+    --page-section-gap: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* STEP 38 — legacy button normalization. Existing pages inherit the Core button language. */
+:where(
+  .organization-button,
+  .studio-hero-action,
+  .fd-primary-action,
+  .fd-section-title > button,
+  .prevention-records-header > button,
+  .bundles-header-actions > button,
+  .antiseptic-page header > button,
+  .laboratory-page header > button
+) {
+  min-height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 18px;
+  border: 1px solid var(--primary-dark);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #0d7b85 0%, var(--primary) 100%);
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  box-shadow: var(--shadow-xs);
+  transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+:where(
+  .organization-button,
+  .studio-hero-action,
+  .fd-primary-action,
+  .fd-section-title > button,
+  .prevention-records-header > button,
+  .bundles-header-actions > button,
+  .antiseptic-page header > button,
+  .laboratory-page header > button
+):hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, #0b7079 0%, var(--primary-dark) 100%);
+  box-shadow: var(--shadow-soft);
+}
+:where(.organization-button--ghost, button.secondary, .secondary) {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+:where(.organization-button--ghost, button.secondary, .secondary):hover:not(:disabled) {
+  border-color: var(--primary);
+  background: var(--primary-softer);
+  color: var(--primary);
+}
+:where(button.primary, .primary) {
+  border-color: var(--primary-dark);
+  background: linear-gradient(180deg, #0d7b85 0%, var(--primary) 100%);
+  color: #fff;
+}
+
+/* STEP 39 — unified record-opening behaviour */
+.core-record-row {
+  cursor: pointer;
+  transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.core-record-row:hover,
+.core-record-row:focus-visible {
+  background: var(--surface-hover, #f6f9fc);
+}
+
+.core-record-row:focus-visible {
+  outline: 2px solid var(--primary, #246b8f);
+  outline-offset: -2px;
+}
+
+.core-record-row:active {
+  background: var(--surface-active, #edf4f8);
+}
+
+.core-record-card {
+  cursor: pointer;
+}
+
+.core-record-card:focus-visible {
+  outline: 2px solid var(--primary, #246b8f);
+  outline-offset: 3px;
+}
+
+/* STEP 42 — Visible Core activation across existing pages.
+   Legacy page markup is normalized here until each page imports Core directly. */
+
+:where(
+  .patients-toolbar,
+  .patient-samples-toolbar,
+  .laboratory-toolbar,
+  .source-samples-toolbar,
+  .water-toolbar,
+  .infections-toolbar,
+  .isolations-toolbar,
+  .organization-toolbar,
+  .quality-toolbar,
+  .hh-filter-toolbar,
+  .settings-toolbar,
+  .fd-toolbar
+) {
+  min-height: var(--toolbar-height);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin-block: var(--space-4) var(--space-5);
+  border: var(--surface-border);
+  border-radius: var(--surface-radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
+:where(
+  .patients-search,
+  .patient-samples-search,
+  .laboratory-search,
+  .water-search,
+  .infections-search,
+  .isolations-search,
+  .hh-search-field,
+  .patient-record-search,
+  .sidebar-search,
+  .launcher-search,
+  .fd-toolbar input,
+  .organization-toolbar input,
+  .quality-toolbar input
+) {
+  min-height: var(--control-height);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: inset 0 1px 1px rgba(12, 54, 62, .025);
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+:where(
+  .patients-search,
+  .patient-samples-search,
+  .laboratory-search,
+  .water-search,
+  .infections-search,
+  .isolations-search,
+  .hh-search-field,
+  .patient-record-search,
+  .sidebar-search,
+  .launcher-search,
+  .fd-toolbar input,
+  .organization-toolbar input,
+  .quality-toolbar input
+):focus-within,
+:where(
+  .fd-toolbar input,
+  .organization-toolbar input,
+  .quality-toolbar input
+):focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  outline: 0;
+}
+
+:where(
+  .patients-primary-button,
+  .patient-sample-open-button,
+  .laboratory-primary-button,
+  .water-primary-button,
+  .infections-primary-button,
+  .app-primary-button,
+  .source-samples-header > button,
+  .organization-hero > button,
+  .quality-hero-actions > button,
+  .patients-page-header > button,
+  .patient-samples-page header > button,
+  .laboratory-page-header > button,
+  .water-control-header > button,
+  .infections-header > button,
+  .surveillance-header > button,
+  .fd-primary-action
+) {
+  min-height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding-inline: 18px;
+  border: 1px solid var(--primary-dark);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #0d7b85 0%, var(--primary) 100%);
+  color: #fff;
+  font-weight: var(--font-weight-bold);
+  box-shadow: var(--shadow-xs);
+  transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+:where(
+  .patients-primary-button,
+  .laboratory-primary-button,
+  .water-primary-button,
+  .infections-primary-button,
+  .app-primary-button,
+  .source-samples-header > button,
+  .organization-hero > button,
+  .quality-hero-actions > button,
+  .patients-page-header > button,
+  .laboratory-page-header > button,
+  .water-control-header > button,
+  .infections-header > button,
+  .surveillance-header > button,
+  .fd-primary-action
+):hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, #0b7079 0%, var(--primary-dark) 100%);
+  box-shadow: var(--shadow-soft);
+}
+
+:where(
+  .patients-clear-button,
+  .hh-clear-filters,
+  .source-view-button,
+  .organization-button--ghost,
+  .laboratory-open-button,
+  .patient-sample-open-button,
+  .water-open-button,
+  .infection-open-button,
+  .isolation-open-button
+) {
+  min-height: var(--control-height-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding-inline: 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-soft);
+  font-weight: var(--font-weight-semibold);
+}
+
+:where(
+  .patients-clear-button,
+  .hh-clear-filters,
+  .source-view-button,
+  .organization-button--ghost,
+  .laboratory-open-button,
+  .patient-sample-open-button,
+  .water-open-button,
+  .infection-open-button,
+  .isolation-open-button
+):hover:not(:disabled) {
+  border-color: var(--primary);
+  background: var(--primary-softer);
+  color: var(--primary);
+}
+
+:where(
+  .patients-page-header,
+  .patient-samples-page header:first-child,
+  .laboratory-page-header,
+  .water-control-header,
+  .infections-header,
+  .source-samples-header,
+  .surveillance-header,
+  .organization-hero,
+  .quality-hero,
+  .prevention-records-header
+) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border: var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+:where(
+  .patients-page-header,
+  .patient-samples-page header:first-child,
+  .laboratory-page-header,
+  .water-control-header,
+  .infections-header,
+  .source-samples-header,
+  .surveillance-header,
+  .organization-hero,
+  .quality-hero,
+  .prevention-records-header
+) h1 {
+  margin: 4px 0 8px;
+  font-size: var(--font-size-page-title);
+  line-height: 1.12;
+  letter-spacing: -.035em;
+  color: var(--text);
+}
+
+:where(
+  .patients-page-header,
+  .patient-samples-page header:first-child,
+  .laboratory-page-header,
+  .water-control-header,
+  .infections-header,
+  .source-samples-header,
+  .surveillance-header,
+  .organization-hero,
+  .quality-hero,
+  .prevention-records-header
+) p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+:where(
+  .patient-samples-table-card,
+  .laboratory-table-card,
+  .water-table-card,
+  .infections-table-card,
+  .isolations-table-card,
+  .source-samples-table-card,
+  .organization-table-wrap,
+  .quality-table-wrap,
+  .dashboard-departments-table
+) {
+  overflow: hidden;
+  border: var(--surface-border);
+  border-radius: var(--surface-radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+:where(
+  .patient-samples-table-wrapper,
+  .laboratory-table-wrapper,
+  .water-table-wrapper,
+  .infections-table-wrapper,
+  .isolations-table-wrapper,
+  .organization-table-wrap,
+  .quality-table-wrap
+) table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+:where(
+  .patient-samples-table-wrapper,
+  .laboratory-table-wrapper,
+  .water-table-wrapper,
+  .infections-table-wrapper,
+  .isolations-table-wrapper,
+  .organization-table-wrap,
+  .quality-table-wrap
+) thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--surface-subtle);
+  color: var(--text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: .035em;
+  text-transform: uppercase;
+}
+
+:where(
+  .patient-samples-table-wrapper,
+  .laboratory-table-wrapper,
+  .water-table-wrapper,
+  .infections-table-wrapper,
+  .isolations-table-wrapper,
+  .organization-table-wrap,
+  .quality-table-wrap
+) tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+:where(
+  .patient-samples-table-wrapper,
+  .laboratory-table-wrapper,
+  .water-table-wrapper,
+  .infections-table-wrapper,
+  .isolations-table-wrapper,
+  .organization-table-wrap,
+  .quality-table-wrap
+) tbody tr {
+  transition: background .14s ease;
+}
+
+:where(
+  .patient-samples-table-wrapper,
+  .laboratory-table-wrapper,
+  .water-table-wrapper,
+  .infections-table-wrapper,
+  .isolations-table-wrapper,
+  .organization-table-wrap,
+  .quality-table-wrap
+) tbody tr:hover {
+  background: var(--primary-softer);
+}
+
+:where(
+  .patient-card,
+  .patient-record-card,
+  .surveillance-module-card,
+  .prevention-status-card,
+  .organization-card,
+  .laboratory-insight-card,
+  .laboratory-ai-card,
+  .hh-filter-card,
+  .fd-card--clickable,
+  .studio-card--clickable
+) {
+  border: var(--surface-border);
+  border-radius: var(--surface-radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+:where(
+  .patient-card,
+  .patient-record-card,
+  .surveillance-module-card,
+  .prevention-status-card,
+  .organization-card,
+  .fd-card--clickable,
+  .studio-card--clickable
+):hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-hover);
+}
+
+@media (max-width: 760px) {
+  :where(
+    .patients-page-header,
+    .patient-samples-page header:first-child,
+    .laboratory-page-header,
+    .water-control-header,
+    .infections-header,
+    .source-samples-header,
+    .surveillance-header,
+    .organization-hero,
+    .quality-hero,
+    .prevention-records-header
+  ) {
+    padding: var(--space-4);
+  }
+
+  :where(
+    .patients-toolbar,
+    .patient-samples-toolbar,
+    .laboratory-toolbar,
+    .source-samples-toolbar,
+    .water-toolbar,
+    .infections-toolbar,
+    .isolations-toolbar,
+    .organization-toolbar,
+    .quality-toolbar,
+    .hh-filter-toolbar,
+    .fd-toolbar
+  ) > * {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}
+/* Prevention module typography is controlled centrally. */
+:where(.hh-page,.prevention-minimal-page,.antiseptic-page,.waste-page){--font-size-page-title:1.7rem;font-size:.86rem}
+:where(.hh-page-header,.antiseptic-page>header,.waste-page>header) > div > span{display:none!important}
+
+/* Global consistency pass — shared typography, alignment, actions and record cards */
+:root{
+  --app-content-max: 1480px;
+  --app-card-width: min(1040px, calc(100vw - 48px));
+  --app-card-height: min(760px, calc(100vh - 48px));
+  --app-font-body: .88rem;
+  --app-font-label: .72rem;
+  --app-font-tab: .74rem;
+  --app-font-title: 1.55rem;
+  --app-control-height: 36px;
+  --app-button-radius: 9px;
+}
+body{font-size:var(--app-font-body)}
+:where(main,.app-main,.page-content,.content){min-width:0}
+:where(.prevention-minimal-page,.source-samples-page,.organization-page,.quality-page,.patients-page,.laboratory-page,.employees-page,.patient-samples-page,.water-page,.infections-page,.isolations-page){width:100%;max-width:var(--app-content-max);margin-inline:auto}
+:where(.prevention-minimal-header,.source-samples-header,.organization-header,.quality-header,.patients-header,.laboratory-header,.employees-header){align-items:flex-start;gap:18px}
+:where(.prevention-minimal-header h1,.source-samples-header h1,.organization-header h1,.quality-header h1,.patients-header h1,.laboratory-header h1,.employees-header h1){margin:0;font-size:var(--app-font-title);line-height:1.2;letter-spacing:-.025em}
+:where(.prevention-minimal-header p,.source-samples-header p,.organization-header p,.quality-header p,.patients-header p,.laboratory-header p,.employees-header p){margin:5px 0 0;color:var(--muted);font-size:.78rem}
+:where(.prevention-modal-backdrop,.organization-overlay,.quality-overlay,.ui-drawer-backdrop,.core-drawer-backdrop){background:rgba(13,35,41,.38)!important;backdrop-filter:blur(6px)!important;-webkit-backdrop-filter:blur(6px)!important}
+:where(.prevention-modal,.organization-card,.quality-card){width:var(--app-card-width)!important;height:var(--app-card-height)!important;max-width:calc(100vw - 32px)!important;max-height:calc(100vh - 32px)!important;display:grid!important;grid-template-rows:auto minmax(0,1fr);overflow:hidden!important;border-radius:16px!important;background:var(--surface)!important;box-shadow:var(--shadow-lg)!important}
+:where(.prevention-modal>form,.organization-card-body,.quality-card-body){min-height:0;overflow:auto}
+:where(.prevention-tabs,.organization-tabs,.quality-tabs,.core-drawer__tabs){min-height:34px}
+:where(.prevention-tabs button,.organization-tabs button,.quality-tabs button,.core-drawer__tabs button){min-height:33px!important;padding:0 9px!important;font-size:var(--app-font-tab)!important;font-weight:700!important}
+:where(.app-primary-button,.organization-button,.quality-button,.prevention-modal footer button,.organization-card footer button,.quality-card footer button,.primary,.secondary){min-height:var(--app-control-height)!important;padding:0 13px!important;border-radius:var(--app-button-radius)!important;font-size:.8rem!important;font-weight:750!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:7px!important}
+:where(.prevention-form label>span,.organization-form label>span,.quality-form label>span){font-size:var(--app-font-label)!important;color:var(--muted)!important;font-weight:700!important}
+:where(.prevention-form input,.prevention-form select,.organization-form input,.organization-form select,.quality-form input,.quality-form select){height:38px!important;border-radius:9px!important}
+:where(.prevention-form textarea,.organization-form textarea,.quality-form textarea){min-height:82px!important;border-radius:9px!important}
+:where(.prevention-list-toolbar,.source-samples-toolbar,.organization-toolbar,.quality-toolbar,.patients-toolbar,.laboratory-toolbar){align-items:center!important;gap:10px!important}
+:where(.prevention-list-row,.organization-list-row,.quality-list-row){align-items:center!important}
+:where(.prevention-list-row>*,.organization-list-row>*,.quality-list-row>*){min-width:0}
+:where(.prevention-list-row strong,.organization-list-row strong,.quality-list-row strong){font-size:.82rem}
+:where(.prevention-list-row small,.organization-list-row small,.quality-list-row small){font-size:.7rem;color:var(--muted)}
+
+/* SURVEILLANCE GLOBAL CONSISTENCY PASS */
+:where(.source-samples-page,.patient-samples-page,.water-control-page,.surveillance-page){
+  padding:24px!important; gap:14px!important; background:transparent!important;
+  font-size:var(--font-size-sm,14px);
+}
+:where(.source-samples-header,.patient-samples-header,.water-control-header,.surveillance-header){
+  align-items:center!important; padding:0!important; margin:0!important; background:transparent!important; border:0!important; box-shadow:none!important;
+}
+:where(.source-samples-header,.patient-samples-header,.water-control-header,.surveillance-header) > div > span,
+:where(.source-drawer,.patient-sample-drawer,.water-drawer) header > div > span,
+.surveillance-eyebrow,.water-control-eyebrow{display:none!important}
+:where(.source-samples-header,.patient-samples-header,.water-control-header,.surveillance-header) h1{margin:0!important;font-size:1.45rem!important;font-weight:750!important;letter-spacing:-.025em!important}
+:where(.source-samples-header,.patient-samples-header,.water-control-header,.surveillance-header) p{margin:4px 0 0!important;font-size:.82rem!important;line-height:1.45!important;color:var(--muted)!important}
+:where(.source-samples-header,.patient-samples-header,.water-control-header) > button,
+.water-primary-button{min-height:36px!important;height:36px!important;padding:0 13px!important;border-radius:9px!important;font-size:.8rem!important;font-weight:700!important}
+:where(.source-samples-kpis,.patient-samples-kpis,.water-kpi-grid,.surveillance-overview-grid){display:flex!important;flex-wrap:wrap!important;gap:8px!important}
+:where(.source-samples-kpis,.patient-samples-kpis,.water-kpi-grid,.surveillance-overview-grid) article{min-height:34px!important;height:34px!important;display:inline-flex!important;align-items:center!important;gap:7px!important;padding:0 10px!important;border-radius:999px!important;box-shadow:none!important}
+:where(.source-samples-kpis,.patient-samples-kpis,.water-kpi-grid,.surveillance-overview-grid) article svg{width:15px!important;height:15px!important}
+:where(.source-samples-kpis,.patient-samples-kpis,.water-kpi-grid,.surveillance-overview-grid) article span{font-size:.7rem!important}
+:where(.source-samples-kpis,.patient-samples-kpis,.water-kpi-grid,.surveillance-overview-grid) article strong{font-size:.82rem!important;grid-column:auto!important}
+:where(.source-samples-toolbar,.patient-samples-toolbar,.water-toolbar){gap:8px!important;align-items:center!important}
+:where(.source-samples-toolbar,.patient-samples-toolbar,.water-toolbar) input{font-size:.82rem!important}
+:where(.source-samples-table-card,.patient-samples-table-card,.water-table-card){border-radius:12px!important;box-shadow:none!important}
+:where(.source-samples-table-card,.patient-samples-table-card,.water-table-card) th{font-size:.7rem!important}
+:where(.source-samples-table-card,.patient-samples-table-card,.water-table-card) td{font-size:.78rem!important}
+:where(.source-drawer-backdrop,.patient-sample-drawer-backdrop,.water-drawer-backdrop){background:rgba(10,28,34,.42)!important;backdrop-filter:blur(7px)!important;-webkit-backdrop-filter:blur(7px)!important}
+:where(.source-drawer,.patient-sample-drawer,.water-drawer){width:min(900px,94vw)!important;height:min(820px,92vh)!important;max-height:92vh!important;margin:auto 18px auto auto!important;border-radius:16px!important;overflow:hidden!important;box-shadow:0 24px 70px rgba(4,25,31,.30)!important}
+:where(.source-drawer,.patient-sample-drawer,.water-drawer) header{padding:14px 16px!important}
+:where(.source-drawer,.patient-sample-drawer,.water-drawer) header h2{margin:0!important;font-size:1.05rem!important}
+:where(.source-form-grid,.patient-sample-form-grid,.water-form-grid){gap:10px!important;padding:15px!important}
+:where(.source-form-grid,.patient-sample-form-grid,.water-form-grid) label>span{font-size:.69rem!important}
+:where(.source-form-grid,.patient-sample-form-grid,.water-form-grid) input,
+:where(.source-form-grid,.patient-sample-form-grid,.water-form-grid) select,
+:where(.source-form-grid,.patient-sample-form-grid,.water-form-grid) textarea{font-size:.8rem!important;min-height:36px!important}
+:where(.source-drawer-footer,.patient-sample-drawer-footer,.water-drawer-footer){padding:12px 16px!important;background:#fff!important}
+:where(.source-drawer-footer,.patient-sample-drawer-footer,.water-drawer-footer) button{min-height:36px!important;height:36px!important;border-radius:9px!important;font-size:.8rem!important}
+.source-hybrid-selector{grid-column:1/-1;display:grid;gap:8px;padding:10px;border:1px solid var(--border);border-radius:11px;background:#fff}
+.source-hybrid-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border)}
+.source-hybrid-tabs button{padding:7px 10px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--muted);font-size:.75rem;font-weight:700}
+.source-hybrid-tabs button.active{color:var(--primary);border-bottom-color:var(--primary)}
+.source-hybrid-selector select[multiple]{min-height:116px!important}
+.source-hybrid-selector small{color:var(--muted);font-size:.67rem}
+
+/* Step 46 — list pages use open headers, never title cards */
+.patients-page > .patients-page-header,
+.employees-page > .lds-page-header,
+.laboratory-page > .laboratory-page-header {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}

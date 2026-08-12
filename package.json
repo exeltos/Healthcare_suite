@@ -1,0 +1,32 @@
+{
+  "name": "limoxis-observer",
+  "private": true,
+  "version": "0.7.8",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check:syntax": "node tools/check-syntax.mjs",
+    "audit:ui": "node tools/ui-audit.mjs",
+    "audit:imports": "node tools/check-imports.mjs",
+    "audit:production": "node tools/production-audit.mjs",
+    "check": "npm run audit:imports && npm run audit:architecture && npm run audit:integration && npm run audit:ui && npm run audit:production && npm run audit:consistency && npm run audit:workflow && npm run audit:i18n && npm run check:syntax",
+    "audit:architecture": "node tools/architecture-structure-audit.mjs",
+    "audit:integration": "node tools/integration-readiness-audit.mjs",
+    "audit:consistency": "node tools/consistency-audit.mjs",
+    "audit:workflow": "node tools/workflow-stability-audit.mjs",
+    "audit:i18n": "node tools/i18n-audit.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.1.1"
+  },
+  "devDependencies": {
+    "@babel/parser": "^7.29.8",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.5"
+  }
+}

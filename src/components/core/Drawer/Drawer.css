@@ -1,0 +1,51 @@
+.core-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  background: rgba(13, 35, 41, .42);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: core-fade-in .18s ease-out;
+}
+.core-drawer {
+  width: min(var(--core-drawer-width), 100vw);
+  height: min(var(--modal-height-stable), calc(100vh - 32px));
+  max-height: calc(100vh - 32px);
+  margin: 16px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  outline: none;
+  animation: core-drawer-in .22s ease-out;
+}
+.core-drawer--left { margin-right: auto; animation-name: core-drawer-in-left; }
+.core-drawer--center { margin-left: auto; margin-right: auto; animation-name: core-drawer-in-center; }
+.core-drawer__header { min-height: 76px; display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); padding: var(--space-5); border-bottom: 1px solid var(--border); }
+.core-drawer__heading h2 { margin: 0; font-size: 1.35rem; color: var(--text); }
+.core-drawer__heading p { margin: var(--space-2) 0 0; color: var(--muted); }
+.core-drawer__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--border); background: var(--surface-subtle); }
+.core-drawer__tabs { display: flex; gap: 2px; padding: 0 var(--space-5); border-bottom: 1px solid var(--border); overflow-x: auto; }
+.core-drawer__tabs button { min-height: 33px; padding: 0 9px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-soft); font: inherit; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.core-drawer__tabs button.is-active { color: var(--primary); border-bottom-color: var(--primary); }
+.core-drawer__body { min-height: 0; overflow: auto; padding: var(--space-5); }
+.core-drawer__footer { display: flex; justify-content: flex-end;
+  align-items: center; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-top: 1px solid var(--border); background: var(--surface); }
+@keyframes core-fade-in { from { opacity: 0; } }
+@keyframes core-drawer-in { from { transform: translateX(24px); opacity: .6; } }
+@keyframes core-drawer-in-left { from { transform: translateX(-24px); opacity: .6; } }
+@keyframes core-drawer-in-center { from { transform: translateY(18px) scale(.99); opacity: .6; } }
+@media (max-width: 680px) { .core-drawer { width: 100vw; } .core-drawer__header, .core-drawer__body { padding: var(--space-4); } .core-drawer__footer { padding: var(--space-3) var(--space-4); } }
+@media (prefers-reduced-motion: reduce) { .core-drawer-backdrop, .core-drawer { animation: none; } }
+
+.core-drawer__tabs button { font-size: .74rem; }
+
+/* Large centered work forms use more of the viewport while keeping header/footer fixed. */
+@media (min-width: 900px) and (min-height: 760px) {
+  .core-drawer--center { height: min(820px, calc(100vh - 32px)); max-height: calc(100vh - 32px); }
+}

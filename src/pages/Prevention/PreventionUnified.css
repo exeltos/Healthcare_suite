@@ -1,0 +1,17 @@
+.prevention-unified-page .lds-page-chrome__content{gap:12px}
+.prevention-unified-page .core-list-workspace{min-height:0}
+.prevention-unified-page .core-entity-summary{grid-template-columns:repeat(4,minmax(0,1fr))}
+.prevention-unified-form{display:grid;gap:18px;min-width:0}
+.prevention-readonly{display:grid;gap:5px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface-subtle);min-height:64px}
+.prevention-readonly span{font-size:.68rem;font-weight:700;color:var(--muted)}
+.prevention-readonly strong{font-size:.82rem;color:var(--text)}
+.prevention-observation-list{display:grid;gap:10px}
+.prevention-observation-list article{display:grid;grid-template-columns:34px minmax(0,1fr) minmax(170px,auto);gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface-subtle)}
+.prevention-observation-index{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--primary-soft);color:var(--primary);font-size:.72rem;font-weight:800}
+.prevention-observation-list strong,.prevention-observation-list small,.prevention-observation-list p{display:block;margin:0}
+.prevention-observation-list strong{font-size:.8rem;color:var(--text)}
+.prevention-observation-list small,.prevention-observation-list p{margin-top:3px;font-size:.68rem;color:var(--muted)}
+.prevention-observation-list article>div:last-child{display:flex;align-items:center;justify-content:flex-end;gap:10px;font-size:.72rem;color:var(--muted);text-align:right}
+.prevention-unified-page .core-drawer--center .core-drawer__body{scrollbar-gutter:stable;overscroll-behavior:contain}
+@media(max-width:1000px){.prevention-unified-page .core-entity-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.prevention-unified-page .core-entity-summary{grid-template-columns:1fr}.prevention-observation-list article{grid-template-columns:30px minmax(0,1fr)}.prevention-observation-list article>div:last-child{grid-column:2;justify-content:flex-start;text-align:left}}

@@ -1,0 +1,8 @@
+.lds-page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-5); min-width:0; }
+.lds-page-header__copy { min-width:0; }
+.lds-page-header__eyebrow { display:inline-flex; align-items:center; min-height:24px; padding:0 9px; border-radius:var(--radius-pill); color:var(--primary-dark); background:var(--primary-soft); font-size:.69rem; font-weight:800; line-height:1; letter-spacing:.065em; text-transform:uppercase; }
+.lds-page-header h1 { margin:10px 0 0; color:var(--text); font-size:var(--font-size-page-title); line-height:1.12; letter-spacing:-.035em; }
+.lds-page-header p { max-width:780px; margin:9px 0 0; color:var(--muted); font-size:var(--font-size-body); line-height:1.62; }
+.lds-page-header__actions { flex:0 0 auto; display:flex; align-items:center; justify-content:flex-end; gap:var(--space-2); flex-wrap:wrap; }
+.lds-page-header--card { padding:var(--space-5); border:1px solid var(--border); border-radius:var(--radius-lg); background:linear-gradient(135deg,#fff 0%,#f8fcfc 100%); box-shadow:var(--shadow-soft); }
+@media(max-width:700px){ .lds-page-header{flex-direction:column;gap:var(--space-4)} .lds-page-header__actions{width:100%;justify-content:flex-start}.lds-page-header__actions>*{flex:1 1 auto}.lds-page-header--card{padding:var(--space-4)} }

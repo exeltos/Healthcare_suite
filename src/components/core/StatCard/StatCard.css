@@ -1,0 +1,109 @@
+.common-stat-card {
+  min-width: 0;
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface, #ffffff);
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.common-stat-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+  box-shadow: var(--shadow-hover);
+}
+
+.common-stat-card-heading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.common-stat-card-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.common-stat-card-label {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.common-stat-card-value {
+  color: var(--text);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.common-stat-card-subtitle {
+  margin-top: -4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.common-stat-card.tone-success .common-stat-card-icon,
+.common-stat-card.tone-success .common-stat-card-value {
+  color: #176d4a;
+}
+
+.common-stat-card.tone-warning .common-stat-card-icon,
+.common-stat-card.tone-warning .common-stat-card-value {
+  color: #9d5f13;
+}
+
+.common-stat-card.tone-danger .common-stat-card-icon,
+.common-stat-card.tone-danger .common-stat-card-value {
+  color: #b43b48;
+}
+
+.common-stat-card.tone-purple .common-stat-card-icon,
+.common-stat-card.tone-purple .common-stat-card-value {
+  color: #5d4b9b;
+}
+
+@media (max-width: 720px) {
+  .common-stat-card {
+    min-height: 104px;
+    padding: 15px 16px;
+  }
+
+  .common-stat-card-value {
+    font-size: 1.8rem;
+  }
+}
+
+
+.common-stat-card.is-compact {
+  min-height: 66px;
+  gap: 5px;
+  padding: 9px 12px;
+}
+
+.common-stat-card.is-compact .common-stat-card-label {
+  font-size: .68rem;
+}
+
+.common-stat-card.is-compact .common-stat-card-value {
+  font-size: 1.18rem;
+}
+
+.common-stat-card.is-compact .common-stat-card-icon svg {
+  width: 16px;
+  height: 16px;
+}
