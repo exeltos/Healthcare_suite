@@ -1,3 +1,4 @@
+import { IS_PRODUCTION } from '../core/runtime'
 import { APP_EVENTS, emitAppEvent } from '../core/events'
 import { patientSamplesRepository } from '../repositories/patientSamplesRepository'
 
@@ -40,7 +41,7 @@ function mergeLegacyLabRecords(samples) {
 
 export function loadPatientSamples() {
   const storedSamples = patientSamplesRepository.findAll()
-  const baseSamples = storedSamples.length > 0 ? storedSamples.map(normalizePatientSample) : seedSamples.map(normalizePatientSample)
+  const baseSamples = storedSamples.length > 0 ? storedSamples.map(normalizePatientSample) : (IS_PRODUCTION ? [] : seedSamples.map(normalizePatientSample))
   const mergedSamples = mergeLegacyLabRecords(baseSamples)
   patientSamplesRepository.replaceAll(mergedSamples)
   return mergedSamples

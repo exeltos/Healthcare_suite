@@ -1,4 +1,5 @@
 import { APP_EVENTS, emitAppEvent } from '../core/events'
+import { IS_PRODUCTION } from '../core/runtime'
 import { loadMasterData } from './masterDataService'
 import { EMPLOYEE_LIBRARY_KEY, employeesRepository } from '../repositories/employeesRepository'
 
@@ -129,7 +130,7 @@ export function loadAllEmployees() {
       return migrated
     }
   }
-  return DEFAULT_EMPLOYEES.map(normalizeEmployee)
+  return IS_PRODUCTION ? [] : DEFAULT_EMPLOYEES.map(normalizeEmployee)
 }
 
 export function loadEmployees() {

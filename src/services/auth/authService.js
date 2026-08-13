@@ -1,5 +1,6 @@
 import { AUTH_PROVIDER, AUTH_REDIRECT_URL, IS_DEMO, IS_PRODUCTION } from '../../core/runtime'
 import { clearDemoDataset } from '../../data/demoDataGenerator'
+import { clearProductionLocalOperationalCache } from '../../data/productionDataBoundary'
 import { isSupabaseConfigured, requireSupabase } from '../../integrations/supabase'
 
 export class AuthConfigurationError extends Error {
@@ -48,6 +49,7 @@ export async function authenticateUser({ username, password }) {
     const { error:activationError }=await client.rpc('activate_my_profile')
     if(activationError) throw activationError
     const context=await fetchProductionUserContext(client)
+    clearProductionLocalOperationalCache()
     return {
       session:'active',
       user:{
@@ -85,6 +87,7 @@ export async function validateProductionSession(){
   if(error || !user) return { valid:false, user:null }
   try{
     const context=await fetchProductionUserContext(client)
+    clearProductionLocalOperationalCache()
     return {
       valid:true,
       user:{

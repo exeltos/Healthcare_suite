@@ -1,0 +1,21 @@
+import fs from 'node:fs'
+const r=p=>fs.readFileSync(p,'utf8')
+const employees=r('src/services/employeesService.js')
+const samples=r('src/services/patientSamplesService.js')
+const diseases=r('src/services/notifiableDiseasesService.js')
+const quality=r('src/services/qualityService.js')
+const controls=r('src/services/surveillanceControlsService.js')
+const patients=r('src/services/patientService.js')
+const patientCases=r('src/services/patientCasesService.js')
+const auth=r('src/services/auth/authService.js')
+const failures=[]
+if(!/IS_PRODUCTION \? \[\] : DEFAULT_EMPLOYEES/.test(employees))failures.push('Production can still seed default employees.')
+if(!/IS_PRODUCTION \? \[\] : seedSamples/.test(samples))failures.push('Production can still seed patient samples.')
+if(!/IS_PRODUCTION\?\[\]:seed/.test(diseases))failures.push('Production can still seed notifiable-disease records.')
+if(!/IS_PRODUCTION\?\[\]:DEFAULT_INCIDENTS/.test(quality)||!/IS_PRODUCTION\?\[\]:DEFAULT_CAPA/.test(quality))failures.push('Production can still seed Quality records.')
+if(!/seed: IS_PRODUCTION \? \[\] : seedPrograms/.test(controls))failures.push('Production can still seed surveillance control programs.')
+if(!/!IS_PRODUCTION && \(config\.sourceMode/.test(patients))failures.push('Production can still add mock patients.')
+if(!/if \(IS_PRODUCTION\) return \[\]/.test(patientCases))failures.push('Production can still expose mock patient cases.')
+if((auth.match(/clearProductionLocalOperationalCache\(\)/g)||[]).length<2)failures.push('Production login/session restore does not clear stale operational browser cache.')
+if(failures.length){console.error('Production clean-data audit failed:');failures.forEach(x=>console.error('- '+x));process.exitCode=1}
+else console.log('Production clean-data audit OK: operational sample/default records are Demo-only and stale Production browser cache is cleared.')

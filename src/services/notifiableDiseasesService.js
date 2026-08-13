@@ -1,4 +1,5 @@
 import { APP_EVENTS, emitAppEvent } from '../core/events'
+import { IS_PRODUCTION } from '../core/runtime'
 import { clinicalSupportRepository } from '../repositories/clinicalSupportRepository'
 export const NOTIFIABLE_DISEASES_EVENT = APP_EVENTS.NOTIFIABLE_DISEASES_UPDATED
 
@@ -39,5 +40,5 @@ const seed = [
 ]
 
 
-export function loadNotifiableDiseases(){return clinicalSupportRepository.loadNotifiableDiseases(seed)}
+export function loadNotifiableDiseases(){return clinicalSupportRepository.loadNotifiableDiseases(IS_PRODUCTION?[]:seed)}
 export function saveNotifiableDiseases(items=[]){const next=clinicalSupportRepository.saveNotifiableDiseases(items);emitAppEvent(NOTIFIABLE_DISEASES_EVENT,next);return next}

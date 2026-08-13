@@ -1,4 +1,5 @@
 import { APP_EVENTS } from '../core/events'
+import { IS_PRODUCTION } from '../core/runtime'
 import { createCollectionRepository } from '../repositories/createCollectionRepository'
 import { upsertEnvironmentalSample } from './laboratorySourcesService'
 import { upsertWaterRecord } from './laboratorySourcesService'
@@ -92,7 +93,7 @@ const programsStore = createCollectionRepository({
   storageKey: PROGRAMS_KEY,
   eventName: SURVEILLANCE_PROGRAMS_EVENT,
   normalize: normalizeProgram,
-  seed: seedPrograms,
+  seed: IS_PRODUCTION ? [] : seedPrograms,
 })
 
 const executionsStore = createCollectionRepository({

@@ -375,3 +375,9 @@ Users, roles, department scopes and Studio/master-data configuration are now ten
 Desktop header geometry is stable across Greek/English language changes. The final release-candidate audit checks exact duplicate source files, direct browser-storage leakage, console logging, hard-coded internal routes and header language stability.
 
 All static release audits pass with zero blockers. Final release approval requires a clean `npm run check` and `npm run build` on an environment where npm dependencies are installed, plus application of Supabase migrations through `20260813_000014_management_center_integrity.sql`.
+
+## v0.12.0-rc.4 — Production clean-data boundary
+
+Operational sample/default records are now Demo-only. Production mode does not seed default employees, patient samples, notifiable-disease cases, quality incidents/CAPA, surveillance-control programs, mock patients or mock patient cases. Successful Production authentication and session restoration clear stale browser-local operational caches before Supabase hydration.
+
+Reference dictionaries and clinical configuration defaults remain code-level configuration where appropriate; they are not operational patient/staff/audit records.

@@ -1,4 +1,5 @@
 import { APP_EVENTS, emitAppEvent } from '../core/events'
+import { IS_PRODUCTION } from '../core/runtime'
 import { patientsMock } from '../data/patientsMock'
 import { loadMasterData, saveMasterData } from './masterDataService'
 import { patientRepository } from '../repositories/patientRepository'
@@ -84,7 +85,7 @@ export function loadPatientRegistry() {
   }
 
   if (config.sourceMode === 'Βιβλιοθήκη Ρυθμίσεων' || config.sourceMode === 'Υβριδική') libraryRecords.forEach(addUnique)
-  if (config.sourceMode === 'Προσωρινή Demo Λίστα' || config.sourceMode === 'Υβριδική') patientsMock.forEach(addUnique)
+  if (!IS_PRODUCTION && (config.sourceMode === 'Προσωρινή Demo Λίστα' || config.sourceMode === 'Υβριδική')) patientsMock.forEach(addUnique)
   if (config.sourceMode === 'Χειροκίνητη Καταχώρηση' || config.sourceMode === 'Υβριδική') savedRegistry.forEach(addUnique)
   return combined
 }

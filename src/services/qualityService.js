@@ -1,4 +1,5 @@
 import { APP_EVENTS, emitAppEvent } from '../core/events'
+import { IS_PRODUCTION } from '../core/runtime'
 import { qualityRepository } from '../repositories/qualityRepository'
 export const QUALITY_EVENT = APP_EVENTS.QUALITY_UPDATED
 export const AUDITS_EVENT = APP_EVENTS.QUALITY_AUDITS_UPDATED
@@ -11,9 +12,9 @@ const DEFAULT_CAPA=[
  {id:'CAPA-001',title:'Επανεκπαίδευση στην ταυτοποίηση',source:'INC-001',sourceType:'Συμβάν',actionType:'Διορθωτική',owner:'Νοσηλευτική Διεύθυνση',department:'Παθολογική',dueDate:today,priority:'Υψηλή',progress:35,status:'Σε εξέλιξη',plannedAction:'Στοχευμένη επανεκπαίδευση και επανέλεγχος συμμόρφωσης.',effectivenessStatus:'Εκκρεμεί'},
  {id:'CAPA-002',title:'Έλεγχος ροής ενημέρωσης αποτελεσμάτων',source:'INC-002',sourceType:'Συμβάν',actionType:'Βελτίωση διαδικασίας',owner:'Εργαστήριο',department:'Εργαστήριο',dueDate:today,priority:'Μέτρια',progress:70,status:'Σε εξέλιξη',plannedAction:'Ανασχεδιασμός ροής ειδοποίησης κρίσιμων αποτελεσμάτων.',effectivenessStatus:'Εκκρεμεί'},
 ]
-export const loadIncidents=()=>qualityRepository.findIncidents(DEFAULT_INCIDENTS)
+export const loadIncidents=()=>qualityRepository.findIncidents(IS_PRODUCTION?[]:DEFAULT_INCIDENTS)
 export const saveIncidents=(rows=[])=>{const next=qualityRepository.replaceIncidents(rows);emitAppEvent(QUALITY_EVENT,next);return next}
-export const loadCapa=()=>qualityRepository.findCapa(DEFAULT_CAPA)
+export const loadCapa=()=>qualityRepository.findCapa(IS_PRODUCTION?[]:DEFAULT_CAPA)
 export const saveCapa=(rows=[])=>{const next=qualityRepository.replaceCapa(rows);emitAppEvent(QUALITY_EVENT,next);return next}
 export const loadAuditExecutions=()=>qualityRepository.findAudits()
 export function saveAuditExecutions(rows=[]){const next=qualityRepository.replaceAudits(rows);emitAppEvent(AUDITS_EVENT,next);return next}
