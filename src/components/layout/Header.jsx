@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Accessibility, Building2, Check, ChevronDown, Globe2, KeyRound, LogOut, Mail, Minus, Plus, RotateCcw, ShieldCheck, UserRound, X } from 'lucide-react'
+import { Accessibility, Building2, Check, ChevronDown, CircleHelp, Globe2, KeyRound, LogOut, Mail, Minus, Plus, RotateCcw, ShieldCheck, UserRound, X } from 'lucide-react'
 import NotificationCenter from './NotificationCenter'
 import LanguageSwitcher from '../core/LanguageSwitcher'
 import Dialog from '../core/Dialog/Dialog'
 import { useI18n } from '../../i18n'
 import { loadCurrentProfile } from '../../services/profile'
 import { readJsonObject, writeJson } from '../../core/storage'
+import HelpCenter from '../help/HelpCenter'
 
 const ACCESS_KEY='healthcare-suite.accessibility'
 const defaults={textScale:1,highContrast:false,reducedMotion:false}
@@ -19,7 +20,7 @@ function applyAccess(value){
 
 export default function Header({ navigationControl, onLogout, user }) {
   const { t, language } = useI18n()
-  const [accessOpen,setAccessOpen]=useState(false),[userOpen,setUserOpen]=useState(false),[profileOpen,setProfileOpen]=useState(false),[logoutOpen,setLogoutOpen]=useState(false),[access,setAccess]=useState(loadAccess)
+  const [accessOpen,setAccessOpen]=useState(false),[userOpen,setUserOpen]=useState(false),[profileOpen,setProfileOpen]=useState(false),[logoutOpen,setLogoutOpen]=useState(false),[helpOpen,setHelpOpen]=useState(false),[access,setAccess]=useState(loadAccess)
   const accessRef=useRef(null), userRef=useRef(null)
   useEffect(()=>applyAccess(access),[access])
   useEffect(()=>{const close=e=>{if(!accessRef.current?.contains(e.target))setAccessOpen(false);if(!userRef.current?.contains(e.target))setUserOpen(false)};document.addEventListener('mousedown',close);return()=>document.removeEventListener('mousedown',close)},[])
@@ -33,7 +34,7 @@ export default function Header({ navigationControl, onLogout, user }) {
     <header className="topbar">
       <div className="topbar-left">{navigationControl}<div className="suite-brand"><div className="suite-logo">H</div><div><strong>Healthcare Suite</strong><span>Limoxis Observer</span></div></div></div>
       <div className="topbar-actions">
-        <LanguageSwitcher compact/>
+        <LanguageSwitcher compact/><button className="icon-button" type="button" aria-label={L('Βοήθεια','Help')} title={L('Βοήθεια','Help')} onClick={()=>setHelpOpen(true)}><CircleHelp size={19}/></button>
         <div className="header-popover-wrap" ref={accessRef}>
           <button className="icon-button" type="button" aria-label={t('common.accessibility')} title={t('common.accessibility')} onClick={()=>{setAccessOpen(v=>!v);setUserOpen(false)}}><Accessibility size={19}/></button>
           {accessOpen&&<div className="header-popover accessibility-popover"><strong>{t('common.accessibility')}</strong><div className="access-row"><span>{t('common.textSize')}</span><div className="access-stepper"><button type="button" aria-label="-" onClick={()=>update({textScale:Math.max(.9,+(access.textScale-.1).toFixed(1))})}><Minus size={15}/></button><b>{Math.round(access.textScale*100)}%</b><button type="button" aria-label="+" onClick={()=>update({textScale:Math.min(1.2,+(access.textScale+.1).toFixed(1))})}><Plus size={15}/></button></div></div><button type="button" className="access-option" onClick={()=>update({highContrast:!access.highContrast})}><span>{t('common.highContrast')}</span>{access.highContrast&&<Check size={16}/>}</button><button type="button" className="access-option" onClick={()=>update({reducedMotion:!access.reducedMotion})}><span>{t('common.reducedMotion')}</span>{access.reducedMotion&&<Check size={16}/>}</button><button type="button" className="access-reset" onClick={()=>setAccess(defaults)}><RotateCcw size={15}/>{t('common.reset')}</button></div>}
@@ -68,6 +69,7 @@ export default function Header({ navigationControl, onLogout, user }) {
         </div>
       </aside>
     </div>}
+    <HelpCenter open={helpOpen} onClose={()=>setHelpOpen(false)}/>
     <Dialog open={logoutOpen} onClose={()=>setLogoutOpen(false)} onConfirm={()=>{setLogoutOpen(false);onLogout?.()}} title={t('common.confirmSignOut')} description={t('common.signOutQuestion')} confirmLabel={t('common.logout')} cancelLabel={t('common.cancel')} variant="warning"/>
   </>
 }

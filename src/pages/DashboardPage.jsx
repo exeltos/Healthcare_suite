@@ -7,6 +7,8 @@ import {
   BedDouble,
   Biohazard,
   BrainCircuit,
+  BarChart3,
+  X,
   ClipboardPlus,
   Clock3,
   FlaskConical,
@@ -40,6 +42,9 @@ export default function DashboardPage() {
   const [infections, setInfections] = useState(initialSnapshot.infections)
   const [isolations, setIsolations] = useState(initialSnapshot.isolations)
   const [indicators, setIndicators] = useState(initialSnapshot.indicators)
+  const [analyticsOpen,setAnalyticsOpen]=useState(false)
+  const [analyticsMonths,setAnalyticsMonths]=useState(6)
+  const [analyticsMetric,setAnalyticsMetric]=useState('positive')
 
   useAppEvents([
     PATIENT_SAMPLES_EVENT,
@@ -176,7 +181,7 @@ export default function DashboardPage() {
       header={<PageHeader
         title={t('dashboard.title')}
         description={todayLabel}
-        actions={<Button icon={<Plus size={17} />} onClick={() => openNewEntryLauncher()}>{t('dashboard.newEntry')}</Button>}
+        actions={<div className="dashboard-header-actions"><Button variant="secondary" icon={<BarChart3 size={17}/>} onClick={()=>setAnalyticsOpen(true)}>{language==='en'?'Data analysis':'Ανάλυση δεδομένων'}</Button><Button icon={<Plus size={17} />} onClick={() => openNewEntryLauncher()}>{t('dashboard.newEntry')}</Button></div>}
       />}
     >
       <div className="dashboard-kpis" aria-label={t('dashboard.kpiAria')}>
@@ -258,6 +263,7 @@ export default function DashboardPage() {
           </Card>
         </aside>
       </div>
+      {analyticsOpen&&<AnalyticsPanel samples={samples} infections={infections} isolations={isolations} months={analyticsMonths} setMonths={setAnalyticsMonths} metric={analyticsMetric} setMetric={setAnalyticsMetric} language={language} onClose={()=>setAnalyticsOpen(false)}/>}
     </PageChrome>
   )
 }
@@ -284,4 +290,14 @@ function formatActivityDate(value, locale) {
   const date = parseDate(value)
   if (!value || date.getTime() === 0 || Number.isNaN(date.getTime())) return '—'
   return new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'short' }).format(date)
+}
+
+function AnalyticsPanel({samples,infections,isolations,months,setMonths,metric,setMetric,language,onClose}){
+  const en=language==='en', now=new Date();
+  const defs={positive:{el:'Θετικές καλλιέργειες',en:'Positive cultures'},resistant:{el:'MDR / XDR',en:'MDR / XDR'},infections:{el:'Ενεργές/καταγεγραμμένες λοιμώξεις',en:'Recorded infections'},isolations:{el:'Απομονώσεις',en:'Isolations'}};
+  const dateOf=x=>parseDate(x.resultDate||x.collectionDate||x.infectionDate||x.onsetDate||x.startDate||x.createdAt);
+  const source=metric==='infections'?infections:metric==='isolations'?isolations:samples.filter(x=>metric==='resistant'?resistantValues.has(x.resistance):laboratoryStatus(x)==='Θετικό');
+  const buckets=Array.from({length:months},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-(months-1-i),1), y=d.getFullYear(),m=d.getMonth();return {d,label:new Intl.DateTimeFormat(en?'en-GB':'el-GR',{month:'short'}).format(d),value:source.filter(x=>{const q=dateOf(x);return q.getFullYear()===y&&q.getMonth()===m}).length}});
+  const previous=source.filter(x=>{const d=dateOf(x),end=new Date(now.getFullYear(),now.getMonth()-months+1,1),start=new Date(end.getFullYear(),end.getMonth()-months,1);return d>=start&&d<end}).length,current=buckets.reduce((a,b)=>a+b.value,0),change=previous?Math.round((current-previous)/previous*100):null,max=Math.max(1,...buckets.map(x=>x.value));
+  return <div className="analytics-overlay" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><section className="analytics-panel"><header><div><span>{en?'DASHBOARD ANALYTICS':'ΑΝΑΛΥΣΗ DASHBOARD'}</span><h2>{en?'Comparative analysis':'Συγκριτική ανάλυση'}</h2><p>{en?'Current period compared with the immediately preceding equivalent period.':'Η τρέχουσα περίοδος συγκρίνεται με την αμέσως προηγούμενη ισόχρονη περίοδο.'}</p></div><button type="button" className="icon-button" onClick={onClose}><X size={19}/></button></header><div className="analytics-controls"><label>{en?'Metric':'Δείκτης'}<select value={metric} onChange={e=>setMetric(e.target.value)}>{Object.entries(defs).map(([k,v])=><option value={k} key={k}>{v[en?'en':'el']}</option>)}</select></label><label>{en?'Period':'Περίοδος'}<select value={months} onChange={e=>setMonths(Number(e.target.value))}><option value={6}>{en?'6 months':'6 μήνες'}</option><option value={12}>{en?'12 months':'12 μήνες'}</option></select></label></div><div className="analytics-summary"><div><small>{en?'Current period':'Τρέχουσα περίοδος'}</small><strong>{current}</strong></div><div><small>{en?'Previous period':'Προηγούμενη περίοδος'}</small><strong>{previous}</strong></div><div><small>{en?'Change':'Μεταβολή'}</small><strong>{change===null?'—':`${change>0?'+':''}${change}%`}</strong></div></div><div className="analytics-chart">{buckets.map(b=><div className="analytics-bar-col" key={b.d.toISOString()} title={`${b.label}: ${b.value}`}><span>{b.value}</span><div className="analytics-bar" style={{height:`${Math.max(5,b.value/max*100)}%`}}/><small>{b.label}</small></div>)}</div><div className="analytics-insight"><strong>{en?'Period summary':'Σύνοψη περιόδου'}</strong><p>{change===null?(en?'There are not enough data in the previous period for a reliable percentage comparison.':'Δεν υπάρχουν αρκετά δεδομένα στην προηγούμενη περίοδο για αξιόπιστη ποσοστιαία σύγκριση.'):(change>0?(en?`The selected metric increased by ${Math.abs(change)}% compared with the previous period.`:`Ο επιλεγμένος δείκτης αυξήθηκε κατά ${Math.abs(change)}% σε σχέση με την προηγούμενη περίοδο.`):(change<0?(en?`The selected metric decreased by ${Math.abs(change)}% compared with the previous period.`:`Ο επιλεγμένος δείκτης μειώθηκε κατά ${Math.abs(change)}% σε σχέση με την προηγούμενη περίοδο.`):(en?'The selected metric is unchanged from the previous period.':'Ο επιλεγμένος δείκτης παραμένει αμετάβλητος σε σχέση με την προηγούμενη περίοδο.')))}</p><small>{en?'Descriptive analytics only; values depend on recorded data.':'Περιγραφική ανάλυση μόνο· οι τιμές εξαρτώνται από τα καταχωρημένα δεδομένα.'}</small></div></section></div>
 }

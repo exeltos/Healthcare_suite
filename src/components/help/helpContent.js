@@ -1,0 +1,20 @@
+import { clinicalHelpSections } from './helpContentClinical'
+import { adminHelpSections } from './helpContentAdmin'
+
+export const HELP_VERSION = '0.12.0-rc.10'
+export const helpSections=[...clinicalHelpSections,...adminHelpSections]
+
+export function inferHelpSection(){
+  const route=`${window.location.pathname} ${window.location.hash}`.toLowerCase()
+  if(/lab|laboratory|εργαστ/.test(route))return'laboratory'
+  if(/patient|ασθεν/.test(route))return'patients'
+  if(/employee|staff|προσωπ|εργαζ/.test(route))return'employees'
+  if(/hand|who|hygiene/.test(route))return'hand-hygiene'
+  if(/prevention|vaccin|antibiotic|bundle/.test(route))return'prevention'
+  if(/quality|audit|incident|indicator|capa/.test(route))return'quality'
+  if(/committee|training|document|organization/.test(route))return'organization'
+  if(/management|studio|settings|role|library/.test(route))return'management'
+  if(/lira|ai/.test(route))return'lira'
+  if(/dashboard|^\s*$/.test(route))return'dashboard'
+  return'start'
+}
