@@ -1,7 +1,4 @@
 import { APP_EVENTS, emitAppEvent } from '../core/events'
-import { IS_PRODUCTION } from '../core/runtime'
-import { patientsMock } from '../data/patientsMock'
-import { loadMasterData, saveMasterData } from './masterDataService'
 import { patientRepository } from '../repositories/patientRepository'
 
 export const PATIENT_REGISTRY_EVENT = APP_EVENTS.PATIENT_REGISTRY_UPDATED
@@ -38,24 +35,6 @@ function patientKeys(record = {}) {
   return [record.id, record.patientCode].filter(Boolean).map(String)
 }
 
-function masterPatients() {
-  const masterData = loadMasterData()
-  return Array.isArray(masterData['patients-library']) ? masterData['patients-library'] : []
-}
-
-function syncPatientToMasterLibrary(record) {
-  const masterData = loadMasterData()
-  const rows = Array.isArray(masterData['patients-library']) ? masterData['patients-library'] : []
-  const index = rows.findIndex((item) =>
-    (item.id && record.id && String(item.id) === String(record.id)) ||
-    (item.patientCode && record.patientCode && String(item.patientCode) === String(record.patientCode))
-  )
-  const nextRows = index >= 0
-    ? rows.map((item, itemIndex) => itemIndex === index ? { ...item, ...record } : item)
-    : [{ ...record }, ...rows]
-  saveMasterData({ ...masterData, 'patients-library': nextRows })
-}
-
 export function loadPatientSourceConfig() {
   return { ...DEFAULT_CONFIG, ...patientRepository.loadConfig() }
 }
@@ -70,7 +49,6 @@ export function savePatientSourceConfig(config = {}) {
 export function loadPatientRegistry() {
   const config = loadPatientSourceConfig()
   const savedRegistry = patientRepository.findSaved()
-  const libraryRecords = masterPatients()
   const deleted = new Set(patientRepository.findDeletedKeys().map(String))
   const combined = []
 
@@ -84,8 +62,6 @@ export function loadPatientRegistry() {
     if (!exists) combined.push(normalizePatientRecord(record))
   }
 
-  if (config.sourceMode === 'Βιβλιοθήκη Ρυθμίσεων' || config.sourceMode === 'Υβριδική') libraryRecords.forEach(addUnique)
-  if (!IS_PRODUCTION && (config.sourceMode === 'Προσωρινή Demo Λίστα' || config.sourceMode === 'Υβριδική')) patientsMock.forEach(addUnique)
   if (config.sourceMode === 'Χειροκίνητη Καταχώρηση' || config.sourceMode === 'Υβριδική') savedRegistry.forEach(addUnique)
   return combined
 }
@@ -122,7 +98,6 @@ export function upsertPatient(record = {}) {
     : [normalized, ...savedRegistry]
 
   savePatientRegistry(nextRecords)
-  syncPatientToMasterLibrary(normalized)
   return normalized
 }
 
@@ -133,12 +108,6 @@ export function deletePatient(recordOrId) {
   patientRepository.replaceSaved(nextRegistry)
   patientRepository.replaceDeletedKeys([...patientRepository.findDeletedKeys(), ...keys])
 
-  const masterData = loadMasterData()
-  const library = Array.isArray(masterData['patients-library']) ? masterData['patients-library'] : []
-  saveMasterData({
-    ...masterData,
-    'patients-library': library.filter((item) => !patientKeys(item).some((key) => keys.has(key))),
-  })
   emitAppEvent(PATIENT_REGISTRY_EVENT, nextRegistry)
   return nextRegistry
 }

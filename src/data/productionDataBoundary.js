@@ -1,4 +1,5 @@
 import { removeStoredValue } from '../core/storage'
+import { readMasterData, writeMasterData } from '../repositories/masterDataRepository'
 import { savePatientRegistry } from '../services/patientService'
 import { saveEmployees } from '../services/employeesService'
 import { savePatientSamples } from '../services/patientSamplesService'
@@ -13,6 +14,13 @@ import { saveIncidents, saveCapa, saveAuditExecutions } from '../services/qualit
 import { replaceTrainingCollection, replaceCommitteesCollection, replaceDocumentsCollection } from '../services/organizationService'
 
 export function clearProductionLocalOperationalCache(){
+  // Keep reference/master libraries, but never retain operational patients in
+  // the historical patients-library compatibility bucket.
+  const masterData = readMasterData()
+  if (Array.isArray(masterData['patients-library']) && masterData['patients-library'].length) {
+    const { ['patients-library']: _operationalPatients, ...referenceLibraries } = masterData
+    writeMasterData(referenceLibraries)
+  }
   // Purge legacy/demo compatibility keys before Production hydration.
   removeStoredValue('limoxisDemoDatasetSummary')
   removeStoredValue('employees')

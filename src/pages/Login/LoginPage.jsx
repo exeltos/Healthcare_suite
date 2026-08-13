@@ -7,6 +7,7 @@ import { useI18n } from '../../i18n'
 import './LoginPage.css'
 import { removeSessionValue, writeSessionValue } from '../../core/storage'
 import { generateDemoDataset } from '../../data/demoDataGenerator'
+import { clearProductionLocalOperationalCache } from '../../data/productionDataBoundary'
 import { authenticateUser, requestRecovery } from '../../services/auth'
 import { IS_DEMO, IS_PRODUCTION } from '../../core/runtime'
 
@@ -23,6 +24,7 @@ export default function LoginPage() {
       setView('login')
       return
     }
+    clearProductionLocalOperationalCache()
     generateDemoDataset()
     writeSessionValue('healthcare-suite.session','active')
     writeSessionValue('healthcare-suite.demo','true')
@@ -39,6 +41,9 @@ export default function LoginPage() {
     if (!username || !password) { setMessage(t('login.missingCredentials')); return }
     try {
       const authenticated = await authenticateUser({ username, password })
+      // A normal sign-in must always start from a clean operational workspace.
+      // Reference/master libraries are intentionally preserved.
+      clearProductionLocalOperationalCache()
       removeSessionValue('healthcare-suite.demo')
       writeSessionValue('healthcare-suite.session',authenticated.session)
       writeSessionValue('healthcare-suite.user', JSON.stringify(authenticated.user))

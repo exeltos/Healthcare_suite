@@ -1,13 +1,8 @@
-import { IS_PRODUCTION } from '../core/runtime'
-import { patientCasesMock } from '../data/patientCasesMock'
-
 /**
- * Patient-case source boundary. The launcher must not know whether cases come
- * from demo data, a local repository, HIS/ADT, or a future API.
+ * Patient-case source boundary. Operational patient cases are never seeded in
+ * the normal application. Demo clinical records are generated explicitly by
+ * demoDataGenerator and real records come from the configured backend.
  */
-export function loadPatientCases(patientId) {
-  if (IS_PRODUCTION) return []
-  if (!patientId) return []
-  const rows = patientCasesMock[String(patientId)] || patientCasesMock[patientId]
-  return Array.isArray(rows) ? rows : []
+export function loadPatientCases() {
+  return []
 }

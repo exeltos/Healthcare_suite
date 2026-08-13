@@ -20,8 +20,8 @@ for(const [name,text] of [
   if(/\bDEFAULT_EMPLOYEES\b|\bseedSamples\b|\bDEFAULT_INCIDENTS\b|\bDEFAULT_CAPA\b|\bseedTraining\b|\bseedCommittees\b|\bseedDocuments\b|\bseedPrograms\b/.test(text))
     failures.push(`Normal ${name} service still contains operational demo seed records.`)
 }
-if(!/!IS_PRODUCTION && \(config\.sourceMode/.test(patients))failures.push('Production can add mock patients.')
-if(!/if \(IS_PRODUCTION\) return \[\]/.test(patientCases))failures.push('Production can expose mock patient cases.')
+if(/patientsMock|patientCasesMock/.test(patients)) failures.push('Patient registry still depends on static mock data.')
+if(/patientCasesMock/.test(patientCases)) failures.push('Patient cases still depend on static mock data.')
 if((auth.match(/clearProductionLocalOperationalCache\(\)/g)||[]).length<2)failures.push('Production auth/session restore does not clear stale operational cache.')
 for(const key of ['employees','staff','employeesList','employee-library','limoxisStaffSamples','limoxisEnvironmentalSamples','limoxisWaterRecords','limoxisTraining','limoxisCommittees','limoxisDocuments']){
   if(!boundary.includes(`removeStoredValue('${key}')`)) failures.push(`Legacy production cache key is not purged: ${key}`)
