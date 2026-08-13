@@ -392,3 +392,9 @@ Production authentication and session restoration also purge known legacy
 browser-local operational keys. Empty Supabase operational tables therefore
 render as empty operational lists. Reference/configuration dictionaries remain
 available by design.
+
+## v0.12.0-rc.6 — Hard Production/Demo data separation
+
+Operational sample data has been removed from normal application services. Production cache is purged synchronously before React mounts, so stale browser records cannot flash or persist as the initial list state. Demo incidents, committees, training and documents now live only inside `demoDataGenerator.js`, alongside the existing generated Demo patient/laboratory/staff datasets.
+
+This release specifically addresses the observed Production regression where Supabase tables were empty but EMP-001..EMP-010 and sample organization/quality records still appeared from browser-local repositories.

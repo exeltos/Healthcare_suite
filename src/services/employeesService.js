@@ -5,20 +5,6 @@ import { EMPLOYEE_LIBRARY_KEY, employeesRepository } from '../repositories/emplo
 
 export const EMPLOYEES_EVENT = APP_EVENTS.EMPLOYEES_UPDATED
 
-const DEFAULT_EMPLOYEES = [
-  { id: 'EMP-001', employeeCode: 'EMP-001', firstName: 'Μαρία', lastName: 'Παπαδοπούλου', fatherName: 'Ανδρέας', department: 'ΜΕΘ', professionalCategory: 'Νοσηλεύτρια', email: 'm.papadopoulou@hospital.gr', phone: '2410555101', hireDate: '2018-03-12', status: 'Ενεργό', vaccinations: [{ id: 'vac-001', vaccine: 'Γρίπη', date: '2025-10-15', dose: 'Ετήσια' }] },
-  { id: 'EMP-002', employeeCode: 'EMP-002', firstName: 'Νικόλαος', lastName: 'Γεωργίου', fatherName: 'Δημήτριος', department: 'Παθολογική', professionalCategory: 'Ιατρός', email: 'n.georgiou@hospital.gr', phone: '2410555102', hireDate: '2016-09-01', status: 'Ενεργό', vaccinations: [] },
-  { id: 'EMP-003', employeeCode: 'EMP-003', firstName: 'Ελένη', lastName: 'Κωνσταντίνου', fatherName: 'Γεώργιος', department: 'Χειρουργική Κλινική', professionalCategory: 'Νοσηλεύτρια', email: 'e.konstantinou@hospital.gr', phone: '2410555103', hireDate: '2020-01-20', status: 'Ενεργό', vaccinations: [] },
-  { id: 'EMP-004', employeeCode: 'EMP-004', firstName: 'Ανδρέας', lastName: 'Δημητρίου', fatherName: 'Ιωάννης', department: 'Μικροβιολογικό Εργαστήριο', professionalCategory: 'Τεχνολόγος Εργαστηρίου', email: 'a.dimitriou@hospital.gr', phone: '2410555104', hireDate: '2019-06-10', status: 'Ενεργό', vaccinations: [] },
-  { id: 'EMP-005', employeeCode: 'EMP-005', firstName: 'Σοφία', lastName: 'Νικολάου', fatherName: 'Παναγιώτης', department: 'ΤΕΠ', professionalCategory: 'Νοσηλεύτρια', email: 's.nikolaou@hospital.gr', phone: '2410555105', hireDate: '2021-11-03', status: 'Ενεργό', vaccinations: [] },
-  { id: 'EMP-006', employeeCode: 'EMP-006', firstName: 'Ιωάννης', lastName: 'Αντωνίου', fatherName: 'Νικόλαος', department: 'Αιμοκάθαρση', professionalCategory: 'Ιατρός', email: 'i.antoniou@hospital.gr', phone: '2410555106', hireDate: '2015-04-22', status: 'Ενεργό', vaccinations: [] },
-  { id: 'EMP-007', employeeCode: 'EMP-007', firstName: 'Αναστασία', lastName: 'Μακρή', fatherName: 'Χρήστος', department: 'Παιδιατρική', professionalCategory: 'Νοσηλεύτρια', email: 'a.makri@hospital.gr', phone: '2410555107', hireDate: '2022-02-14', status: 'Ενεργό', vaccinations: [] },
-  { id: 'EMP-008', employeeCode: 'EMP-008', firstName: 'Κωνσταντίνος', lastName: 'Λάμπρου', fatherName: 'Αθανάσιος', department: 'Αποστείρωση', professionalCategory: 'Βοηθός Νοσηλευτή', email: 'k.lamprou@hospital.gr', phone: '2410555108', hireDate: '2017-08-28', status: 'Ενεργό', vaccinations: [] },
-  { id: 'EMP-009', employeeCode: 'EMP-009', firstName: 'Ευαγγελία', lastName: 'Οικονόμου', fatherName: 'Σπυρίδων', department: 'Χειρουργείο', professionalCategory: 'Νοσηλεύτρια Χειρουργείου', email: 'e.oikonomou@hospital.gr', phone: '2410555109', hireDate: '2014-12-01', status: 'Ενεργό', vaccinations: [] },
-  { id: 'EMP-010', employeeCode: 'EMP-010', firstName: 'Παναγιώτης', lastName: 'Καραγιάννης', fatherName: 'Αλέξανδρος', department: 'Τεχνική Υπηρεσία', professionalCategory: 'Τεχνικός', email: 'p.karagiannis@hospital.gr', phone: '2410555110', hireDate: '2023-05-08', status: 'Ανενεργό', vaccinations: [] },
-]
-
-
 function normalizeDepartmentText(value=''){
   return String(value||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('el-GR')
 }
@@ -130,7 +116,7 @@ export function loadAllEmployees() {
       return migrated
     }
   }
-  return IS_PRODUCTION ? [] : DEFAULT_EMPLOYEES.map(normalizeEmployee)
+  return []
 }
 
 export function loadEmployees() {

@@ -1,7 +1,7 @@
 {
   "name": "limoxis-observer",
   "private": true,
-  "version": "0.12.0-rc.5",
+  "version": "0.12.0-rc.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,7 @@
     "audit:ui": "node tools/ui-audit.mjs",
     "audit:imports": "node tools/check-imports.mjs",
     "audit:production": "node tools/production-audit.mjs",
-    "check": "npm run audit:imports && npm run audit:navigation && npm run audit:architecture && npm run audit:integration && npm run audit:ui && npm run audit:production && npm run audit:consistency && npm run audit:design && npm run audit:workflow && npm run audit:i18n && npm run audit:security && npm run audit:clinical && npm run audit:staff && npm run audit:quality && npm run audit:organization && npm run audit:management && npm run audit:release && npm run audit:migrations && npm run audit:clean-data && npm run check:syntax",
+    "check": "npm run audit:imports && npm run audit:navigation && npm run audit:architecture && npm run audit:integration && npm run audit:ui && npm run audit:production && npm run audit:consistency && npm run audit:design && npm run audit:workflow && npm run audit:i18n && npm run audit:security && npm run audit:clinical && npm run audit:staff && npm run audit:quality && npm run audit:organization && npm run audit:management && npm run audit:release && npm run audit:migrations && npm run audit:clean-data && npm run audit:seed-isolation && npm run check:syntax",
     "audit:architecture": "node tools/architecture-structure-audit.mjs",
     "audit:integration": "node tools/integration-readiness-audit.mjs",
     "audit:consistency": "node tools/consistency-audit.mjs",
@@ -28,7 +28,8 @@
     "audit:management": "node tools/management-center-integrity-audit.mjs",
     "audit:release": "node tools/release-candidate-audit.mjs",
     "audit:migrations": "node tools/migration-schema-audit.mjs",
-    "audit:clean-data": "node tools/production-clean-data-audit.mjs"
+    "audit:clean-data": "node tools/production-clean-data-audit.mjs",
+    "audit:seed-isolation": "node tools/production-seed-isolation-audit.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

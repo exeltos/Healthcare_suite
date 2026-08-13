@@ -15,6 +15,8 @@ import { loadNotifiableDiseases, saveNotifiableDiseases } from '../services/noti
 import { loadControlPrograms, loadControlExecutions, saveControlPrograms, saveControlExecutions } from '../services/surveillanceControlsService'
 import { loadDailyCensus, loadAntibioticDDD, loadStructuralSnapshots, loadPrevalenceSnapshots, saveDailyCensus, saveAntibioticDDD, saveStructuralSnapshots, savePrevalenceSnapshots } from '../services/indicatorSourceDataService'
 import { masterNames } from '../services/masterDataService'
+import { loadIncidents, loadCapa, loadAuditExecutions, saveIncidents, saveCapa, saveAuditExecutions } from '../services/qualityService'
+import { loadTraining, loadCommittees, loadDocuments, replaceTrainingCollection, replaceCommitteesCollection, replaceDocumentsCollection } from '../services/organizationService'
 
 export const DEMO_DATA_EVENT = APP_EVENTS.DEMO_DATA_UPDATED
 const DEMO_FLAG = '_demo'
@@ -240,12 +242,46 @@ function buildControls(rng, now) {
   return {programs,executions}
 }
 
+
+function buildDemoQuality(now) {
+  const today=isoDate(now)
+  const incidents=[
+    {id:'DEMO-INC-001',date:today,title:'Demo απόκλιση διαδικασίας ταυτοποίησης',category:'Ταυτοποίηση ασθενή',department:'Παθολογική',outcome:'Χωρίς βλάβη / near miss',status:'Υπό διερεύνηση',owner:'Ομάδα Ποιότητας Demo',description:'Demo συμβάν για επίδειξη της ροής ποιότητας.',[DEMO_FLAG]:true},
+    {id:'DEMO-INC-002',date:today,title:'Demo καθυστέρηση επικοινωνίας αποτελέσματος',category:'Επικοινωνία / παράδοση φροντίδας',department:'Μικροβιολογικό Εργαστήριο',outcome:'Χωρίς βλάβη / near miss',status:'Νέα αναφορά',owner:'Εργαστήριο Demo',description:'Demo συμβάν.',[DEMO_FLAG]:true},
+  ]
+  const capa=[
+    {id:'DEMO-CAPA-001',title:'Demo επανεκπαίδευση στην ταυτοποίηση',source:'DEMO-INC-001',sourceType:'Συμβάν',actionType:'Διορθωτική',owner:'Νοσηλευτική Διεύθυνση Demo',department:'Παθολογική',dueDate:today,priority:'Υψηλή',progress:35,status:'Σε εξέλιξη',plannedAction:'Demo βελτιωτική ενέργεια.',effectivenessStatus:'Εκκρεμεί',[DEMO_FLAG]:true},
+  ]
+  return {incidents,capa,audits:[]}
+}
+
+function buildDemoOrganization(now) {
+  const today=isoDate(now)
+  const nextWeek=isoDate(addDays(now,7))
+  const nextTwoWeeks=isoDate(addDays(now,14))
+  return {
+    training:[
+      {id:'DEMO-TR-1',title:'Υγιεινή Χεριών – WHO',category:'Κλινική εκπαίδευση',department:'ΜΕΘ',trainer:'Επιτροπή Λοιμώξεων Demo',date:nextWeek,status:'Προγραμματισμένη',durationHours:2,validUntil:'',attendance:[],attachments:[],notes:'',[DEMO_FLAG]:true},
+      {id:'DEMO-TR-2',title:'Διαχείριση αιχμηρών αντικειμένων',category:'Ασφάλεια',department:'Χειρουργείο',trainer:'Νοσηλευτική Διεύθυνση Demo',date:today,status:'Ολοκληρωμένη',durationHours:1,validUntil:'',attendance:[],attachments:[],notes:'',[DEMO_FLAG]:true},
+    ],
+    committees:[
+      {id:'DEMO-CM-1',name:'Επιτροπή Νοσοκομειακών Λοιμώξεων',type:'Επιτροπή',chair:'Πρόεδρος ΕΝΛ Demo',secretary:'',lastMeeting:today,nextMeeting:nextWeek,status:'Ενεργή',frequency:'Μηνιαία',memberIds:[],members:[],agenda:[],meetings:[],attachments:[],purpose:'Demo',[DEMO_FLAG]:true},
+      {id:'DEMO-CM-2',name:'ΟΕΚΟΧΑ',type:'Ομάδα εργασίας',chair:'Υπεύθυνος ΟΕΚΟΧΑ Demo',secretary:'',lastMeeting:today,nextMeeting:nextTwoWeeks,status:'Ενεργή',frequency:'Τριμηνιαία',memberIds:[],members:[],agenda:[],meetings:[],attachments:[],purpose:'Demo',[DEMO_FLAG]:true},
+    ],
+    documents:[
+      {id:'DEMO-DOC-1',title:'Πολιτική Υγιεινής Χεριών',code:'DEMO-Π.ΛΟΙΜ.001',category:'Πολιτική',version:'5.0',owner:'Επιτροπή Λοιμώξεων Demo',status:'Προς αναθεώρηση',reviewDate:nextTwoWeeks,updatedAt:today,attachments:[],[DEMO_FLAG]:true},
+      {id:'DEMO-DOC-2',title:'Διαχείριση έκθεσης σε βιολογικό παράγοντα',code:'DEMO-Δ.ΑΣΦ.014',category:'Διαδικασία',version:'3.0',owner:'Νοσηλευτική Διεύθυνση Demo',status:'Προς αναθεώρηση',reviewDate:nextWeek,updatedAt:today,attachments:[],[DEMO_FLAG]:true},
+    ],
+  }
+}
+
 export function generateDemoDataset() {
   const rng=seededRandom(); const now=new Date(); now.setHours(12,0,0,0)
   const patients=buildPatients(rng,now); const employees=buildEmployees(rng); const sessions=buildHandHygiene(rng,now)
   const vaccinations=buildVaccinations(rng,employees,now); const samples=buildSamples(rng,patients,now); const clinicalFlow=buildSurveillanceCases(rng,patients,samples,now); const allSamples=[...samples,...clinicalFlow.extraSamples]; const isolations=buildIsolations(rng,patients,allSamples); const infections=buildInfections(rng,patients,allSamples)
   const census=buildDailyCensus(rng,now); const ddd=buildDDD(rng,now); const prevalence=buildPrevalenceSnapshots(rng,now); const structural=buildStructural(now); const controls=buildControls(rng,now)
   const antiseptics=buildAntiseptics(rng,now); const waste=buildWaste(rng,now); const promoted=buildPromoted(rng,patients,now); const notifiable=buildNotifiable(rng,patients,now)
+  const quality=buildDemoQuality(now); const organization=buildDemoOrganization(now)
 
   const vaccinationMap = new Map(vaccinations.map((row) => [row.employeeId, row]))
   const employeesWithVaccinations = employees.map((employee) => { const vaccination = vaccinationMap.get(employee.id); return vaccination ? { ...employee, vaccinations: [{ id: `vac-${vaccination.id}`, sourceId: vaccination.id, vaccine: vaccination.vaccine, date: vaccination.date, dose: vaccination.dose, validUntil: vaccination.validUntil }] } : employee })
@@ -267,6 +303,12 @@ export function generateDemoDataset() {
   saveNotifiableDiseases(mergeDemo(loadNotifiableDiseases(),notifiable))
   saveControlPrograms(mergeDemo(loadControlPrograms(),controls.programs))
   saveControlExecutions(mergeDemo(loadControlExecutions(),controls.executions))
+  saveIncidents(mergeDemo(loadIncidents(),quality.incidents))
+  saveCapa(mergeDemo(loadCapa(),quality.capa))
+  saveAuditExecutions(mergeDemo(loadAuditExecutions(),quality.audits))
+  replaceTrainingCollection(mergeDemo(loadTraining(),organization.training))
+  replaceCommitteesCollection(mergeDemo(loadCommittees(),organization.committees))
+  replaceDocumentsCollection(mergeDemo(loadDocuments(),organization.documents))
 
   const summary={patients:patients.length,employees:employees.length,handHygieneSessions:sessions.length,handHygieneObservations:sessions.reduce((sum,row)=>sum+row.observations.length,0),vaccinations:vaccinations.length,patientSamples:allSamples.length,surveillanceCases:clinicalFlow.cases.length,isolations:isolations.length,infections:infections.length,dailyCensus:census.length,antibioticDDD:ddd.length,prevalenceSnapshots:prevalence.length,structural:structural.length,controls:controls.executions.length,other:antiseptics.length+waste.length+promoted.length+notifiable.length,total:0}
   summary.total=Object.entries(summary).filter(([key])=>key!=='total').reduce((sum,[,value])=>sum+value,0)
@@ -294,6 +336,12 @@ export function clearDemoDataset() {
   saveNotifiableDiseases(withoutDemo(loadNotifiableDiseases()))
   saveControlPrograms(withoutDemo(loadControlPrograms()))
   saveControlExecutions(withoutDemo(loadControlExecutions()))
+  saveIncidents(withoutDemo(loadIncidents()))
+  saveCapa(withoutDemo(loadCapa()))
+  saveAuditExecutions(withoutDemo(loadAuditExecutions()))
+  replaceTrainingCollection(withoutDemo(loadTraining()))
+  replaceCommitteesCollection(withoutDemo(loadCommittees()))
+  replaceDocumentsCollection(withoutDemo(loadDocuments()))
   removeStoredValue('limoxisDemoDatasetSummary')
   emitAppEvent(DEMO_DATA_EVENT,null)
 }

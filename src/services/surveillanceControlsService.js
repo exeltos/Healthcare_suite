@@ -10,43 +10,6 @@ const EXECUTIONS_KEY = 'limoxisSurveillanceControlExecutions'
 export const SURVEILLANCE_PROGRAMS_EVENT = APP_EVENTS.SURVEILLANCE_PROGRAMS_UPDATED
 export const SURVEILLANCE_EXECUTIONS_EVENT = APP_EVENTS.SURVEILLANCE_EXECUTIONS_UPDATED
 
-const seedPrograms = [
-  {
-    id: 'CTRL-1001',
-    title: 'Έλεγχος Legionella',
-    category: 'Νερό',
-    controlType: 'Legionella',
-    department: 'ΜΕΘ',
-    location: 'Δίκτυο ζεστού νερού',
-    controlPoints: ['Ντους ΜΕΘ'],
-    owner: 'ΝΕΛ',
-    startDate: '2026-08-01',
-    recurrence: 'months',
-    interval: 6,
-    reminderDays: 15,
-    nextDueDate: '2026-08-12',
-    active: true,
-    notes: '',
-  },
-  {
-    id: 'CTRL-1002',
-    title: 'Μικροβιολογικός έλεγχος επιφανειών Χειρουργείου',
-    category: 'Περιβάλλον',
-    controlType: 'Επιφάνειες',
-    department: 'Χειρουργείο',
-    location: 'Χειρουργικές αίθουσες',
-    controlPoints: ['Χειρουργική τράπεζα', 'Αναισθησιολογικό μηχάνημα'],
-    owner: 'ΝΕΛ',
-    startDate: '2026-08-01',
-    recurrence: 'months',
-    interval: 3,
-    reminderDays: 10,
-    nextDueDate: '2026-08-15',
-    active: true,
-    notes: '',
-  },
-]
-
 function normalizeProgram(record = {}) {
   return {
     title: '',
@@ -93,7 +56,7 @@ const programsStore = createCollectionRepository({
   storageKey: PROGRAMS_KEY,
   eventName: SURVEILLANCE_PROGRAMS_EVENT,
   normalize: normalizeProgram,
-  seed: IS_PRODUCTION ? [] : seedPrograms,
+  seed: [],
 })
 
 const executionsStore = createCollectionRepository({
