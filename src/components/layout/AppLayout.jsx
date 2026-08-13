@@ -53,6 +53,7 @@ export default function AppLayout() {
   if(authState==='checking') return <div className="app-auth-loading"><div className="suite-logo">H</div><span>{t('common.loading')}</span></div>
   if((authState==='invalid'||!isSessionAllowed({session,user}))&&!goodbye) return <Navigate to="/login" replace/>
   const currentModule=moduleForPath(location.pathname)
+  const helpPreview=new URLSearchParams(location.search).get('helpPreview')==='1'
   if(user && user.demo!==true && !canViewModule(user,currentModule) && location.pathname!==APP_ROUTES.DASHBOARD) return <Navigate to={APP_ROUTES.DASHBOARD} replace state={{accessDenied:true}}/>
   const openNewEntryLauncher=useCallback((initialTypeId='')=>{setLauncherInitialType(initialTypeId);setLauncherOpen(true)},[])
   const closeNewEntryLauncher=useCallback(()=>{setLauncherOpen(false);setLauncherInitialType('')},[])
@@ -66,5 +67,6 @@ export default function AppLayout() {
     setTimeout(()=>navigate(APP_ROUTES.LOGIN,{replace:true,state:{signedOut:true}}),900)
   }
   if(goodbye)return <div className="logout-goodbye"><div><div className="suite-logo">H</div><h2>{t('common.signedOutTitle')}</h2><p>{t('common.signedOutText')}</p></div></div>
-  return <div className={`app-shell ${collapsed?'sidebar-collapsed':''}`}><Header user={user} onLogout={logout} navigationControl={<button type="button" className="icon-button app-navigation-toggle" onClick={toggleNavigation} aria-label={t('common.navigationToggle')} title={t('common.menu')}><Menu size={19}/></button>}/><div className="app-main"><Sidebar user={user} collapsed={collapsed} mobileOpen={mobileOpen} onNavigate={()=>setMobileOpen(false)}/><main className="content-area"><Outlet context={{openNewEntryLauncher}}/></main></div><Footer/><NewEntryLauncher open={launcherOpen} onClose={closeNewEntryLauncher} initialTypeId={launcherInitialType}/></div>
+  if(helpPreview)return <div className="help-preview-shell"><main className="content-area help-preview-content"><Outlet context={{openNewEntryLauncher:()=>{}}}/></main></div>
+  return <div className={`app-shell ${collapsed?'sidebar-collapsed':''}`}><Sidebar user={user} collapsed={collapsed} mobileOpen={mobileOpen} onNavigate={()=>setMobileOpen(false)}/><Header user={user} onLogout={logout} navigationControl={<button type="button" className="icon-button app-navigation-toggle" onClick={toggleNavigation} aria-label={t('common.navigationToggle')} title={t('common.menu')}><Menu size={19}/></button>}/><main className="content-area"><Outlet context={{openNewEntryLauncher}}/></main><Footer/><NewEntryLauncher open={launcherOpen} onClose={closeNewEntryLauncher} initialTypeId={launcherInitialType}/></div>
 }

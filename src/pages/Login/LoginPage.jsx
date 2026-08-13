@@ -1,6 +1,6 @@
 import { notifyAction } from '../../components/core/feedback/index'
-import LanguageSwitcher from '../../components/core/LanguageSwitcher'
 import { useState } from 'react'
+import { Languages } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { APP_ROUTES } from '../../config/routes'
 import { useI18n } from '../../i18n'
@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState('')
   const navigate = useNavigate()
-  const { t } = useI18n()
+  const { t, language, setLanguage } = useI18n()
 
   function enterDemo() {
     if(!IS_DEMO) {
@@ -63,7 +63,11 @@ export default function LoginPage() {
 
   return (
     <main className="login-page-shell">
-      <section className="login-main-card">
+      <section className="login-main-card"><div className="login-index-language">
+        <button type="button" onClick={() => setLanguage(language === 'el' ? 'en' : 'el')} aria-label={`${t('common.language')}: ${language === 'el' ? 'EN' : 'EL'}`} title={`${t('common.language')}: ${language === 'el' ? 'EN' : 'EL'}`}>
+          <Languages size={16}/><span>{language === 'el' ? 'EN' : 'EL'}</span>
+        </button>
+      </div>
         <aside className="login-visual-panel">
           <header className="login-brand"><div className="login-brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3v18"/><path d="M3 12h18"/><circle cx="12" cy="12" r="8.5"/></svg></div><div className="login-brand-copy"><strong>HEALTHCARE SUITE</strong><span>Clinical Operations Platform</span></div></header>
           <div className="login-welcome-content">
@@ -74,7 +78,7 @@ export default function LoginPage() {
           <footer className="login-visual-footer"><span>Healthcare Suite Platform</span><span>{t('login.secureEnvironment')}</span></footer>
         </aside>
         <section className="login-auth-panel"><div className="login-auth-wrapper">
-          <div className="login-language-row"><LanguageSwitcher /></div>
+          <div className="login-language-row" aria-hidden="true"/>
           {view === 'welcome' ? (
             <section className="login-auth-view"><header className="login-auth-header"><h2>{t('login.welcome')}</h2><p>{t('login.welcomeText')}</p></header>
               <div className="login-welcome-actions"><button type="button" className="login-primary-button" onClick={() => setView('login')}>{t('login.enter')}</button>{IS_DEMO&&<button type="button" className="login-demo-button" onClick={enterDemo}>{t('login.demoEnter')}</button>}<button type="button" className="login-secondary-button" onClick={() => notifyAction(t('login.supportLater'))}>{t('login.support')}</button></div>

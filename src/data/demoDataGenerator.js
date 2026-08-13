@@ -46,9 +46,9 @@ const pathogens = ['Klebsiella pneumoniae','Escherichia coli','Pseudomonas aerug
 const antibiotics = ['Meropenem','Imipenem','Ceftriaxone','Ceftazidime','Piperacillin/Tazobactam','Ciprofloxacin','Gentamicin','Amikacin','Vancomycin','Linezolid','Colistin']
 const promotedAntibiotics = ['Meropenem','Imipenem/Cilastatin','Ceftazidime/Avibactam','Ceftolozane/Tazobactam','Colistin','Linezolid']
 
-function buildPatients(rng, now, count = 120) {
+function buildPatients(rng, now, count = 220) {
   return Array.from({ length: count }, (_, index) => {
-    const admission = addDays(now, -numberBetween(rng, 0, 170))
+    const admission = addDays(now, -numberBetween(rng, 0, 900))
     const stillIn = rng() < 0.28
     const stay = numberBetween(rng, 2, 24)
     const discharge = stillIn ? null : addDays(admission, stay)
@@ -68,7 +68,7 @@ function buildPatients(rng, now, count = 120) {
   })
 }
 
-function buildEmployees(rng, count = 80) {
+function buildEmployees(rng, count = 110) {
   return Array.from({ length: count }, (_, index) => {
     const firstName = pick(rng, firstNames); const lastName = pick(rng, lastNames)
     return {
@@ -82,9 +82,9 @@ function buildEmployees(rng, count = 80) {
   })
 }
 
-function buildHandHygiene(rng, now, count = 110) {
+function buildHandHygiene(rng, now, count = 360) {
   return Array.from({ length: count }, (_, index) => {
-    const date = addDays(now, -numberBetween(rng, 0, 175))
+    const date = addDays(now, -numberBetween(rng, 0, 900))
     const observationCount = numberBetween(rng, 8, 22)
     const observations = Array.from({ length: observationCount }, (_, obsIndex) => {
       const compliant = rng() < (0.68 + (date.getTime() / now.getTime()) * 0.08)
@@ -102,19 +102,33 @@ function buildHandHygiene(rng, now, count = 110) {
 
 function buildVaccinations(rng, employees, now) {
   const active = employees.filter((row) => row.status !== 'Ανενεργό')
-  return active.filter(() => rng() < .79).map((employee, index) => ({
-    id:`DEMO-VAC-${String(index + 1).padStart(3,'0')}`, employeeId:employee.id, employeeName:employee.fullName,
-    department:employee.department, vaccine:'Αντιγριπικό εμβόλιο', dose:'Ετήσια', date:`${now.getFullYear()}-${pad(numberBetween(rng,1,3))}-${pad(numberBetween(rng,1,28))}`,
-    validUntil:`${now.getFullYear()+1}-03-31`, notes:'Demo εμβολιασμός', [DEMO_FLAG]:true,
-  }))
+  const records=[]
+  const years=[now.getFullYear()-2,now.getFullYear()-1,now.getFullYear()]
+  years.forEach((year,yearIndex)=>{
+    active.forEach((employee)=>{
+      // A realistic annual influenza campaign. Coverage improves slightly year over year.
+      const coverage=.68+(yearIndex*.07)
+      if(rng()>coverage)return
+      const month=pick(rng,[1,1,2,2,3,10,11,12])
+      const date=new Date(year,month-1,numberBetween(rng,1,28))
+      if(date>now)return
+      records.push({
+        id:`DEMO-VAC-${year}-${String(records.length+1).padStart(4,'0')}`, employeeId:employee.id, employeeName:employee.fullName,
+        department:employee.department, vaccine:'Αντιγριπικό εμβόλιο', dose:'Ετήσια', date:isoDate(date),
+        validUntil:`${year+1}-03-31`, notes:`Demo εμβολιασμός ${year}`, [DEMO_FLAG]:true,
+      })
+    })
+  })
+  return records
 }
 
-function buildSamples(rng, patients, now, count = 240) {
+function buildSamples(rng, patients, now, count = 900) {
   return Array.from({ length: count }, (_, index) => {
-    const patient = pick(rng, patients); const date = addDays(now, -numberBetween(rng,0,175))
+    const patient = pick(rng, patients); const date = addDays(now, -numberBetween(rng,0,900))
     const sampleType = pick(rng, ['Αίμα','Αίμα','Ούρα','Ορθικό επίχρισμα','Βρογχικές εκκρίσεις','Τραύμα'])
     const roll = rng()
-    const pending = roll < .12
+    const recent = (now.getTime()-date.getTime()) <= 24*86400000
+    const pending = recent && roll < .12
     const positive = !pending && roll < (sampleType === 'Αίμα' ? .39 : .33)
     const microorganism = positive ? pick(rng, pathogens) : ''
     const antibiogram = positive ? Array.from({length:numberBetween(rng,3,6)},(_,abIndex)=>({
@@ -137,7 +151,7 @@ function buildSamples(rng, patients, now, count = 240) {
 function buildSurveillanceCases(rng, patients, samples, now) {
   const cases=[]
   const extraSamples=[]
-  const candidates=samples.filter(row=>row.status==='Θετικό').slice(0,42)
+  const candidates=samples.filter(row=>row.status==='Θετικό').slice(0,160)
   candidates.forEach((sample,index)=>{
     const patient=patients.find(row=>row.id===sample.patientId)
     if(!patient) return
@@ -171,7 +185,7 @@ function buildSurveillanceCases(rng, patients, samples, now) {
 }
 
 function buildIsolations(rng, patients, samples) {
-  return samples.filter((row)=>row.status==='Θετικό' && row.resistance && rng()<.72).slice(0,72).map((sample,index)=>{
+  return samples.filter((row)=>row.status==='Θετικό' && row.resistance && rng()<.72).slice(0,180).map((sample,index)=>{
     const patient=patients.find((row)=>row.id===sample.patientId)||pick(rng,patients)
     const start=sample.collectionDate.split('/').reverse().join('-')
     return { id:`DEMO-ISO-${String(index+1).padStart(3,'0')}`, patientId:patient.id, patientName:patient.fullName, patientCode:patient.patientCode, department:patient.department, pathogen:sample.microorganism, resistance:sample.resistance, startDate:start, endDate:rng()<.55?isoDate(addDays(new Date(`${start}T12:00:00`),numberBetween(rng,4,16))):'', status:rng()<.55?'Ολοκληρωμένη':'Ενεργή', isolationType:pick(rng,['Επαφή','Συννοσηλεία','Μονόκλινο']), [DEMO_FLAG]:true }
@@ -179,14 +193,14 @@ function buildIsolations(rng, patients, samples) {
 }
 
 function buildInfections(rng, patients, samples) {
-  return samples.filter((row)=>row.status==='Θετικό'&&rng()<.48).slice(0,95).map((sample,index)=>{
+  return samples.filter((row)=>row.status==='Θετικό'&&rng()<.48).slice(0,240).map((sample,index)=>{
     const patient=patients.find((row)=>row.id===sample.patientId)||pick(rng,patients)
     const onset=sample.collectionDate.split('/').reverse().join('-')
     return {id:`DEMO-INF-${String(index+1).padStart(3,'0')}`,patientId:patient.id,patientName:patient.fullName,patientCode:patient.patientCode,department:patient.department,onsetDate:onset,infectionType:pick(rng,['Βακτηριαιμία','Πνευμονία','Ουρολοίμωξη','Λοίμωξη χειρουργικού πεδίου']),origin:rng()<.78?'Νοσοκομειακή':'Κοινότητας',pathogen:sample.microorganism,status:rng()<.35?'Ενεργή':'Ολοκληρωμένη',relatedSampleId:sample.id,[DEMO_FLAG]:true}
   })
 }
 
-function buildDailyCensus(rng, now, days = 190) {
+function buildDailyCensus(rng, now, days = 900) {
   const capacities = { 'ΜΕΘ':12,'Παθολογική':36,'Χειρουργική':32,'Καρδιολογική':26,'Παιδιατρική':20,'ΜΤΝ':18,'Χειρουργείο':10,'ΤΕΠ':16 }
   const rows=[]
   for(let offset=days-1; offset>=0; offset--){
@@ -202,57 +216,57 @@ function buildDailyCensus(rng, now, days = 190) {
   return rows
 }
 
-function buildDDD(rng, now, count = 620) {
+function buildDDD(rng, now, count = 2600) {
   const drugs=[['J01DH02','Meropenem',1],['J01CR05','Piperacillin/Tazobactam',14],['J01DD04','Ceftriaxone',2],['J01MA02','Ciprofloxacin',1],['J01XA01','Vancomycin',2],['J01GB06','Amikacin',1],['J01XB01','Colistin',3]]
-  return Array.from({length:count},(_,index)=>{const date=addDays(now,-numberBetween(rng,0,185));const [atc,drug,base]=pick(rng,drugs);return{id:`DEMO-DDD-${String(index+1).padStart(4,'0')}`,date:isoDate(date),department:pick(rng,departments),atc,drug,ddd:Number((base*decimalBetween(rng,.4,2.8,2)).toFixed(2)),patientCode:rng()<.7?`D-PAT-${String(numberBetween(rng,1,120)).padStart(4,'0')}`:'',source:'Φαρμακείο Demo',[DEMO_FLAG]:true}})
+  return Array.from({length:count},(_,index)=>{
+    const date=addDays(now,-numberBetween(rng,0,900));const [atc,drug,base]=pick(rng,drugs)
+    // Mild year-to-year variation makes comparative charts meaningful without looking artificial.
+    const ageDays=Math.max(0,(now.getTime()-date.getTime())/86400000)
+    const trend=ageDays>700?.88:ageDays>335?.96:1.04
+    return{id:`DEMO-DDD-${String(index+1).padStart(5,'0')}`,date:isoDate(date),department:pick(rng,departments),atc,drug,ddd:Number((base*decimalBetween(rng,.4,2.8,2)*trend).toFixed(2)),patientCode:rng()<.7?`D-PAT-${String(numberBetween(rng,1,220)).padStart(4,'0')}`:'',source:'Φαρμακείο Demo',[DEMO_FLAG]:true}
+  })
 }
 
 
 function buildPrevalenceSnapshots(rng, now) {
-  return [0, 24, 48].map((monthsAgo, index) => {
-    const date = new Date(now.getFullYear(), now.getMonth() - monthsAgo, Math.min(7, now.getDate()))
-    const totalPatients = numberBetween(rng, 142, 168)
-    const activeHAI = numberBetween(rng, 8, 17)
-    const patientsOnAntibiotics = numberBetween(rng, 48, 78)
-    return {
-      id: `DEMO-PPS-${index + 1}`,
-      date: isoDate(date),
-      campaign: `PPS Demo ${date.getFullYear()}`,
-      totalPatients,
-      activeHAI,
-      patientsOnAntibiotics,
-      completed: true,
-      [DEMO_FLAG]: true,
-    }
+  return Array.from({length:10},(_,index)=>{
+    const monthsAgo=(9-index)*3
+    const date=new Date(now.getFullYear(),now.getMonth()-monthsAgo,7)
+    const totalPatients=numberBetween(rng,142,172)
+    const seasonal=(date.getMonth()>=10||date.getMonth()<=1)?2:0
+    const activeHAI=Math.max(5,numberBetween(rng,8,16)+seasonal-Math.floor(index/4))
+    const patientsOnAntibiotics=numberBetween(rng,46,78)
+    return{id:`DEMO-PPS-${index+1}`,date:isoDate(date),campaign:`PPS Demo ${date.getFullYear()} Q${Math.floor(date.getMonth()/3)+1}`,totalPatients,activeHAI,patientsOnAntibiotics,completed:true,[DEMO_FLAG]:true}
   })
 }
 
 function buildStructural(now) {
-  return Array.from({length:7},(_,index)=>{const date=new Date(now.getFullYear(),now.getMonth()-6+index,1);return{id:`DEMO-STRUCT-${isoDate(date)}`,date:isoDate(date),totalBeds:176,icuBeds:12,singleRooms:18,nelNurses:index<3?2:3,infectiousDiseaseDoctors:1,microbiologists:3,notes:index===6?'Τρέχουσα demo αποτύπωση δομής.':'Ιστορική demo αποτύπωση.',[DEMO_FLAG]:true}})
+  return Array.from({length:30},(_,index)=>{const date=new Date(now.getFullYear(),now.getMonth()-29+index,1);return{id:`DEMO-STRUCT-${isoDate(date)}`,date:isoDate(date),totalBeds:176,icuBeds:12,singleRooms:index<12?16:18,nelNurses:index<10?2:3,infectiousDiseaseDoctors:1,microbiologists:3,notes:index===29?'Τρέχουσα demo αποτύπωση δομής.':'Ιστορική demo αποτύπωση.',[DEMO_FLAG]:true}})
 }
 
-function buildAntiseptics(rng, now, count=100){return Array.from({length:count},(_,i)=>{const date=addDays(now,-numberBetween(rng,0,175));const consumption=numberBetween(rng,5000,26000);const patientDays=numberBetween(rng,120,720);return{id:`DEMO-ANT-${i+1}`,date:greekDate(date),department:pick(rng,departments),product:pick(rng,['Αλκοολούχο διάλυμα 70%','Χλωρεξιδίνη 2%','Αλκοολούχο gel 500ml']),consumption:String(consumption),patientDays:String(patientDays),responsible:'ΝΕΛ Demo',notes:'Demo μέτρηση',[DEMO_FLAG]:true}})}
-function buildWaste(rng, now, count=85){return Array.from({length:count},(_,i)=>{const date=addDays(now,-numberBetween(rng,0,175));return{id:`DEMO-WASTE-${i+1}`,date:greekDate(date),department:pick(rng,departments),wasteType:pick(rng,['ΕΑΑΜ','ΜΕΑ','Αστικά απόβλητα']),weightKg:String(decimalBetween(rng,4,58,1)),containers:String(numberBetween(rng,1,12)),patientDays:String(numberBetween(rng,80,480)),collectionCompany:'Demo Waste Services',documentNumber:`D-${1000+i}`,responsible:'Υπεύθυνος Demo',[DEMO_FLAG]:true}})}
-function buildPromoted(rng, patients, now, count=95){return Array.from({length:count},(_,i)=>{const patient=pick(rng,patients);const date=addDays(now,-numberBetween(rng,0,150));return{id:`DEMO-ABX-${i+1}`,patientId:patient.id,patientName:patient.fullName,patientCode:patient.patientCode,department:patient.department,date:isoDate(date),antibiotic:pick(rng,promotedAntibiotics),dosage:pick(rng,['1 g','2 g','500 mg']),frequency:pick(rng,['ανά 8ωρο','ανά 12ωρο','ανά 24ωρο']),route:'IV',indication:pick(rng,['Σήψη','Πνευμονία','Βακτηριαιμία','Εμπειρική αγωγή']),approval:rng()<.78?'Εγκεκριμένο':rng()<.5?'Εκκρεμεί':'Απορρίφθηκε',doctor:'Λοιμωξιολόγος Demo',[DEMO_FLAG]:true}})}
-function buildNotifiable(rng, patients, now, count=32){const diseases=['Σαλμονέλλωση','Λεγιονέλλωση / Πυρετός Pontiac','Γρίπη εργαστηριακά επιβεβαιωμένη','Μηνιγγίτιδα','Ηπατίτιδα Α, οξεία','Λοίμωξη από ιό Δυτικού Νείλου'];return Array.from({length:count},(_,i)=>{const patient=pick(rng,patients);const date=addDays(now,-numberBetween(rng,0,160));const declared=rng()<.82;return{id:`DEMO-YDN-${i+1}`,disease:pick(rng,diseases),deadline:'24ωρο',patientId:patient.id,patientName:patient.fullName,patientCode:patient.patientCode,department:patient.department,diagnosisDate:isoDate(date),declarationDate:declared?isoDate(addDays(date,numberBetween(rng,0,1))):'',status:declared?'Δηλώθηκε':'Προς δήλωση',caseClassification:pick(rng,['Επιβεβαιωμένο','Πιθανό']),physician:'Ιατρός Demo',notes:'Demo δήλωση',attachments:[],history:[],[DEMO_FLAG]:true}})}
+function buildAntiseptics(rng, now, count=320){return Array.from({length:count},(_,i)=>{const date=addDays(now,-numberBetween(rng,0,900));const consumption=numberBetween(rng,5000,26000);const patientDays=numberBetween(rng,120,720);return{id:`DEMO-ANT-${i+1}`,date:greekDate(date),department:pick(rng,departments),product:pick(rng,['Αλκοολούχο διάλυμα 70%','Χλωρεξιδίνη 2%','Αλκοολούχο gel 500ml']),consumption:String(consumption),patientDays:String(patientDays),responsible:'ΝΕΛ Demo',notes:'Demo μέτρηση',[DEMO_FLAG]:true}})}
+function buildWaste(rng, now, count=260){return Array.from({length:count},(_,i)=>{const date=addDays(now,-numberBetween(rng,0,900));return{id:`DEMO-WASTE-${i+1}`,date:greekDate(date),department:pick(rng,departments),wasteType:pick(rng,['ΕΑΑΜ','ΜΕΑ','Αστικά απόβλητα']),weightKg:String(decimalBetween(rng,4,58,1)),containers:String(numberBetween(rng,1,12)),patientDays:String(numberBetween(rng,80,480)),collectionCompany:'Demo Waste Services',documentNumber:`D-${1000+i}`,responsible:'Υπεύθυνος Demo',[DEMO_FLAG]:true}})}
+function buildPromoted(rng, patients, now, count=300){return Array.from({length:count},(_,i)=>{const patient=pick(rng,patients);const date=addDays(now,-numberBetween(rng,0,900));return{id:`DEMO-ABX-${i+1}`,patientId:patient.id,patientName:patient.fullName,patientCode:patient.patientCode,department:patient.department,date:isoDate(date),antibiotic:pick(rng,promotedAntibiotics),dosage:pick(rng,['1 g','2 g','500 mg']),frequency:pick(rng,['ανά 8ωρο','ανά 12ωρο','ανά 24ωρο']),route:'IV',indication:pick(rng,['Σήψη','Πνευμονία','Βακτηριαιμία','Εμπειρική αγωγή']),approval:rng()<.78?'Εγκεκριμένο':rng()<.5?'Εκκρεμεί':'Απορρίφθηκε',doctor:'Λοιμωξιολόγος Demo',[DEMO_FLAG]:true}})}
+function buildNotifiable(rng, patients, now, count=90){const diseases=['Σαλμονέλλωση','Λεγιονέλλωση / Πυρετός Pontiac','Γρίπη εργαστηριακά επιβεβαιωμένη','Μηνιγγίτιδα','Ηπατίτιδα Α, οξεία','Λοίμωξη από ιό Δυτικού Νείλου'];return Array.from({length:count},(_,i)=>{const patient=pick(rng,patients);const date=addDays(now,-numberBetween(rng,0,900));const declared=rng()<.82;return{id:`DEMO-YDN-${i+1}`,disease:pick(rng,diseases),deadline:'24ωρο',patientId:patient.id,patientName:patient.fullName,patientCode:patient.patientCode,department:patient.department,diagnosisDate:isoDate(date),declarationDate:declared?isoDate(addDays(date,numberBetween(rng,0,1))):'',status:declared?'Δηλώθηκε':'Προς δήλωση',caseClassification:pick(rng,['Επιβεβαιωμένο','Πιθανό']),physician:'Ιατρός Demo',notes:'Demo δήλωση',attachments:[],history:[],[DEMO_FLAG]:true}})}
 
 function buildControls(rng, now) {
-  const programs=Array.from({length:18},(_,i)=>{const category=i%3===0?'Νερό':'Περιβάλλον';return{id:`DEMO-CTRL-${i+1}`,title:category==='Νερό'?`Έλεγχος νερού ${i+1}`:`Περιβαλλοντικός έλεγχος ${i+1}`,category,controlType:category==='Νερό'?pick(rng,['Legionella','Μικροβιολογικός έλεγχος','Νερό ΜΤΝ']):pick(rng,['Επιφάνειες','Αέρας','HVAC']),department:pick(rng,departments),location:category==='Νερό'?'Δίκτυο νερού':'Κλινικός χώρος',controlPoints:[`Σημείο ${i+1}A`,`Σημείο ${i+1}B`],owner:'ΝΕΛ',startDate:isoDate(addDays(now,-160)),recurrence:'months',interval:pick(rng,[1,3,6]),reminderDays:10,nextDueDate:isoDate(addDays(now,numberBetween(rng,-10,45))),active:true,[DEMO_FLAG]:true}})
-  const executions=Array.from({length:55},(_,i)=>{const program=pick(rng,programs);const date=addDays(now,-numberBetween(rng,1,170));return{id:`DEMO-EXEC-${i+1}`,programId:program.id,category:program.category,dueDate:isoDate(date),performedDate:isoDate(date),department:program.department,location:program.location,owner:'ΝΕΛ',status:'Ολοκληρωμένο',items:program.controlPoints.map((point,j)=>({samplingPoint:point,sampleCode:`D-SMP-${i+1}-${j+1}`,resultStatus:rng()<.12?'Θετικό':'Αρνητικό',microorganism:rng()<.12?pick(rng,pathogens):'',acceptable:rng()<.12?'Μη αποδεκτό':'Αποδεκτό'})),[DEMO_FLAG]:true}})
+  const programs=Array.from({length:24},(_,i)=>{const category=i%3===0?'Νερό':'Περιβάλλον';return{id:`DEMO-CTRL-${i+1}`,title:category==='Νερό'?`Έλεγχος νερού ${i+1}`:`Περιβαλλοντικός έλεγχος ${i+1}`,category,controlType:category==='Νερό'?pick(rng,['Legionella','Μικροβιολογικός έλεγχος','Νερό ΜΤΝ']):pick(rng,['Επιφάνειες','Αέρας','HVAC']),department:pick(rng,departments),location:category==='Νερό'?'Δίκτυο νερού':'Κλινικός χώρος',controlPoints:[`Σημείο ${i+1}A`,`Σημείο ${i+1}B`],owner:'ΝΕΛ',startDate:isoDate(addDays(now,-900)),recurrence:'months',interval:pick(rng,[1,3,6]),reminderDays:10,nextDueDate:isoDate(addDays(now,numberBetween(rng,-10,45))),active:true,[DEMO_FLAG]:true}})
+  const executions=Array.from({length:220},(_,i)=>{const program=pick(rng,programs);const date=addDays(now,-numberBetween(rng,1,900));return{id:`DEMO-EXEC-${i+1}`,programId:program.id,category:program.category,dueDate:isoDate(date),performedDate:isoDate(date),department:program.department,location:program.location,owner:'ΝΕΛ',status:'Ολοκληρωμένο',items:program.controlPoints.map((point,j)=>({samplingPoint:point,sampleCode:`D-SMP-${i+1}-${j+1}`,resultStatus:rng()<.12?'Θετικό':'Αρνητικό',microorganism:rng()<.12?pick(rng,pathogens):'',acceptable:rng()<.12?'Μη αποδεκτό':'Αποδεκτό'})),[DEMO_FLAG]:true}})
   return {programs,executions}
 }
 
 
-function buildDemoQuality(now) {
-  const today=isoDate(now)
-  const incidents=[
-    {id:'DEMO-INC-001',date:today,title:'Demo απόκλιση διαδικασίας ταυτοποίησης',category:'Ταυτοποίηση ασθενή',department:'Παθολογική',outcome:'Χωρίς βλάβη / near miss',status:'Υπό διερεύνηση',owner:'Ομάδα Ποιότητας Demo',description:'Demo συμβάν για επίδειξη της ροής ποιότητας.',[DEMO_FLAG]:true},
-    {id:'DEMO-INC-002',date:today,title:'Demo καθυστέρηση επικοινωνίας αποτελέσματος',category:'Επικοινωνία / παράδοση φροντίδας',department:'Μικροβιολογικό Εργαστήριο',outcome:'Χωρίς βλάβη / near miss',status:'Νέα αναφορά',owner:'Εργαστήριο Demo',description:'Demo συμβάν.',[DEMO_FLAG]:true},
-  ]
-  const capa=[
-    {id:'DEMO-CAPA-001',title:'Demo επανεκπαίδευση στην ταυτοποίηση',source:'DEMO-INC-001',sourceType:'Συμβάν',actionType:'Διορθωτική',owner:'Νοσηλευτική Διεύθυνση Demo',department:'Παθολογική',dueDate:today,priority:'Υψηλή',progress:35,status:'Σε εξέλιξη',plannedAction:'Demo βελτιωτική ενέργεια.',effectivenessStatus:'Εκκρεμεί',[DEMO_FLAG]:true},
-  ]
-  return {incidents,capa,audits:[]}
+function buildDemoQuality(rng, now) {
+  const categories=['Ταυτοποίηση ασθενή','Επικοινωνία / παράδοση φροντίδας','Φαρμακευτική αγωγή','Πτώση ασθενή','Ιατροτεχνολογικός εξοπλισμός','Λοίμωξη / πρόληψη λοιμώξεων','Καθυστέρηση φροντίδας','Ασφάλεια εγκαταστάσεων']
+  const outcomes=['Χωρίς βλάβη / near miss','Χωρίς βλάβη','Ήπια βλάβη','Μέτρια βλάβη','Σοβαρή βλάβη']
+  const statuses=['Νέα αναφορά','Υπό διερεύνηση','Σε παρακολούθηση','Ολοκληρωμένο']
+  const incidents=Array.from({length:180},(_,i)=>{
+    const date=addDays(now,-numberBetween(rng,0,900));const category=pick(rng,categories);const department=pick(rng,departments)
+    return{id:i===0?'DEMO-INC-001':`DEMO-INC-${String(i+1).padStart(4,'0')}`,date:isoDate(date),title:`Demo συμβάν · ${category}`,category,department,outcome:pick(rng,outcomes),status:pick(rng,statuses),owner:`Ομάδα Ποιότητας · ${department}`,description:'Demo συμβάν για επίδειξη συγκριτικών αναλύσεων και ροής ποιότητας.',[DEMO_FLAG]:true}
+  })
+  const capa=incidents.filter((_,i)=>i%3===0).slice(0,60).map((incident,i)=>({id:`DEMO-CAPA-${String(i+1).padStart(3,'0')}`,title:`Βελτιωτική ενέργεια · ${incident.category}`,source:incident.id,sourceType:'Συμβάν',actionType:i%2?'Προληπτική':'Διορθωτική',owner:'Ομάδα Ποιότητας Demo',department:incident.department,dueDate:isoDate(addDays(new Date(`${incident.date}T12:00:00`),30)),priority:pick(rng,['Χαμηλή','Μέτρια','Υψηλή']),progress:numberBetween(rng,20,100),status:pick(rng,['Σε εξέλιξη','Ολοκληρωμένη','Σε παρακολούθηση']),plannedAction:'Demo βελτιωτική ενέργεια.',effectivenessStatus:pick(rng,['Εκκρεμεί','Αποτελεσματική','Υπό επανέλεγχο']),[DEMO_FLAG]:true}))
+  const audits=Array.from({length:48},(_,i)=>{const date=addDays(now,-numberBetween(rng,0,900));return{id:`DEMO-AUD-${String(i+1).padStart(3,'0')}`,title:pick(rng,['Audit Υγιεινής Χεριών','Audit απομόνωσης','Audit φαρμακευτικής ασφάλειας','Audit ταυτοποίησης ασθενή']),department:pick(rng,departments),date:isoDate(date),score:numberBetween(rng,72,98),status:'Ολοκληρωμένο',[DEMO_FLAG]:true}})
+  return {incidents,capa,audits}
 }
 
 function buildDemoOrganization(now) {
@@ -281,7 +295,7 @@ export function generateDemoDataset() {
   const vaccinations=buildVaccinations(rng,employees,now); const samples=buildSamples(rng,patients,now); const clinicalFlow=buildSurveillanceCases(rng,patients,samples,now); const allSamples=[...samples,...clinicalFlow.extraSamples]; const isolations=buildIsolations(rng,patients,allSamples); const infections=buildInfections(rng,patients,allSamples)
   const census=buildDailyCensus(rng,now); const ddd=buildDDD(rng,now); const prevalence=buildPrevalenceSnapshots(rng,now); const structural=buildStructural(now); const controls=buildControls(rng,now)
   const antiseptics=buildAntiseptics(rng,now); const waste=buildWaste(rng,now); const promoted=buildPromoted(rng,patients,now); const notifiable=buildNotifiable(rng,patients,now)
-  const quality=buildDemoQuality(now); const organization=buildDemoOrganization(now)
+  const quality=buildDemoQuality(rng,now); const organization=buildDemoOrganization(now)
 
   const vaccinationMap = new Map(vaccinations.map((row) => [row.employeeId, row]))
   const employeesWithVaccinations = employees.map((employee) => { const vaccination = vaccinationMap.get(employee.id); return vaccination ? { ...employee, vaccinations: [{ id: `vac-${vaccination.id}`, sourceId: vaccination.id, vaccine: vaccination.vaccine, date: vaccination.date, dose: vaccination.dose, validUntil: vaccination.validUntil }] } : employee })
@@ -310,7 +324,7 @@ export function generateDemoDataset() {
   replaceCommitteesCollection(mergeDemo(loadCommittees(),organization.committees))
   replaceDocumentsCollection(mergeDemo(loadDocuments(),organization.documents))
 
-  const summary={patients:patients.length,employees:employees.length,handHygieneSessions:sessions.length,handHygieneObservations:sessions.reduce((sum,row)=>sum+row.observations.length,0),vaccinations:vaccinations.length,patientSamples:allSamples.length,surveillanceCases:clinicalFlow.cases.length,isolations:isolations.length,infections:infections.length,dailyCensus:census.length,antibioticDDD:ddd.length,prevalenceSnapshots:prevalence.length,structural:structural.length,controls:controls.executions.length,other:antiseptics.length+waste.length+promoted.length+notifiable.length,total:0}
+  const summary={patients:patients.length,employees:employees.length,handHygieneSessions:sessions.length,handHygieneObservations:sessions.reduce((sum,row)=>sum+row.observations.length,0),vaccinations:vaccinations.length,patientSamples:allSamples.length,surveillanceCases:clinicalFlow.cases.length,isolations:isolations.length,infections:infections.length,dailyCensus:census.length,antibioticDDD:ddd.length,prevalenceSnapshots:prevalence.length,structural:structural.length,controls:controls.executions.length,incidents:quality.incidents.length,capa:quality.capa.length,audits:quality.audits.length,other:antiseptics.length+waste.length+promoted.length+notifiable.length,total:0}
   summary.total=Object.entries(summary).filter(([key])=>key!=='total').reduce((sum,[,value])=>sum+value,0)
   writeJson('limoxisDemoDatasetSummary',{...summary,generatedAt:new Date().toISOString()})
   emitAppEvent(DEMO_DATA_EVENT,summary)

@@ -8,6 +8,8 @@ import {
   Biohazard,
   BrainCircuit,
   BarChart3,
+  Download,
+  Printer,
   X,
   ClipboardPlus,
   Clock3,
@@ -29,6 +31,8 @@ import { ISOLATIONS_EVENT } from '../services/isolationsService'
 import { INDICATORS_EVENT } from '../services/indicatorsService'
 import { LABORATORY_RESISTANT_MARKERS, laboratoryStatus } from '../core/constants/laboratory'
 
+import FullReportPanel from '../components/analytics/FullReportPanel'
+
 import './DashboardPage.css'
 
 const resistantValues = LABORATORY_RESISTANT_MARKERS
@@ -43,8 +47,6 @@ export default function DashboardPage() {
   const [isolations, setIsolations] = useState(initialSnapshot.isolations)
   const [indicators, setIndicators] = useState(initialSnapshot.indicators)
   const [analyticsOpen,setAnalyticsOpen]=useState(false)
-  const [analyticsMonths,setAnalyticsMonths]=useState(6)
-  const [analyticsMetric,setAnalyticsMetric]=useState('positive')
 
   useAppEvents([
     PATIENT_SAMPLES_EVENT,
@@ -263,7 +265,7 @@ export default function DashboardPage() {
           </Card>
         </aside>
       </div>
-      {analyticsOpen&&<AnalyticsPanel samples={samples} infections={infections} isolations={isolations} months={analyticsMonths} setMonths={setAnalyticsMonths} metric={analyticsMetric} setMetric={setAnalyticsMetric} language={language} onClose={()=>setAnalyticsOpen(false)}/>}
+      {analyticsOpen&&<FullReportPanel samples={samples} infections={infections} isolations={isolations} language={language} onClose={()=>setAnalyticsOpen(false)}/>}
     </PageChrome>
   )
 }
@@ -293,11 +295,90 @@ function formatActivityDate(value, locale) {
 }
 
 function AnalyticsPanel({samples,infections,isolations,months,setMonths,metric,setMetric,language,onClose}){
-  const en=language==='en', now=new Date();
-  const defs={positive:{el:'Θετικές καλλιέργειες',en:'Positive cultures'},resistant:{el:'MDR / XDR',en:'MDR / XDR'},infections:{el:'Ενεργές/καταγεγραμμένες λοιμώξεις',en:'Recorded infections'},isolations:{el:'Απομονώσεις',en:'Isolations'}};
-  const dateOf=x=>parseDate(x.resultDate||x.collectionDate||x.infectionDate||x.onsetDate||x.startDate||x.createdAt);
-  const source=metric==='infections'?infections:metric==='isolations'?isolations:samples.filter(x=>metric==='resistant'?resistantValues.has(x.resistance):laboratoryStatus(x)==='Θετικό');
-  const buckets=Array.from({length:months},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-(months-1-i),1), y=d.getFullYear(),m=d.getMonth();return {d,label:new Intl.DateTimeFormat(en?'en-GB':'el-GR',{month:'short'}).format(d),value:source.filter(x=>{const q=dateOf(x);return q.getFullYear()===y&&q.getMonth()===m}).length}});
-  const previous=source.filter(x=>{const d=dateOf(x),end=new Date(now.getFullYear(),now.getMonth()-months+1,1),start=new Date(end.getFullYear(),end.getMonth()-months,1);return d>=start&&d<end}).length,current=buckets.reduce((a,b)=>a+b.value,0),change=previous?Math.round((current-previous)/previous*100):null,max=Math.max(1,...buckets.map(x=>x.value));
-  return <div className="analytics-overlay" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><section className="analytics-panel"><header><div><span>{en?'DASHBOARD ANALYTICS':'ΑΝΑΛΥΣΗ DASHBOARD'}</span><h2>{en?'Comparative analysis':'Συγκριτική ανάλυση'}</h2><p>{en?'Current period compared with the immediately preceding equivalent period.':'Η τρέχουσα περίοδος συγκρίνεται με την αμέσως προηγούμενη ισόχρονη περίοδο.'}</p></div><button type="button" className="icon-button" onClick={onClose}><X size={19}/></button></header><div className="analytics-controls"><label>{en?'Metric':'Δείκτης'}<select value={metric} onChange={e=>setMetric(e.target.value)}>{Object.entries(defs).map(([k,v])=><option value={k} key={k}>{v[en?'en':'el']}</option>)}</select></label><label>{en?'Period':'Περίοδος'}<select value={months} onChange={e=>setMonths(Number(e.target.value))}><option value={6}>{en?'6 months':'6 μήνες'}</option><option value={12}>{en?'12 months':'12 μήνες'}</option></select></label></div><div className="analytics-summary"><div><small>{en?'Current period':'Τρέχουσα περίοδος'}</small><strong>{current}</strong></div><div><small>{en?'Previous period':'Προηγούμενη περίοδος'}</small><strong>{previous}</strong></div><div><small>{en?'Change':'Μεταβολή'}</small><strong>{change===null?'—':`${change>0?'+':''}${change}%`}</strong></div></div><div className="analytics-chart">{buckets.map(b=><div className="analytics-bar-col" key={b.d.toISOString()} title={`${b.label}: ${b.value}`}><span>{b.value}</span><div className="analytics-bar" style={{height:`${Math.max(5,b.value/max*100)}%`}}/><small>{b.label}</small></div>)}</div><div className="analytics-insight"><strong>{en?'Period summary':'Σύνοψη περιόδου'}</strong><p>{change===null?(en?'There are not enough data in the previous period for a reliable percentage comparison.':'Δεν υπάρχουν αρκετά δεδομένα στην προηγούμενη περίοδο για αξιόπιστη ποσοστιαία σύγκριση.'):(change>0?(en?`The selected metric increased by ${Math.abs(change)}% compared with the previous period.`:`Ο επιλεγμένος δείκτης αυξήθηκε κατά ${Math.abs(change)}% σε σχέση με την προηγούμενη περίοδο.`):(change<0?(en?`The selected metric decreased by ${Math.abs(change)}% compared with the previous period.`:`Ο επιλεγμένος δείκτης μειώθηκε κατά ${Math.abs(change)}% σε σχέση με την προηγούμενη περίοδο.`):(en?'The selected metric is unchanged from the previous period.':'Ο επιλεγμένος δείκτης παραμένει αμετάβλητος σε σχέση με την προηγούμενη περίοδο.')))}</p><small>{en?'Descriptive analytics only; values depend on recorded data.':'Περιγραφική ανάλυση μόνο· οι τιμές εξαρτώνται από τα καταχωρημένα δεδομένα.'}</small></div></section></div>
+  const en=language==='en'
+  const now=new Date()
+  const defs={
+    positive:{el:'Θετικές καλλιέργειες',en:'Positive cultures'},
+    resistant:{el:'MDR / XDR',en:'MDR / XDR'},
+    infections:{el:'Καταγεγραμμένες λοιμώξεις',en:'Recorded infections'},
+    isolations:{el:'Απομονώσεις',en:'Isolations'},
+  }
+  const dateOf=x=>parseDate(x.resultDate||x.collectionDate||x.infectionDate||x.onsetDate||x.startDate||x.createdAt)
+  const source=metric==='infections'?infections:metric==='isolations'?isolations:samples.filter(x=>metric==='resistant'?resistantValues.has(x.resistance):laboratoryStatus(x)==='Θετικό')
+  const years=useMemo(()=>{
+    const found=new Set([now.getFullYear(),now.getFullYear()-1])
+    ;[...samples,...infections,...isolations].forEach(item=>{const d=dateOf(item);if(!Number.isNaN(d.getTime())&&d.getFullYear()>2000)found.add(d.getFullYear())})
+    return [...found].sort((a,b)=>b-a)
+  },[samples,infections,isolations])
+  const [yearA,setYearA]=useState(years[0]||now.getFullYear())
+  const [yearB,setYearB]=useState(years.find(y=>y!==yearA)||yearA-1)
+  const [segment,setSegment]=useState(0)
+  const [exportOpen,setExportOpen]=useState(false)
+
+  const segmentCount=months===3?4:months===6?2:1
+  const safeSegment=Math.min(segment,segmentCount-1)
+  const startMonth=months===12?0:safeSegment*months
+  const locale=en?'en-GB':'el-GR'
+  const periodName=months===3
+    ? (en?`Q${safeSegment+1}`:`${safeSegment+1}ο τρίμηνο`)
+    : months===6
+      ? (safeSegment===0?(en?'1st half':'1ο εξάμηνο'):(en?'2nd half':'2ο εξάμηνο'))
+      : (en?'Full year':'Έτος')
+
+  const valuesForYear=year=>Array.from({length:months},(_,index)=>{
+    const month=startMonth+index
+    const d=new Date(year,month,1)
+    return {
+      month,
+      label:new Intl.DateTimeFormat(locale,{month:'short'}).format(d),
+      value:source.filter(item=>{const q=dateOf(item);return q.getFullYear()===year&&q.getMonth()===month}).length,
+    }
+  })
+  const seriesA=valuesForYear(Number(yearA)),seriesB=valuesForYear(Number(yearB))
+  const totalA=seriesA.reduce((sum,item)=>sum+item.value,0),totalB=seriesB.reduce((sum,item)=>sum+item.value,0)
+  const change=totalB?Math.round((totalA-totalB)/totalB*100):(totalA===0?0:null)
+  const max=Math.max(1,...seriesA.map(x=>x.value),...seriesB.map(x=>x.value))
+  const metricName=defs[metric][en?'en':'el']
+
+  function exportCsv(){
+    const rows=[
+      [en?'Metric':'Δείκτης',metricName],
+      [en?'Period':'Περίοδος',periodName],
+      [],
+      [en?'Month':'Μήνας',String(yearA),String(yearB)],
+      ...seriesA.map((item,index)=>[item.label,String(item.value),String(seriesB[index]?.value??0)]),
+      [en?'Total':'Σύνολο',String(totalA),String(totalB)],
+    ]
+    const csv='\ufeff'+rows.map(row=>row.map(value=>`"${String(value??'').replaceAll('"','""')}"`).join(';')).join('\n')
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'})
+    const url=URL.createObjectURL(blob),a=document.createElement('a')
+    a.href=url;a.download=`healthcare-suite-${metric}-${yearA}-${yearB}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);setExportOpen(false)
+  }
+
+  function printReport(){
+    const popup=window.open('','_blank','width=980,height=760')
+    if(!popup)return
+    const rows=seriesA.map((item,index)=>`<tr><td>${item.label}</td><td>${item.value}</td><td>${seriesB[index]?.value??0}</td></tr>`).join('')
+    popup.document.write(`<!doctype html><html><head><title>${metricName}</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#17323a}h1{font-size:22px;margin:0 0 6px}p{color:#60757c;margin:0 0 22px}.legend{display:flex;gap:18px;margin:16px 0}.legend span:before{content:'';display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}.a:before{background:#0b7b84}.b:before{background:#6673c7}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{padding:10px;border:1px solid #dce6e9;text-align:left}th{background:#f4f8f9}.total{font-weight:700}</style></head><body><h1>${metricName}</h1><p>${periodName} · ${yearA} vs ${yearB}</p><div class="legend"><span class="a">${yearA}</span><span class="b">${yearB}</span></div><table><thead><tr><th>${en?'Month':'Μήνας'}</th><th>${yearA}</th><th>${yearB}</th></tr></thead><tbody>${rows}<tr class="total"><td>${en?'Total':'Σύνολο'}</td><td>${totalA}</td><td>${totalB}</td></tr></tbody></table></body></html>`)
+    popup.document.close();popup.focus();setTimeout(()=>popup.print(),150);setExportOpen(false)
+  }
+
+  return <div className="analytics-overlay" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><section className="analytics-panel">
+    <header><div><span>{en?'DASHBOARD ANALYTICS':'ΑΝΑΛΥΣΗ DASHBOARD'}</span><h2>{en?'Year-to-year comparative analysis':'Συγκριτική ανάλυση ανά έτος'}</h2><p>{en?'Compare the same quarter, half-year or full year side by side.':'Σύγκρινε δίπλα-δίπλα την ίδια περίοδο δύο διαφορετικών ετών.'}</p></div><button type="button" className="icon-button" onClick={onClose}><X size={19}/></button></header>
+    <div className="analytics-toolbar">
+      <div className="analytics-controls">
+        <label>{en?'Metric':'Δείκτης'}<select value={metric} onChange={e=>setMetric(e.target.value)}>{Object.entries(defs).map(([k,v])=><option value={k} key={k}>{v[en?'en':'el']}</option>)}</select></label>
+        <label>{en?'Period':'Περίοδος'}<select value={months} onChange={e=>{setMonths(Number(e.target.value));setSegment(0)}}><option value={3}>{en?'Quarter':'Τρίμηνο'}</option><option value={6}>{en?'Half-year':'Εξάμηνο'}</option><option value={12}>{en?'Year':'Έτος'}</option></select></label>
+        {months!==12&&<label>{en?'Part':'Υποπερίοδος'}<select value={safeSegment} onChange={e=>setSegment(Number(e.target.value))}>{Array.from({length:segmentCount},(_,i)=><option value={i} key={i}>{months===3?(en?`Q${i+1}`:`${i+1}ο τρίμηνο`):(i===0?(en?'1st half':'1ο εξάμηνο'):(en?'2nd half':'2ο εξάμηνο'))}</option>)}</select></label>}
+        <label>{en?'Year A':'Έτος Α'}<select value={yearA} onChange={e=>setYearA(Number(e.target.value))}>{years.map(y=><option value={y} key={`a-${y}`}>{y}</option>)}</select></label>
+        <label>{en?'Year B':'Έτος Β'}<select value={yearB} onChange={e=>setYearB(Number(e.target.value))}>{years.map(y=><option value={y} key={`b-${y}`}>{y}</option>)}</select></label>
+      </div>
+      <div className="analytics-export-wrap"><button type="button" className="analytics-export-button" onClick={()=>setExportOpen(v=>!v)}><Download size={15}/>{en?'Export':'Εξαγωγή'}</button>{exportOpen&&<div className="analytics-export-menu"><button type="button" onClick={exportCsv}><Download size={14}/>CSV</button><button type="button" onClick={printReport}><Printer size={14}/>{en?'Print / PDF':'Εκτύπωση / PDF'}</button></div>}</div>
+    </div>
+    <div className="analytics-legend"><span className="series-a"><i/>{yearA}</span><span className="series-b"><i/>{yearB}</span><b>{periodName}</b></div>
+    <div className="analytics-summary analytics-summary--compare"><div className="summary-a"><small>{yearA}</small><strong>{totalA}</strong></div><div className="summary-b"><small>{yearB}</small><strong>{totalB}</strong></div><div><small>{en?'Difference A vs B':'Μεταβολή Α έναντι Β'}</small><strong className={change>0?'is-up':change<0?'is-down':''}>{change===null?'—':`${change>0?'+':''}${change}%`}</strong></div></div>
+    <div className="analytics-chart analytics-chart--compare">{seriesA.map((item,index)=>{const other=seriesB[index]||{value:0};return <div className="analytics-bar-group" key={`${item.month}-${yearA}-${yearB}`}><div className="analytics-pair"><div className="analytics-bar-wrap"><span>{item.value}</span><div className="analytics-bar series-a" style={{height:`${Math.max(4,item.value/max*100)}%`}}/></div><div className="analytics-bar-wrap"><span>{other.value}</span><div className="analytics-bar series-b" style={{height:`${Math.max(4,other.value/max*100)}%`}}/></div></div><small>{item.label}</small></div>})}</div>
+    <div className="analytics-insight"><strong>{en?'Comparison summary':'Σύνοψη σύγκρισης'}</strong><p>{change===null?(en?'The comparison year has no recorded values for this period, so a percentage change is not shown.':'Το έτος σύγκρισης δεν έχει καταχωρημένες τιμές για αυτή την περίοδο, επομένως δεν εμφανίζεται ποσοστιαία μεταβολή.'):(change>0?(en?`${yearA} is ${Math.abs(change)}% higher than ${yearB} for the selected period.`:`Το ${yearA} είναι κατά ${Math.abs(change)}% υψηλότερο από το ${yearB} για την επιλεγμένη περίοδο.`):(change<0?(en?`${yearA} is ${Math.abs(change)}% lower than ${yearB} for the selected period.`:`Το ${yearA} είναι κατά ${Math.abs(change)}% χαμηλότερο από το ${yearB} για την επιλεγμένη περίοδο.`):(en?'Both years have the same total for the selected period.':'Τα δύο έτη έχουν το ίδιο σύνολο για την επιλεγμένη περίοδο.')))}</p><small>{en?'Descriptive analytics only; values depend on recorded data.':'Περιγραφική ανάλυση μόνο· οι τιμές εξαρτώνται από τα καταχωρημένα δεδομένα.'}</small></div>
+  </section></div>
 }
+

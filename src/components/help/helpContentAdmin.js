@@ -50,10 +50,10 @@ export const adminHelpSections=[
     important:{el:['Ασθενείς, προσωπικό, συμβάντα, επιτροπές, εκπαιδεύσεις, έγγραφα και εργαστηριακές εγγραφές δεν πρέπει να παραδίδονται ως production seed data.'],en:['Patients, staff, incidents, committees, training, documents and laboratory records must not be shipped as production seed data.']},
     related:bi('Login · Κέντρο Διαχείρισης · Βιβλιοθήκες','Login · Management Center · Libraries')
   }),
-  item('about','Σχετικά με το Limoxis','About Limoxis','Πληροφορίες προϊόντος και έκδοσης.','Product and version information.',{
+  item('about','Σχετικά με την εφαρμογή','About the application','Πληροφορίες προϊόντος και έκδοσης.','Product and version information.',{
     purpose:bi('Να εμφανίζει με διακριτικό τρόπο την ταυτότητα και την τρέχουσα έκδοση της εφαρμογής.','Display product identity and current version without cluttering the user menu.'),
     audience:bi('Όλοι οι χρήστες και τεχνική υποστήριξη.','All users and technical support.'),
-    steps:{el:['Healthcare Suite · Limoxis Observer','Έκδοση 0.12.0-rc.10','Η παρούσα έκδοση περιλαμβάνει αναλυτικό Help Center, contextual guidance, συγκριτικά analytics και καθαρό διαχωρισμό Production/Demo.'],en:['Healthcare Suite · Limoxis Observer','Version 0.12.0-rc.10','This release includes a detailed Help Center, contextual guidance, comparative analytics and clean Production/Demo separation.']},
+    steps:{el:['Healthcare Suite','Έκδοση 0.12.0-rc.20','Η παρούσα έκδοση περιλαμβάνει αναλυτικό Help Center, contextual guidance, συγκριτικά analytics και καθαρό διαχωρισμό Production/Demo.'],en:['Healthcare Suite','Version 0.12.0-rc.20','This release includes a detailed Help Center, contextual guidance, comparative analytics and clean Production/Demo separation.']},
     important:{el:['Η ένδειξη έκδοσης είναι πληροφοριακή και δεν αποτελεί λειτουργική ρύθμιση.'],en:['Version information is informational and is not a functional setting.']},
     related:bi('Βοήθεια · Τεχνική υποστήριξη','Help · Technical support')
   })

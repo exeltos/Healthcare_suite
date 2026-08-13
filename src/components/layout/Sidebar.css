@@ -238,8 +238,8 @@
 @media (max-width: 760px) {
   .sidebar {
     position: fixed;
-    top: var(--topbar-height);
-    bottom: var(--footer-height);
+    top: 0;
+    bottom: 0;
     left: 0;
     z-index: 40;
     width: var(--sidebar-width);
@@ -396,3 +396,21 @@
 
 /* Administration stays visually separate from daily modules. */
 .nav-link.emphasis{margin-top:10px;border-top:1px solid rgba(255,255,255,.16);border-radius:0 0 10px 10px;padding-top:9px;min-height:53px}
+
+
+/* rc.12 — compact navigation density aligned with the Healthcare Suite family */
+.sidebar{padding:14px 10px 12px}
+.sidebar-nav{padding-right:2px}
+.nav-section{gap:4px;margin-bottom:4px}
+.nav-link{min-height:40px;gap:10px;padding:0 10px;border-radius:9px;font-size:13px;font-weight:650}
+.nav-icon{width:21px}
+.sidebar-group-button{min-height:42px}
+.sidebar-group-button .nav-label{font-size:13px;font-weight:750;line-height:1.2}
+.sidebar-submenu{gap:2px;padding:2px 0 3px 27px}
+.sidebar-submenu-link{min-height:35px;grid-template-columns:18px minmax(0,1fr) auto;gap:7px;padding:0 8px;border-radius:8px;font-size:12px;font-weight:650;line-height:1.2}
+.sidebar-subgroup-button{min-height:35px;grid-template-columns:18px minmax(0,1fr) 16px;gap:7px;padding:0 8px;font-size:12px;border-radius:8px}
+.sidebar-submenu.depth-2 .sidebar-submenu-link{min-height:33px;font-size:11.5px}
+.nav-link.emphasis{margin-top:7px;padding-top:6px;min-height:44px}
+.sidebar.collapsed{padding-left:9px;padding-right:9px}
+.sidebar.collapsed .nav-link{min-height:42px;border-radius:10px}
+.sidebar.collapsed .nav-section{gap:5px}

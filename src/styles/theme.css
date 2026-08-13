@@ -76,9 +76,9 @@
   --toolbar-height: 60px;
   --focus-ring: color-mix(in srgb, var(--primary) 24%, transparent);
 
-  --sidebar-width: 286px;
-  --sidebar-collapsed: 78px;
-  --topbar-height: 72px;
+  --sidebar-width: 236px;
+  --sidebar-collapsed: 70px;
+  --topbar-height: 64px;
   --footer-height: 42px;
 
   --page-padding-x: 26px;

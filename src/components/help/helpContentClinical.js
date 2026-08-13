@@ -2,7 +2,7 @@ import { bi, item } from './helpContentUtils'
 
 export const clinicalHelpSections=[
 
-  item('start','Γρήγορη έναρξη','Quick start','Μια σύντομη διαδρομή για να καταλάβετε πώς είναι οργανωμένο το Limoxis και από πού ξεκινά κάθε εργασία.','A short orientation to understand how Limoxis is organised and where each workflow starts.',{
+  item('start','Γρήγορη έναρξη','Quick start','Μια σύντομη διαδρομή για να καταλάβετε πώς είναι οργανωμένο την εφαρμογή και από πού ξεκινά κάθε εργασία.','A short orientation to understand how Healthcare Suite is organised and where each workflow starts.',{
     purpose:bi('Να βοηθήσει έναν νέο χρήστη να κινηθεί με ασφάλεια στην εφαρμογή χωρίς να χρειάζεται εξωτερικό εγχειρίδιο.','Help a new user navigate the application safely without needing an external manual.'),
     audience:bi('Όλοι οι χρήστες.','All users.'),
     steps:{el:['Συνδεθείτε με τον λογαριασμό σας ή χρησιμοποιήστε την επιλογή Demo για εκπαίδευση.','Χρησιμοποιήστε το αριστερό μενού για να επιλέξετε την ενότητα εργασίας.','Η «Νέα καταχώρηση» ξεκινά από το Dashboard και σας οδηγεί στη σωστή φόρμα.','Χρησιμοποιήστε αναζήτηση και φίλτρα πριν ανοίξετε μια υπάρχουσα εγγραφή.','Ανοίξτε την καρτέλα της εγγραφής για λεπτομέρειες, ιστορικό και αρχεία.','Χρησιμοποιήστε το ? οποιαδήποτε στιγμή για βοήθεια σχετική με την οθόνη που βλέπετε.'],en:['Sign in with your account or use Demo for training.','Use the left navigation to choose your working module.','New record starts from the Dashboard and routes you to the correct form.','Use search and filters before opening an existing record.','Open a record card for details, history and files.','Use ? at any time for help related to the screen you are viewing.']},
