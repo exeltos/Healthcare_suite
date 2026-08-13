@@ -119,3 +119,12 @@ export function activeMasterItems(masterDataOrKey, keyOrCategory = '', category 
 export function masterNames(key, category = '') {
   return activeMasterItems(key, category).map((item) => item.name)
 }
+
+export async function hydrateMasterData(){const {hydrateMasterDataBackend}=await import('./backend/configurationBackendService');return hydrateMasterDataBackend()}
+export async function saveMasterDataAsync(nextData){const {saveMasterDataBackend}=await import('./backend/configurationBackendService');return saveMasterDataBackend(nextData)}
+export async function upsertMasterItemAsync(key,record={}){
+ const data=loadMasterData();const items=Array.isArray(data[key])?data[key]:[];const name=String(record.name||'').trim();if(!name)return null
+ const matchIndex=items.findIndex(item=>normalizedName(item.name)===normalizedName(name));const nextItem={status:'Ενεργό',...record,name,id:record.id||(matchIndex>=0?items[matchIndex].id:`${key}-${Date.now()}`)}
+ const nextItems=matchIndex>=0?items.map((item,index)=>index===matchIndex?{...item,...nextItem}:item):[nextItem,...items]
+ await saveMasterDataAsync({...data,[key]:nextItems});return nextItem
+}

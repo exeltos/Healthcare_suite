@@ -1,6 +1,7 @@
 import { confirmAction, notifyAction } from '../core/feedback/index'
 import { EntryFormSection } from '../forms/EntryFormChrome'
 import { required, validateValues } from '../../core/forms'
+import { useI18n } from '../../i18n'
 import {
   emptyEnvironmentSample,
   emptyWhoObservation,
@@ -17,11 +18,6 @@ import {
 } from './NewEntryLauncher.parts'
 
 
-const whoObservationValidationSchema = {
-  professionalCode: required('Συμπληρώστε κωδικό επαγγελματία.'),
-  moment: required('Επιλέξτε ένδειξη WHO.'),
-  action: required('Επιλέξτε ενέργεια.'),
-}
 
 const environmentSampleValidationSchema = {
   samplingPoint: required('Συμπληρώστε σημείο δειγματοληψίας.'),
@@ -39,6 +35,24 @@ export function WhoEntryFlow({
   savedMessage,
   onSubmit,
 }) {
+  const { language } = useI18n()
+  const L = (el,en) => language === 'en' ? en : el
+  const whoObservationValidationSchema = {
+    professionalCode: required(L('Συμπληρώστε κωδικό επαγγελματία.', 'Enter professional identifier.')),
+    moment: required(L('Επιλέξτε ένδειξη WHO.', 'Select a WHO Moment.')),
+    action: required(L('Επιλέξτε ενέργεια.', 'Select an action.')),
+  }
+  const momentLabel = (moment) => {
+    const en = {
+      moment1: '1. Before touching a patient',
+      moment2: '2. Before clean / aseptic procedure',
+      moment3: '3. After body fluid exposure risk',
+      moment4: '4. After touching a patient',
+      moment5: '5. After touching patient surroundings',
+    }
+    return language === 'en' ? (en[moment.id] || moment.label) : moment.label
+  }
+
   function addObservation() {
     const errors = validateValues(whoObservation, whoObservationValidationSchema)
     if (Object.keys(errors).length) {
@@ -54,7 +68,7 @@ export function WhoEntryFlow({
   }
 
   function deleteObservation(observationId) {
-    if (!confirmAction('Να διαγραφεί η παρατήρηση;')) return
+    if (!confirmAction(L('Να διαγραφεί η παρατήρηση;','Delete this observation?'))) return
     setWhoObservations((items) =>
       items.filter((item) => item.id !== observationId),
     )
@@ -68,13 +82,13 @@ export function WhoEntryFlow({
     >
       <EntryFormSection
         className="who-session-card"
-        eyebrow="Στοιχεία συνεδρίας"
-        title="Άμεση παρατήρηση WHO"
-        description="Συμπληρώστε τα βασικά στοιχεία της συνεδρίας πριν προσθέσετε τις επιμέρους ευκαιρίες."
+        eyebrow={L('Στοιχεία συνεδρίας','Session details')}
+        title={L('Άμεση παρατήρηση WHO','Direct WHO observation')}
+        description={L('Συμπληρώστε τα βασικά στοιχεία της συνεδρίας πριν προσθέσετε τις επιμέρους ευκαιρίες.','Complete the session details before adding individual opportunities.')}
       >
         <div className="hybrid-form-grid">
           <HybridInput
-            label="Μονάδα υγείας"
+            label={L('Μονάδα υγείας','Healthcare facility')}
             value={whoSession.facility}
             onChange={(value) =>
               setWhoSession((current) => ({ ...current, facility: value }))
@@ -82,17 +96,17 @@ export function WhoEntryFlow({
           />
 
           <SmartSelect
-            label="Τμήμα"
+            label={L('Τμήμα','Department')}
             value={whoSession.department}
             options={departmentOptions}
-            placeholder="Αναζήτηση τμήματος..."
+            placeholder={L('Αναζήτηση τμήματος...','Search department...')}
             onChange={(value) =>
               setWhoSession((current) => ({ ...current, department: value }))
             }
           />
 
           <HybridInput
-            label="Θάλαμος / Περιοχή"
+            label={L('Θάλαμος / Περιοχή','Ward / Area')}
             value={whoSession.ward}
             onChange={(value) =>
               setWhoSession((current) => ({ ...current, ward: value }))
@@ -100,7 +114,7 @@ export function WhoEntryFlow({
           />
 
           <HybridInput
-            label="Ημερομηνία"
+            label={L('Ημερομηνία','Date')}
             value={whoSession.date}
             onChange={(value) =>
               setWhoSession((current) => ({ ...current, date: value }))
@@ -108,7 +122,7 @@ export function WhoEntryFlow({
           />
 
           <HybridInput
-            label="Παρατηρητής"
+            label={L('Παρατηρητής','Observer')}
             value={whoSession.observer}
             onChange={(value) =>
               setWhoSession((current) => ({ ...current, observer: value }))
@@ -116,7 +130,7 @@ export function WhoEntryFlow({
           />
 
           <HybridInput
-            label="Ώρα έναρξης"
+            label={L('Ώρα έναρξης','Start time')}
             value={whoSession.startTime}
             onChange={(value) =>
               setWhoSession((current) => ({ ...current, startTime: value }))
@@ -124,7 +138,7 @@ export function WhoEntryFlow({
           />
 
           <HybridInput
-            label="Ώρα λήξης"
+            label={L('Ώρα λήξης','End time')}
             value={whoSession.endTime}
             onChange={(value) =>
               setWhoSession((current) => ({ ...current, endTime: value }))
@@ -135,16 +149,16 @@ export function WhoEntryFlow({
 
       <EntryFormSection
         className="who-observation-card"
-        eyebrow="Νέα ευκαιρία"
-        title="Καταγραφή παρατήρησης"
-        description="Επιλέξτε WHO Moment και καταγράψτε την ενέργεια του επαγγελματία υγείας."
+        eyebrow={L('Νέα ευκαιρία','New opportunity')}
+        title={L('Καταγραφή παρατήρησης','Observation entry')}
+        description={L('Επιλέξτε WHO Moment και καταγράψτε την ενέργεια του επαγγελματία υγείας.','Select the WHO Moment and record the healthcare professional action.')}
       >
         <div className="who-observation-grid">
           <label className="hybrid-field">
-            <span>Αριθμός επαγγελματιών</span>
+            <span>{L('Αριθμός επαγγελματιών','Professional identifier')}</span>
             <input
               value={whoObservation.professionalCode}
-              placeholder="π.χ. 1, 2, "
+              placeholder={L('π.χ. 1, 2','e.g. 1, 2')}
               onChange={(event) =>
                 setWhoObservation((current) => ({
                   ...current,
@@ -155,10 +169,10 @@ export function WhoEntryFlow({
           </label>
 
           <SmartSelect
-            label="Επαγγελματική κατηγορία"
+            label={L('Επαγγελματική κατηγορία','Professional category')}
             value={whoObservation.professionalCategory}
             options={professionalCategoryOptions}
-            placeholder="Αναζήτηση κατηγορίας..."
+            placeholder={L('Αναζήτηση κατηγορίας...','Search category...')}
             onChange={(value) =>
               setWhoObservation((current) => ({
                 ...current,
@@ -168,7 +182,7 @@ export function WhoEntryFlow({
           />
 
           <label className="hybrid-field">
-            <span>Ένδειξη – WHO 5 Moments</span>
+            <span>{L('Ένδειξη – WHO 5 Moments','WHO 5 Moments')}</span>
             <select
               value={whoObservation.moment}
               onChange={(event) =>
@@ -180,7 +194,7 @@ export function WhoEntryFlow({
             >
               {whoMoments.map((moment) => (
                 <option key={moment.id} value={moment.id}>
-                  {moment.label}
+                  {momentLabel(moment)}
                 </option>
               ))}
             </select>
@@ -196,7 +210,7 @@ export function WhoEntryFlow({
             }
           >
             <strong>HR</strong>
-            <span>Αλκοολούχο αντισηπτικό</span>
+            <span>{L('Αλκοολούχο αντισηπτικό','Alcohol-based handrub')}</span>
           </button>
 
           <button
@@ -207,7 +221,7 @@ export function WhoEntryFlow({
             }
           >
             <strong>HW</strong>
-            <span>Πλύσιμο με σαπούνι και νερό</span>
+            <span>{L('Πλύσιμο με σαπούνι και νερό','Handwashing with soap and water')}</span>
           </button>
 
           <button
@@ -223,7 +237,7 @@ export function WhoEntryFlow({
             }
           >
             <strong>Χ</strong>
-            <span>Καμία ενέργεια</span>
+            <span>{L('Καμία ενέργεια','No action')}</span>
           </button>
         </div>
 
@@ -238,11 +252,11 @@ export function WhoEntryFlow({
               }))
             }
           />
-          <span>Χρήση γαντιών κατά την ευκαιρία</span>
+          <span>{L('Χρήση γαντιών κατά την ευκαιρία','Gloves used during opportunity')}</span>
         </label>
 
         <label className="hybrid-field">
-          <span>Παρατήρηση</span>
+          <span>{L('Παρατήρηση','Notes')}</span>
           <input
             value={whoObservation.notes}
             onChange={(event) =>
@@ -255,11 +269,11 @@ export function WhoEntryFlow({
         </label>
 
         <button className="who-add-button" type="button" onClick={addObservation}>
-          ＋ Προσθήκη παρατήρησης
+          {L('＋ Προσθήκη παρατήρησης','＋ Add observation')}
         </button>
       </EntryFormSection>
 
-      <WhoSummary observations={whoObservations} />
+      <WhoSummary observations={whoObservations} language={language} />
 
       <div className="who-observation-list">
         {whoObservations.map((observation, index) => {
@@ -274,22 +288,22 @@ export function WhoEntryFlow({
                   {observation.professionalCode} · {observation.professionalCategory}
                 </span>
                 <small>
-                  {actionLabel(observation.action)}
-                  {observation.gloves ? ' · Γάντια' : ''}
+                  {actionLabel(observation.action, language)}
+                  {observation.gloves ? ` · ${L('Γάντια','Gloves')}` : ''}
                 </small>
               </div>
               <button
                 type="button"
                 onClick={() => deleteObservation(observation.id)}
               >
-                Διαγραφή
+                {L('Διαγραφή','Delete')}
               </button>
             </article>
           )
         })}
 
         {whoObservations.length === 0 && (
-          <div className="who-empty">Δεν έχουν προστεθεί ακόμη παρατηρήσεις.</div>
+          <div className="who-empty">{L("Δεν έχουν προστεθεί ακόμη παρατηρήσεις.","No observations have been added yet.")}</div>
         )}
       </div>
 
@@ -360,24 +374,24 @@ export function EnvironmentEntryFlow({
 
         <div className="hybrid-form-grid">
           <HybridInput
-            label="Μονάδα υγείας"
+            label={L('Μονάδα υγείας','Healthcare facility')}
             value={environmentSession.facility}
             onChange={(value) =>
               setEnvironmentSession((current) => ({ ...current, facility: value }))
             }
           />
           <HybridInput
-            label="Ημερομηνία"
+            label={L('Ημερομηνία','Date')}
             value={environmentSession.date}
             onChange={(value) =>
               setEnvironmentSession((current) => ({ ...current, date: value }))
             }
           />
           <SmartSelect
-            label="Τμήμα"
+            label={L('Τμήμα','Department')}
             value={environmentSession.department}
             options={departmentOptions}
-            placeholder="Αναζήτηση τμήματος..."
+            placeholder={L('Αναζήτηση τμήματος...','Search department...')}
             onChange={(value) =>
               setEnvironmentSession((current) => ({ ...current, department: value }))
             }

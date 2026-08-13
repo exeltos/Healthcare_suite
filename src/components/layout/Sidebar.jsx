@@ -4,24 +4,32 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { navigation } from '../../data/navigation'
 import './Sidebar.css'
 import { useI18n } from '../../i18n'
+import { canViewModule } from '../../services/accessControlService'
 
 function containsPath(item, pathname) {
   if (item.path) return pathname === item.path || pathname.startsWith(`${item.path}/`)
   return (item.children || []).some((child) => containsPath(child, pathname))
 }
 
-export default function Sidebar({ collapsed, mobileOpen, onNavigate }) {
+export default function Sidebar({ collapsed, mobileOpen, onNavigate, user }) {
   const location = useLocation()
   const { t } = useI18n()
   const navigate = useNavigate()
   const [openGroup, setOpenGroup] = useState(null)
 
+  const visibleNavigation = user?.demo===true
+    ? navigation
+    : navigation.map(section=>({
+        ...section,
+        items:section.items.map(item=>filterAccessibleItem(item,user)).filter(Boolean),
+      })).filter(section=>section.items.length)
+
   useEffect(() => {
     let active = null
-    navigation.forEach((section) => section.items.forEach((item) => {
+    visibleNavigation.forEach((section) => section.items.forEach((item) => {
       if (item.children?.length && containsPath(item, location.pathname)) active = item.id
     }))
-    setOpenGroup((current) => active || (current && !navigation.some((section) => section.items.some((item) => item.id === current && containsPath(item, location.pathname))) ? null : current))
+    setOpenGroup((current) => active || (current && !visibleNavigation.some((section) => section.items.some((item) => item.id === current && containsPath(item, location.pathname))) ? null : current))
   }, [location.pathname])
 
   function toggleGroup(id) { setOpenGroup((current) => current === id ? null : id) }
@@ -45,5 +53,13 @@ export default function Sidebar({ collapsed, mobileOpen, onNavigate }) {
     return <div className={`sidebar-group depth-${depth} ${active ? 'active' : ''}`} key={item.id}><button type="button" className={`${depth ? 'sidebar-subgroup-button' : 'nav-link sidebar-group-button'} ${active ? 'active' : ''}`} onClick={() => toggleGroup(item.id)} aria-expanded={expanded}><span className={depth ? '' : 'nav-icon'}><Icon size={depth ? 16 : 19} strokeWidth={2.1}/></span><span className={depth ? '' : 'nav-label'}>{label}</span><ChevronDown className={`sidebar-chevron ${expanded ? 'open' : ''}`} size={16}/></button>{expanded && <div className={`sidebar-submenu depth-${depth+1}`}>{item.children.map(child=>renderItem(child,depth+1))}</div>}</div>
   }
 
-  return <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}><nav className="sidebar-nav">{navigation.map(section=><div className="nav-section" key={section.id}>{section.items.map(item=>renderItem(item))}</div>)}</nav></aside>
+  return <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}><nav className="sidebar-nav">{visibleNavigation.map(section=><div className="nav-section" key={section.id}>{section.items.map(item=>renderItem(item))}</div>)}</nav></aside>
+}
+
+function filterAccessibleItem(item,user){
+  const children=(item.children||[]).map(child=>filterAccessibleItem(child,user)).filter(Boolean)
+  if(children.length) return {...item,children}
+  if(item.moduleKey && !canViewModule(user,item.moduleKey)) return null
+  if(item.children?.length) return null
+  return item
 }

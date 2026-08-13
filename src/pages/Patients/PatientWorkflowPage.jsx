@@ -17,16 +17,13 @@ import Tabs from '../../components/core/Tabs/Tabs'
 import Timeline from '../../components/core/Timeline/Timeline'
 import MultiSelect, { normalizeValues } from '../../components/core/MultiSelect/MultiSelect'
 import LibraryField from '../../components/core/LibraryField/LibraryField'
-import { deletePatient, loadPatientRegistry, upsertPatient } from '../../services/patientService'
-import { deletePatientSample, getPatientSamples } from '../../services/patientSamplesService'
-import { savePatientSampleWithClinicalWorkflow } from '../../services/clinicalWorkflowService'
-import { deleteInfection, getPatientInfections } from '../../services/infectionsService'
-import { deleteIsolation, getPatientIsolations, upsertIsolation } from '../../services/isolationsService'
-import { SURVEILLANCE_CASE_STATUS, deleteSurveillanceCase, getPatientCases, upsertSurveillanceCase } from '../../services/surveillanceCasesService'
-import { EODY_DISEASES, loadNotifiableDiseases, saveNotifiableDiseases } from '../../services/notifiableDiseasesService'
+import { loadPatientRegistry } from '../../services/patientService'
+import { deleteClinicalInfection, deleteClinicalPatient, deleteClinicalPatientSample, deleteClinicalSurveillanceCase, hydrateClinicalPatient, loadClinicalInfections, loadClinicalPatientSamples, loadClinicalSurveillanceCases, saveClinicalPatient, saveClinicalSurveillanceCase } from '../../services/backend/clinicalDirectoryService'
+import { closeClinicalSurveillanceEpisode, deletePatientSampleWithClinicalWorkflowAsync, savePatientSampleWithClinicalWorkflowAsync } from '../../services/clinicalWorkflowService'
+import { SURVEILLANCE_CASE_STATUS, getPatientCases } from '../../services/surveillanceCasesService'
+import { EODY_DISEASES } from '../../services/notifiableDiseasesService'
 import { promotedRecordIdForTherapy, syncPromotedTherapy, deletePromotedAntibiotic, loadPromotedAntibiotics, PROMOTED_ANTIBIOTICS_EVENT } from '../../services/preventionService'
-import { addPatientAttachment, deletePatientAttachment, getPatientAttachments } from '../../services/patientAttachmentsService'
-import { readFileAsDataUrl } from '../../core/files/attachmentPreview'
+import { deleteClinicalAttachment, deleteClinicalIsolation, deleteClinicalNotifiableDisease, loadClinicalAttachments, loadClinicalIsolations, loadClinicalNotifiableDiseases, saveClinicalIsolation, saveClinicalNotifiableDisease, uploadClinicalAttachment } from '../../services/backend/clinicalSupportBackendService'
 import {
   CLINICAL_ASSESSMENT_OPTIONS,
   PROMOTED_ANTIBIOTIC_DEFAULTS, PROMOTED_APPROVAL_OPTIONS,
@@ -65,7 +62,7 @@ export default function PatientWorkflowPage() {
   const { patientId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const patient = useMemo(() => loadPatientRegistry().find((item) => String(item.id) === String(patientId)), [patientId])
+  const [patient,setPatient]=useState(()=>loadPatientRegistry().find((item)=>String(item.id)===String(patientId))||null)
   const [patientForm, setPatientForm] = useState({})
   const [editingPatient, setEditingPatient] = useState(false)
   const [screen, setScreen] = useState('home')
@@ -84,41 +81,45 @@ export default function PatientWorkflowPage() {
   const fileRef = useRef(null)
 
   useEffect(() => {
-    function returnToPatientHome() {
-    if (activeCase?.draft) {
-      const hasSamples = samples.some((item) => String(item.clinicalCaseId || '') === String(activeCase.id))
-      const hasMeaningfulData = Boolean(activeCase.reason) || hasSamples || Boolean(activeCase.assessment?.classification) || Boolean(activeCase.questionnaire?.notes)
-      if (!hasMeaningfulData) deleteSurveillanceCase(activeCase.id)
-    }
-    setScreen('home')
-    setActiveCase(null)
-    setSampleForm(null)
-    setIsolationForm(null)
-    refreshAll()
-  }
-
-  if (!patient) return
-    setPatientForm({ ...patient })
-    setCases(getPatientCases(patient))
-    setSamples(getPatientSamples(patient))
-    setInfections(getPatientInfections(patient))
-    setIsolations(getPatientIsolations(patient))
-    setAttachments(getPatientAttachments(patient))
-    setNotifiableDiseases(loadNotifiableDiseases().filter((item) => String(item.patientCode || '') === String(patient.patientCode || '') || String(item.patientName || '') === String(patient.fullName || '')))
-    setScreen('home')
-    setActiveCase(null)
-    setEditingPatient(false)
-  }, [patient])
+    let active=true
+    hydrateClinicalPatient(patientId)
+      .then(async hydrated=>{
+        if(!active)return
+        const next=hydrated||loadPatientRegistry().find((item)=>String(item.id)===String(patientId))||null
+        setPatient(next)
+        if(!next)return
+        setPatientForm({...next})
+        const [caseRows,sampleRows,infectionRows,isolationRows,attachmentRows]=await Promise.all([
+          loadClinicalSurveillanceCases(next.id),
+          loadClinicalPatientSamples(next.id),
+          loadClinicalInfections(next.id),
+          loadClinicalIsolations(next.id),
+          loadClinicalAttachments(next.id),
+        ])
+        if(!active)return
+        setCases(caseRows)
+        setSamples(sampleRows)
+        setInfections(infectionRows)
+        setIsolations(isolationRows)
+        setAttachments(attachmentRows)
+        setNotifiableDiseases(await loadClinicalNotifiableDiseases(next.id))
+        setScreen('home')
+        setActiveCase(null)
+        setEditingPatient(false)
+      })
+      .catch(()=>{})
+    return()=>{active=false}
+  }, [patientId])
 
   useAppEvents([PROMOTED_ANTIBIOTICS_EVENT, APP_EVENTS.SURVEILLANCE_CASES_UPDATED, APP_EVENTS.PATIENT_SAMPLES_UPDATED], () => {
     if (patient) refreshAll(activeCase?.id)
   })
 
-  function returnToPatientHome() {
+  async function returnToPatientHome() {
     if (activeCase?.draft) {
       const hasSamples = samples.some((item) => String(item.clinicalCaseId || '') === String(activeCase.id))
       const hasMeaningfulData = Boolean(activeCase.reason) || hasSamples || Boolean(activeCase.assessment?.classification) || Boolean(activeCase.questionnaire?.notes)
-      if (!hasMeaningfulData) deleteSurveillanceCase(activeCase.id)
+      if (!hasMeaningfulData) await deleteClinicalSurveillanceCase(activeCase.id)
     }
     setScreen('home')
     setActiveCase(null)
@@ -136,39 +137,50 @@ export default function PatientWorkflowPage() {
   const caseIsolations = activeCase ? isolations.filter((item) => String(item.clinicalCaseId) === String(activeCase.id)) : []
   const caseAttachments = activeCase ? attachments.filter((item) => String(item.caseId || '') === String(activeCase.id)) : []
 
-  function refreshAll(nextCaseId = activeCase?.id) {
-    const nextCases = getPatientCases(patient)
+  async function refreshAll(nextCaseId = activeCase?.id) {
+    if(!patient)return
+    const [nextCases,nextSamples,nextInfections,nextIsolations,nextAttachments]=await Promise.all([
+      loadClinicalSurveillanceCases(patient.id),
+      loadClinicalPatientSamples(patient.id),
+      loadClinicalInfections(patient.id),
+      loadClinicalIsolations(patient.id),
+      loadClinicalAttachments(patient.id),
+    ])
     setCases(nextCases)
-    setSamples(getPatientSamples(patient))
-    setInfections(getPatientInfections(patient))
-    setIsolations(getPatientIsolations(patient))
-    setAttachments(getPatientAttachments(patient))
-    setNotifiableDiseases(loadNotifiableDiseases().filter((item) => String(item.patientCode || '') === String(patient.patientCode || '') || String(item.patientName || '') === String(patient.fullName || '')))
+    setSamples(nextSamples)
+    setInfections(nextInfections)
+    setIsolations(nextIsolations)
+    setAttachments(nextAttachments)
+    setNotifiableDiseases(await loadClinicalNotifiableDiseases(patient.id))
     if (nextCaseId) setActiveCase(nextCases.find((item) => String(item.id) === String(nextCaseId)) || null)
   }
 
-  function savePatient() { upsertPatient(patientForm); setEditingPatient(false) }
-  function removePatient() {
+  async function savePatient() {
+    const saved=await saveClinicalPatient(patientForm)
+    setPatient(saved)
+    setPatientForm(saved)
+    setEditingPatient(false)
+  }
+  async function removePatient() {
     if (!confirmAction('Να διαγραφεί ο ασθενής και όλες οι συνδεδεμένες καταγραφές του;')) return
-    cases.forEach((surveillanceCase) => {
-      getTherapies(surveillanceCase).forEach((therapy) => {
-        if (therapy?.id) deletePromotedAntibiotic(promotedRecordIdForTherapy(surveillanceCase.id, therapy.id))
-      })
-      deleteSurveillanceCase(surveillanceCase.id)
-    })
-    samples.forEach((item) => deletePatientSample(item.id))
-    infections.forEach((item) => deleteInfection(item.id))
-    isolations.forEach((item) => deleteIsolation(item.id))
-    attachments.forEach((item) => deletePatientAttachment(item.id))
-    if (notifiableDiseases.length) {
-      const ids = new Set(notifiableDiseases.map((item) => String(item.id)))
-      saveNotifiableDiseases(loadNotifiableDiseases().filter((item) => !ids.has(String(item.id))))
+    for (const surveillanceCase of cases) {
+      for (const therapy of getTherapies(surveillanceCase)) {
+        if (therapy?.id) {
+          await deletePromotedAntibiotic(promotedRecordIdForTherapy(surveillanceCase.id, therapy.id))
+        }
+      }
+      await deleteClinicalSurveillanceCase(surveillanceCase.id)
     }
-    deletePatient(patientForm)
+    for(const item of samples) await deleteClinicalPatientSample(item.id)
+    for(const item of infections) await deleteClinicalInfection(item.id)
+    for(const item of isolations) await deleteClinicalIsolation(item.id)
+    for(const item of attachments) await deleteClinicalAttachment(item)
+    for(const item of notifiableDiseases) await deleteClinicalNotifiableDisease(item.id)
+    await deleteClinicalPatient(patientForm)
     navigate(APP_ROUTES.PATIENTS)
   }
-  function createCase(options = {}) {
-    const created = upsertSurveillanceCase({
+  async function createCase(options = {}) {
+    const created = await saveClinicalSurveillanceCase({
       ...emptyCase,
       id: `CASE-${Date.now()}`,
       patientKey,
@@ -181,7 +193,7 @@ export default function PatientWorkflowPage() {
       draft: true,
       origin: 'Φάκελος ασθενούς',
     })
-    refreshAll(created.id)
+    await refreshAll(created.id)
     setActiveCase(created)
     setWorkspaceTab(options.openSample ? 'samples' : 'assessment')
     setScreen('workspace')
@@ -238,18 +250,18 @@ export default function PatientWorkflowPage() {
     setIsolationForm(recordType === 'isolation' ? { ...(isolations.find((item) => String(item.id) === String(recordId)) || {}) } : null)
     setScreen('workspace')
   }
-  function patchCase(patch) {
+  async function patchCase(patch) {
     if (!activeCase || isClosedSurveillanceCase(activeCase)) return
     const meaningfulChange = Object.keys(patch || {}).some((key) => key !== 'updatedAt')
-    const next = upsertSurveillanceCase({ ...activeCase, ...patch, ...(meaningfulChange ? { draft: false } : {}) })
-    refreshAll(next.id)
+    const next = await saveClinicalSurveillanceCase({ ...activeCase, ...patch, ...(meaningfulChange ? { draft: false } : {}) })
+    await refreshAll(next.id)
   }
   function patchNested(key, patch) { if (!activeCase || isClosedSurveillanceCase(activeCase)) return; patchCase({ [key]: { ...(activeCase?.[key] || {}), ...patch } }) }
   function beginSample(parent = null) {
     if (!activeCase || isClosedSurveillanceCase(activeCase)) return
     beginSampleForCase(activeCase, parent)
   }
-  function saveSample(event) {
+  async function saveSample(event) {
     event.preventDefault()
     if (!activeCase || isClosedSurveillanceCase(activeCase)) return
     if (isRepeatSample(sampleForm) && !sampleForm.parentSampleId) {
@@ -258,7 +270,7 @@ export default function PatientWorkflowPage() {
     }
     const organismResults = normalizeOrganismResults(sampleForm)
     try {
-      savePatientSampleWithClinicalWorkflow({
+      await savePatientSampleWithClinicalWorkflowAsync({
         ...sampleForm,
         id: sampleForm.id || `PS-${Date.now()}`,
         patientId: patient.id,
@@ -275,60 +287,79 @@ export default function PatientWorkflowPage() {
       notifyAction(error?.message || 'Δεν ήταν δυνατή η αποθήκευση του δείγματος.')
       return
     }
-    setSampleForm(null); refreshAll(activeCase.id)
+    setSampleForm(null); await refreshAll(activeCase.id)
   }
-  function saveIsolation(event) {
+  async function closeEpisode() {
+    if (!activeCase || isClosedSurveillanceCase(activeCase)) return
+    if (!activeCase.review?.date || !activeCase.review?.outcome) {
+      notifyAction(L('Συμπληρώστε ημερομηνία και έκβαση πριν από το κλείσιμο.', 'Enter reassessment date and outcome before closing.'))
+      return
+    }
+    if (!confirmAction(L('Να κλείσει η επιτήρηση; Η κλινική καταγραφή θα παραμείνει στο ιστορικό.', 'Close this surveillance episode? The clinical record will remain in history.'))) return
+    const closed = await closeClinicalSurveillanceEpisode({
+      surveillanceCase: activeCase,
+      patient,
+      review: activeCase.review,
+      close: { date: activeCase.review.date, result: activeCase.review.outcome, notes: activeCase.review.notes || '' },
+    })
+    await refreshAll(closed.id)
+  }
+
+  async function saveIsolation(event) {
     event.preventDefault()
     if (!activeCase || isClosedSurveillanceCase(activeCase)) return
     if (!isolationForm?.isolationType || !isolationForm?.startDate) {
       notifyAction(L('Συμπληρώστε τύπο απομόνωσης και ημερομηνία έναρξης.', 'Enter isolation type and start date.'))
       return
     }
-    upsertIsolation({ ...isolationForm, id: isolationForm.id || `ISO-${Date.now()}`, patientName: patient.fullName, patientCode: patient.patientCode, department: patient.department, clinicalCaseId: activeCase.id })
-    setIsolationForm(null); refreshAll(activeCase.id)
+    if (isolationForm.endDate && isolationForm.endDate < isolationForm.startDate) {
+      notifyAction(L('Η λήξη της απομόνωσης δεν μπορεί να προηγείται της έναρξης.', 'Isolation end date cannot be before its start date.'))
+      return
+    }
+    const normalizedIsolation = isolationForm.endDate && isolationForm.status === 'Ενεργή'
+      ? { ...isolationForm, status: 'Ολοκληρωμένη' }
+      : isolationForm
+    await saveClinicalIsolation({ ...normalizedIsolation, id: normalizedIsolation.id || `ISO-${Date.now()}`, patientId: patient.id, patientName: patient.fullName, patientCode: patient.patientCode, department: patient.department, clinicalCaseId: activeCase.id })
+    setIsolationForm(null); await refreshAll(activeCase.id)
   }
-  function removeCase(id) {
+  async function removeCase(id) {
     if (activeCase && isClosedSurveillanceCase(activeCase)) return
     if (!confirmAction('Να διαγραφεί η επιτήρηση και οι συνδεδεμένες καταχωρίσεις της;')) return
-    samples.filter((x) => String(x.clinicalCaseId) === String(id)).forEach((x) => deletePatientSample(x.id))
-    isolations.filter((x) => String(x.clinicalCaseId) === String(id)).forEach((x) => deleteIsolation(x.id))
-    attachments.filter((x) => String(x.caseId) === String(id)).forEach((x) => deletePatientAttachment(x.id))
-    deleteSurveillanceCase(id); setActiveCase(null); setScreen('home'); refreshAll(null)
+    for(const x of samples.filter((x)=>String(x.clinicalCaseId)===String(id))) await deleteClinicalPatientSample(x.id)
+    for(const x of isolations.filter((x)=>String(x.clinicalCaseId)===String(id))) await deleteClinicalIsolation(x.id)
+    for(const x of attachments.filter((x)=>String(x.caseId)===String(id))) await deleteClinicalAttachment(x)
+    await deleteClinicalSurveillanceCase(id); setActiveCase(null); setScreen('home'); await refreshAll(null)
   }
 
-  function saveNotifiableRecord(record) {
-    const all = loadNotifiableDiseases()
+  async function saveNotifiableRecord(record) {
     const now = new Date().toISOString()
-    const next = {
+    await saveClinicalNotifiableDisease({
       ...record,
-      id: record.id || `YDN-${new Date().getFullYear()}-${String(all.length + 1).padStart(4, '0')}`,
+      id: record.id || `YDN-${Date.now()}`,
+      patientId: patient.id,
       patientName: patient.fullName,
       patientCode: patient.patientCode,
       department: record.department || patient.department,
       history: [...(record.history || []), { id: `h-${Date.now()}`, at: now, text: record.id ? 'Ενημέρωση δήλωσης από τον φάκελο ασθενούς' : 'Δημιουργία δήλωσης από τον φάκελο ασθενούς' }],
-    }
-    const updated = record.id ? all.map((item) => item.id === record.id ? next : item) : [next, ...all]
-    saveNotifiableDiseases(updated)
-    setNotifiableDiseases(updated.filter((item) => String(item.patientCode || '') === String(patient.patientCode || '') || String(item.patientName || '') === String(patient.fullName || '')))
+    })
+    setNotifiableDiseases(await loadClinicalNotifiableDiseases(patient.id))
   }
-  function removeNotifiableRecord(id) {
+  async function removeNotifiableRecord(id) {
     if (!confirmAction('Να διαγραφεί η δήλωση νοσήματος;')) return
-    const updated = loadNotifiableDiseases().filter((item) => item.id !== id)
-    saveNotifiableDiseases(updated)
-    setNotifiableDiseases(updated.filter((item) => String(item.patientCode || '') === String(patient.patientCode || '') || String(item.patientName || '') === String(patient.fullName || '')))
+    await deleteClinicalNotifiableDisease(id)
+    setNotifiableDiseases(await loadClinicalNotifiableDiseases(patient.id))
   }
 
   function requestAttachment(target) { if (activeCase && isClosedSurveillanceCase(activeCase)) return; setAttachmentTarget(target); fileRef.current?.click() }
   async function uploadFile(event) {
     const file = event.target.files?.[0]
     if (!file || !attachmentTarget) return
-    const data = await readFileAsDataUrl(file)
-    addPatientAttachment({ patientKey, caseId: activeCase?.id || null, step: attachmentTarget.step, recordId: attachmentTarget.recordId || null, name: file.name, type: file.type, size: file.size, data, uploadedAt: new Date().toISOString() })
-    event.target.value = ''; setAttachmentTarget(null); refreshAll(activeCase?.id)
+    await uploadClinicalAttachment(patient.id, file, { patientKey, caseId: activeCase?.id || null, step: attachmentTarget.step, recordId: attachmentTarget.recordId || null, name: file.name, type: file.type, size: file.size, uploadedAt: new Date().toISOString() })
+    event.target.value = ''; setAttachmentTarget(null); await refreshAll(activeCase?.id)
   }
   function filesFor(step, recordId = null) { return attachments.filter((item) => item.step === step && String(item.recordId || '') === String(recordId || '')) }
 
-  const signals = getPatientSignals({ patient: patientForm, samples, isolations })
+  const signals = getPatientSignals({ patient: patientForm, cases, samples, isolations })
   const timeline = buildPatientTimeline({ patient: patientForm, cases, samples, isolations, notifiableDiseases, language })
 
   return <WorkspaceShell className="pw-page-shell" shellClassName="pw-page">
@@ -350,21 +381,21 @@ export default function PatientWorkflowPage() {
         createCase={createCase} createSample={() => navigate(routeFor.laboratoryNewWorkspace(), { state: { prefillPatient: { id: patient.id, fullName: patient.fullName, patientCode: patient.patientCode, department: patient.department, room: patient.room, admissionDate: patient.admissionDate }, returnContext: { path: routeFor.patientWorkflow(patient.id), label: L('Πίσω στα δείγματα ασθενούς', 'Back to patient samples'), patientTab: 'samples' } } })} openCase={openCase} openCaseRecord={openCaseRecord}
         initialTab={location.state?.patientTab || 'summary'} highlightedSampleId={location.state?.highlightedSampleId || ''}
         openLaboratorySample={(sample) => navigate(routeFor.laboratoryRecordWorkspace(encodeURIComponent('Ασθενής'), encodeURIComponent(sample.id)), { state: { returnContext: { path: routeFor.patientWorkflow(patient.id), label: L('Πίσω στα δείγματα ασθενούς', 'Back to patient samples'), patientTab: 'samples', highlightedSampleId: sample.id } } })}
-        upload={() => requestAttachment({ step: 'patient-records' })} deleteAttachment={(id) => { if (!confirmAction('Να διαγραφεί το συνημμένο αρχείο;')) return; deletePatientAttachment(id); refreshAll() }}
+        upload={() => requestAttachment({ step: 'patient-records' })} deleteAttachment={async (id) => { if (!confirmAction('Να διαγραφεί το συνημμένο αρχείο;')) return; const item=attachments.find((x)=>String(x.id)===String(id)); if(item) await deleteClinicalAttachment(item); await refreshAll() }}
         saveNotifiable={saveNotifiableRecord} deleteNotifiable={removeNotifiableRecord}
       />}
       {screen === 'workspace' && activeCase && <CaseWorkspace
-        patient={patientForm} data={activeCase} tab={workspaceTab} setTab={setWorkspaceTab} patch={patchCase} patchNested={patchNested} focusedRecord={focusedRecord}
+        patient={patientForm} data={activeCase} tab={workspaceTab} setTab={setWorkspaceTab} patch={patchCase} patchNested={patchNested} closeEpisode={closeEpisode} focusedRecord={focusedRecord}
         samples={caseSamples} sampleForm={sampleForm} setSampleForm={setSampleForm} beginSample={beginSample} saveSample={saveSample}
         isolations={caseIsolations} isolationForm={isolationForm} setIsolationForm={setIsolationForm} saveIsolation={saveIsolation}
-        attachments={caseAttachments} filesFor={filesFor} upload={requestAttachment} deleteAttachment={(id) => { if (isClosedSurveillanceCase(activeCase) || !confirmAction('Να διαγραφεί το συνημμένο αρχείο;')) return; deletePatientAttachment(id); refreshAll(activeCase.id) }}
-        removeCase={removeCase} removeSample={(id) => {
+        attachments={caseAttachments} filesFor={filesFor} upload={requestAttachment} deleteAttachment={async (id) => { if (isClosedSurveillanceCase(activeCase) || !confirmAction('Να διαγραφεί το συνημμένο αρχείο;')) return; const item=attachments.find((x)=>String(x.id)===String(id)); if(item) await deleteClinicalAttachment(item); await refreshAll(activeCase.id) }}
+        removeCase={removeCase} removeSample={async (id) => {
           if (isClosedSurveillanceCase(activeCase)) return
           const descendants = getSampleDescendants(samples, id)
           const message = descendants.length ? (language === 'en' ? `This sample has ${descendants.length} linked follow-up${descendants.length === 1 ? '' : 's'}. Delete the entire chain?` : `Το δείγμα έχει ${descendants.length} συνδεδεμένο/α επανέλεγχο/ους. Να διαγραφεί ολόκληρη η αλυσίδα;`) : L('Να διαγραφεί το δείγμα;', 'Delete this sample?')
-          if (confirmAction(message)) { [...descendants, samples.find((item) => String(item.id) === String(id))].filter(Boolean).forEach((item) => deletePatientSample(item.id)); refreshAll(activeCase.id) }
+          if (confirmAction(message)) { for(const item of [...descendants, samples.find((item) => String(item.id) === String(id))].filter(Boolean)) await deletePatientSampleWithClinicalWorkflowAsync(item); await refreshAll(activeCase.id) }
         }}
-        removeIsolation={(id) => { if (isClosedSurveillanceCase(activeCase)) return; if (confirmAction('Να διαγραφεί η απομόνωση;')) { deleteIsolation(id); refreshAll(activeCase.id) } }}
+        removeIsolation={async (id) => { if (isClosedSurveillanceCase(activeCase)) return; if (confirmAction('Να διαγραφεί η απομόνωση;')) { await deleteClinicalIsolation(id); await refreshAll(activeCase.id) } }}
       />}
     </main>
   </WorkspaceShell>

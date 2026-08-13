@@ -34,3 +34,14 @@
 .quality-field input,.quality-field select,.quality-field textarea{padding:9px 10px;border-radius:9px;font-size:13px}
 .quality-linked-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid #e5edef}
 .quality-row-clickable:hover td{background:#f4f9fa}
+
+.quality-report-card{width:100%;text-align:left;cursor:pointer}
+.quality-report-card.is-active{outline:2px solid var(--color-primary,#2563eb);outline-offset:1px}
+.quality-report-preview{margin-top:18px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px}
+.quality-report-preview__head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+.quality-report-preview__head span{font-size:11px;font-weight:800;letter-spacing:.08em;opacity:.65}
+.quality-report-preview__head h2{margin:4px 0 0}
+.quality-report-table{overflow:auto}
+.quality-report-table table{width:100%;border-collapse:collapse;min-width:720px}
+.quality-report-table th,.quality-report-table td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.quality-report-table th{font-size:12px;opacity:.7}

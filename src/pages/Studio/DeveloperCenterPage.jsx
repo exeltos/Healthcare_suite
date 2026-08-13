@@ -1,3 +1,4 @@
+import { APP_ROUTES } from '../../config/routes'
 import { useNavigate } from 'react-router-dom'
 import { Blocks, LayoutTemplate, Palette, Ruler, ShieldCheck } from 'lucide-react'
 import { BackLink, Card, PageChrome } from '../../components/core'
@@ -10,7 +11,7 @@ export default function DeveloperCenterPage(){
   const componentCount=componentRegistry.reduce((sum,group)=>sum+group.items.length,0)
   return <PageChrome
     className="developer-center"
-    back={<BackLink onClick={()=>navigate('/studio')}>Πίσω στο Κέντρο Διαχείρισης</BackLink>}
+    back={<BackLink onClick={()=>navigate(APP_ROUTES.STUDIO)}>Πίσω στο Κέντρο Διαχείρισης</BackLink>}
     header={<PageHeader eyebrow="HEALTHCARE SUITE DESIGN SYSTEM" title="Design & Developer Center" description="Εσωτερικός έλεγχος του κοινού design system, των reusable components και της συνέπειας των σελίδων." />}
   >
     <div className="developer-center__grid">

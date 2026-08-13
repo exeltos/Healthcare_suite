@@ -219,7 +219,7 @@
   color: var(--primary);
   background: rgba(11, 107, 117, 0.08);
   font-size: 0.74rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
   overflow: visible;
@@ -415,7 +415,7 @@
   border: 1px solid var(--border);
   border-radius: 9px;
   background: #ffffff;
-  font-weight: 750;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -471,4 +471,4 @@
   }
 }
 
-.smart-date-time-field{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}.smart-date-time-field button{padding:0 10px;border:1px solid var(--primary);border-radius:8px;color:var(--primary);background:rgba(11,107,117,.08);font-weight:750}
+.smart-date-time-field{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}.smart-date-time-field button{padding:0 10px;border:1px solid var(--primary);border-radius:8px;color:var(--primary);background:rgba(11,107,117,.08);font-weight:700}

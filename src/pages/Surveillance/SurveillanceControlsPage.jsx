@@ -20,14 +20,12 @@ import {
 import { downloadCsv, printRows } from '../../core/utils/listExport'
 import { normalizeText, selectedRows, sortRows } from '../../core/utils/entityList'
 import {
-  completeProgram,
-  deleteControlProgram,
   loadControlExecutions,
   loadControlPrograms,
   SURVEILLANCE_EXECUTIONS_EVENT,
   SURVEILLANCE_PROGRAMS_EVENT,
-  upsertControlProgram,
 } from '../../services/surveillanceControlsService'
+import { completeSurveillanceControlProgram, deleteSurveillanceControlProgram, loadSurveillanceControlExecutions, loadSurveillanceControlPrograms, saveSurveillanceControlProgram } from '../../services/backend/surveillanceControlsBackendService'
 import { useRecordDeepLink } from '../../core/navigation/recordDeepLink'
 import { useI18n } from '../../i18n'
 import { surveillanceDisplayValue, surveillanceProgramState, surveillanceRecurrenceLabel } from './surveillancePresentation'
@@ -142,8 +140,9 @@ export default function SurveillanceControlsPage() {
 
   const notificationLink = useRecordDeepLink(programs)
 
-  useAppEvents(SURVEILLANCE_PROGRAMS_EVENT, () => setPrograms(loadControlPrograms()), { includeStorage: true })
-  useAppEvents(SURVEILLANCE_EXECUTIONS_EVENT, () => setExecutions(loadControlExecutions()), { includeStorage: true })
+  useEffect(()=>{Promise.all([loadSurveillanceControlPrograms(),loadSurveillanceControlExecutions()]).then(([p,e])=>{setPrograms(p);setExecutions(e)}).catch(()=>{})},[])
+  useAppEvents(SURVEILLANCE_PROGRAMS_EVENT, () => {loadSurveillanceControlPrograms().then(setPrograms).catch(()=>{})}, { includeStorage: true })
+  useAppEvents(SURVEILLANCE_EXECUTIONS_EVENT, () => {loadSurveillanceControlExecutions().then(setExecutions).catch(()=>{})}, { includeStorage: true })
 
   useEffect(() => { setSelectedKeys([]) }, [mode])
 
@@ -233,18 +232,20 @@ export default function SurveillanceControlsPage() {
     notificationLink.completeReview()
     setProgramDrawer(false)
   }
-  function saveProgram(event) {
+  async function saveProgram(event) {
     event.preventDefault()
     if (!programForm.title.trim() || !programForm.category || !programForm.nextDueDate) {
       notifyAction(L('Συμπληρώστε τίτλο, κατηγορία και επόμενη ημερομηνία ελέγχου.', 'Enter title, category and next control date.'))
       return
     }
-    upsertControlProgram({ ...programForm, id: selectedProgram?.id || programForm.id })
+    await saveSurveillanceControlProgram({ ...programForm, id: selectedProgram?.id || programForm.id })
+    setPrograms(await loadSurveillanceControlPrograms())
     closeProgramDrawer()
   }
-  function removeProgram() {
+  async function removeProgram() {
     if (!selectedProgram || !confirmAction(L('Να διαγραφεί το πρόγραμμα ελέγχου;', 'Delete this control program?'))) return
-    deleteControlProgram(selectedProgram.id)
+    await deleteSurveillanceControlProgram(selectedProgram.id)
+    setPrograms(await loadSurveillanceControlPrograms())
     closeProgramDrawer()
   }
   function openExecution(program, event) {
@@ -259,10 +260,12 @@ export default function SurveillanceControlsPage() {
       items: current.items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item),
     }))
   }
-  function saveExecution(event) {
+  async function saveExecution(event) {
     event.preventDefault()
     if (!selectedProgram || !executionForm.performedDate) return
-    completeProgram(selectedProgram, executionForm)
+    await completeSurveillanceControlProgram(selectedProgram, executionForm)
+    setPrograms(await loadSurveillanceControlPrograms())
+    setExecutions(await loadSurveillanceControlExecutions())
     setExecutionDrawer(false)
     setSelectedProgram(null)
   }

@@ -4,11 +4,11 @@ import { upsertInfection } from './infectionsService'
 import { upsertStaffSample } from './laboratorySourcesService'
 import { upsertEnvironmentalSample } from './laboratorySourcesService'
 import { upsertWaterRecord } from './laboratorySourcesService'
-import { upsertHandHygieneSession } from './preventionService'
+import { savePreventionRecord } from './backend/preventionBackendService'
 import { calculateEnvironmentStats, calculateWhoCompliance } from '../core/utils/observationMetrics'
 import { hybridEntriesRepository } from '../repositories/hybridEntriesRepository'
 
-export function persistNewEntry({
+export async function persistNewEntry({
   selectedType,
   mode,
   selectedPatient,
@@ -96,7 +96,7 @@ export function persistNewEntry({
   const department = entry.department || patientData?.department || clinicalCaseData?.department || ''
 
   if (selectedType.id === 'hand-hygiene') {
-    upsertHandHygieneSession({
+    await savePreventionRecord('hand_hygiene',{
       id: `WHO-${Date.now()}`,
       facility: whoSession.facility,
       ward: whoSession.ward,

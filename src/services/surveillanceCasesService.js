@@ -192,6 +192,7 @@ export function markCaseAwaitingLaboratory(caseId, patch = {}) {
 export function activateCaseFromPositiveSample(caseId, sample, patch = {}) {
   const current = getSurveillanceCase(caseId)
   if (!current) return null
+  const previousClosure = current.close?.date ? { ...current.close } : null
   return upsertSurveillanceCase({
     ...current,
     ...patch,
@@ -202,6 +203,11 @@ export function activateCaseFromPositiveSample(caseId, sample, patch = {}) {
     confirmingSampleId: sample?.id || current.confirmingSampleId || '',
     confirmationDate: sample?.resultDate || sample?.collectionDate || current.confirmationDate || '',
     closedDate: '',
+    close: {},
+    closureHistory: previousClosure
+      ? [...(Array.isArray(current.closureHistory) ? current.closureHistory : []), previousClosure]
+      : (current.closureHistory || []),
+    reopenedAt: previousClosure ? new Date().toISOString() : (current.reopenedAt || ''),
   })
 }
 

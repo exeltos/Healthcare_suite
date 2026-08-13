@@ -1,97 +1,126 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { BarChart3, BellRing, Bot, FormInput, Library, Search, ShieldCheck, Users, Workflow } from 'lucide-react'
+import { BarChart3, FormInput, Library, Search, ShieldCheck, Users } from 'lucide-react'
 import SettingsPage from '../SettingsPage'
 import { BackLink, Button, PageChrome } from '../../components/core'
 import PageHeader from '../../components/core/PageHeader/PageHeader'
 import { APP_ROUTES } from '../../config/routes'
+import { useI18n } from '../../i18n'
 import './LimoxisStudioPage.css'
 
 const GROUPS = [
   {
     id:'access',
-    title:'Διαχείριση πρόσβασης',
-    text:'Λογαριασμοί χρηστών, ρόλοι και δικαιώματα.',
+    titleEl:'Διαχείριση πρόσβασης',
+    titleEn:'Access Management',
+    textEl:'Λογαριασμοί χρηστών, ρόλοι και δικαιώματα.',
+    textEn:'User accounts, roles and permissions.',
     tools:[
-      {id:'users',icon:Users,title:'Χρήστες',text:'Λογαριασμοί πρόσβασης, σύνδεση με το προσωπικό, τμήματα και πρόσθετες αρμοδιότητες.',note:'Λογαριασμοί',actions:[{label:'Άνοιγμα',path:APP_ROUTES.STUDIO_USERS}]},
-      {id:'roles',icon:ShieldCheck,title:'Ρόλοι & Δικαιώματα',text:'Ρόλοι και λειτουργικό scope πρόσβασης κάθε κατηγορίας χρήστη.',note:'Πρόσβαση & ασφάλεια',actions:[{label:'Άνοιγμα',path:APP_ROUTES.STUDIO_ROLES}]},
+      {id:'users',icon:Users,titleEl:'Χρήστες',titleEn:'Users',textEl:'Λογαριασμοί πρόσβασης, σύνδεση με το προσωπικό, τμήματα και πρόσθετες αρμοδιότητες.',textEn:'Access accounts linked to staff, departments and additional capabilities.',noteEl:'Λογαριασμοί',noteEn:'Accounts',actions:[{labelEl:'Άνοιγμα',labelEn:'Open',path:APP_ROUTES.STUDIO_USERS}]},
+      {id:'roles',icon:ShieldCheck,titleEl:'Ρόλοι & Δικαιώματα',titleEn:'Roles & Permissions',textEl:'Ρόλοι και λειτουργικό scope πρόσβασης κάθε κατηγορίας χρήστη.',textEn:'Roles and functional access scope for each user category.',noteEl:'Πρόσβαση & ασφάλεια',noteEn:'Access & security',actions:[{labelEl:'Άνοιγμα',labelEn:'Open',path:APP_ROUTES.STUDIO_ROLES}]},
     ]
   },
   {
     id:'configuration',
-    title:'Παραμετροποίηση',
-    text:'Master data, φόρμες, δείκτες και τρόπος παρουσίασης.',
+    titleEl:'Παραμετροποίηση',
+    titleEn:'Configuration',
+    textEl:'Κεντρικά λεξικά, φόρμες και δείκτες που χρησιμοποιούνται σε όλη την εφαρμογή.',
+    textEn:'Central dictionaries, forms and indicators used throughout the application.',
     tools:[
-      {id:'libraries',icon:Library,title:'Βιβλιοθήκες & Ρυθμίσεις',text:'Τμήματα, μικροοργανισμοί, δείγματα, προϊόντα, πηγές δεδομένων και γενική παραμετροποίηση.',note:'Κεντρικά δεδομένα',actions:[{label:'Άνοιγμα',path:APP_ROUTES.STUDIO_SETTINGS}]},
-      {id:'forms',icon:FormInput,title:'Smart Forms',text:'Δημιουργία και διαχείριση bundles, audits, checklists και ερωτηματολογίων.',note:'Form Designer',actions:[{label:'Άνοιγμα',path:APP_ROUTES.FORM_DESIGNER}]},
-      {id:'indicators',icon:BarChart3,title:'Δείκτες',text:'Οι ίδιοι δείκτες που εμφανίζονται στην Κεντρική εικόνα, με διαχείριση πηγών, στόχων και παραμέτρων.',note:'KPI & παραμετροποίηση',actions:[{label:'Άνοιγμα',path:APP_ROUTES.STUDIO_INDICATORS}]},
-    ]
-  },
-  {
-    id:'automation',
-    title:'Αυτοματισμοί',
-    text:'Ροές, επιχειρησιακοί κανόνες και ειδοποιήσεις.',
-    tools:[
-      {id:'workflows',icon:Workflow,title:'Workflows',text:'Ροές εργασίας που συνδέουν καταστάσεις, ενέργειες και επόμενα βήματα.',note:'Ροές εργασίας',actions:[{label:'Άνοιγμα',path:APP_ROUTES.STUDIO_WORKFLOWS}]},
-      {id:'rules',icon:BellRing,title:'Κανόνες & Ειδοποιήσεις',text:'Κανόνες λειτουργίας, triggers, προθεσμίες και ειδοποιήσεις σε μία ενιαία περιοχή.',note:'Trigger → Condition → Action',actions:[{label:'Κανόνες',path:APP_ROUTES.STUDIO_RULES},{label:'Ειδοποιήσεις',path:APP_ROUTES.STUDIO_NOTIFICATIONS}]},
-    ]
-  },
-  {
-    id:'advanced',
-    title:'Προχωρημένα',
-    text:'Ρυθμίσεις που αφορούν διαχειριστές και όχι την καθημερινή χρήση.',
-    tools:[
-      {id:'ai',icon:Bot,title:'AI / LIRA Ρυθμίσεις',text:'Παραμετροποίηση λειτουργιών AI, κανόνων χρήσης και σχετικών επιλογών.',note:'AI configuration',actions:[{label:'Άνοιγμα',path:APP_ROUTES.STUDIO_AI}]},
+      {id:'libraries',icon:Library,titleEl:'Βιβλιοθήκες & Ρυθμίσεις',titleEn:'Libraries & Settings',textEl:'Τμήματα, μικροοργανισμοί, δείγματα, προϊόντα, επαγγελματικές κατηγορίες και γενική παραμετροποίηση.',textEn:'Departments, microorganisms, samples, products, professional categories and general configuration.',noteEl:'Κεντρικά δεδομένα',noteEn:'Master data',actions:[{labelEl:'Άνοιγμα',labelEn:'Open',path:APP_ROUTES.STUDIO_SETTINGS}]},
+      {id:'forms',icon:FormInput,titleEl:'Smart Forms',titleEn:'Smart Forms',textEl:'Δημιουργία και διαχείριση bundles, audits, checklists και ερωτηματολογίων.',textEn:'Create and manage bundles, audits, checklists and questionnaires.',noteEl:'Form Designer',noteEn:'Form Designer',actions:[{labelEl:'Άνοιγμα',labelEn:'Open',path:APP_ROUTES.FORM_DESIGNER}]},
+      {id:'indicators',icon:BarChart3,titleEl:'Δείκτες',titleEn:'Indicators',textEl:'Οι ίδιοι δείκτες της Κεντρικής εικόνας, με διαχείριση στόχων και παραμέτρων.',textEn:'The same indicators shown on the Dashboard, with target and parameter management.',noteEl:'KPI & παραμετροποίηση',noteEn:'KPI & configuration',actions:[{labelEl:'Άνοιγμα',labelEn:'Open',path:APP_ROUTES.STUDIO_INDICATORS}]},
     ]
   },
 ]
 
 export default function LimoxisStudioPage(){
+  const { language }=useI18n()
+  const L=(el,en)=>language==='en'?en:el
   const navigate=useNavigate()
   const location=useLocation()
   const [search,setSearch]=useState('')
   const settingsOpen=location.pathname===APP_ROUTES.STUDIO_SETTINGS || location.pathname==='/settings'
 
   const visibleGroups=useMemo(()=>{
-    const needle=search.trim().toLocaleLowerCase('el-GR')
+    const needle=search.trim().toLocaleLowerCase(language==='en'?'en':'el-GR')
     if(!needle) return GROUPS
     return GROUPS.map(group=>({
       ...group,
-      tools:group.tools.filter(tool=>[group.title,tool.title,tool.text,tool.note].join(' ').toLocaleLowerCase('el-GR').includes(needle))
+      tools:group.tools.filter(tool=>[
+        language==='en'?group.titleEn:group.titleEl,
+        language==='en'?tool.titleEn:tool.titleEl,
+        language==='en'?tool.textEn:tool.textEl,
+        language==='en'?tool.noteEn:tool.noteEl,
+      ].join(' ').toLocaleLowerCase(language==='en'?'en':'el-GR').includes(needle))
     })).filter(group=>group.tools.length)
-  },[search])
+  },[search,language])
 
   if(settingsOpen){
-    return <PageChrome className="studio-settings-page" back={<BackLink onClick={()=>navigate(APP_ROUTES.STUDIO)}>Πίσω στο Κέντρο Διαχείρισης</BackLink>} header={<PageHeader eyebrow="ΚΕΝΤΡΟ ΔΙΑΧΕΙΡΙΣΗΣ" title="Βιβλιοθήκες & Ρυθμίσεις" description="Κεντρική παραμετροποίηση λιστών, πηγών δεδομένων και γενικών επιλογών της εφαρμογής." />}><SettingsPage embedded /></PageChrome>
+    return <PageChrome
+      className="studio-settings-page"
+      back={<BackLink onClick={()=>navigate(APP_ROUTES.STUDIO)}>{L('Πίσω στο Κέντρο Διαχείρισης','Back to Management Center')}</BackLink>}
+      header={<PageHeader
+        eyebrow={L('ΚΕΝΤΡΟ ΔΙΑΧΕΙΡΙΣΗΣ','MANAGEMENT CENTER')}
+        title={L('Βιβλιοθήκες & Ρυθμίσεις','Libraries & Settings')}
+        description={L('Κεντρική παραμετροποίηση λιστών, πηγών δεδομένων και γενικών επιλογών της εφαρμογής.','Central configuration of lists, data sources and general application options.')}
+      />}
+    >
+      <SettingsPage embedded />
+    </PageChrome>
   }
 
-  return <PageChrome className="studio-page" header={<PageHeader eyebrow="HEALTHCARE SUITE" title="Κέντρο Διαχείρισης" description="Διαχείριση πρόσβασης, παραμετροποίηση, αυτοματισμοί και προηγμένες ρυθμίσεις του Healthcare Suite." />}>
+  return <PageChrome
+    className="studio-page"
+    header={<PageHeader
+      eyebrow="HEALTHCARE SUITE"
+      title={L('Κέντρο Διαχείρισης','Management Center')}
+      description={L('Διαχείριση πρόσβασης και των κεντρικών λειτουργικών ρυθμίσεων του Healthcare Suite.','Manage access and central operational configuration for Healthcare Suite.')}
+    />}
+  >
     <div className="studio-toolbar" role="search">
       <Search size={17} aria-hidden="true"/>
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Αναζήτηση στο Κέντρο Διαχείρισης…" aria-label="Αναζήτηση εργαλείου στο Κέντρο Διαχείρισης" />
-      {search&&<button type="button" onClick={()=>setSearch('')}>Καθαρισμός</button>}
+      <input
+        value={search}
+        onChange={e=>setSearch(e.target.value)}
+        placeholder={L('Αναζήτηση στο Κέντρο Διαχείρισης…','Search Management Center…')}
+        aria-label={L('Αναζήτηση εργαλείου στο Κέντρο Διαχείρισης','Search Management Center tool')}
+      />
+      {search&&<button type="button" onClick={()=>setSearch('')}>{L('Καθαρισμός','Clear')}</button>}
     </div>
 
     <div className="studio-groups">
       {visibleGroups.map(group=><section className="studio-group" key={group.id}>
-        <div className="studio-group__header"><h2>{group.title}</h2><p>{group.text}</p></div>
-        <div className="studio-grid">{group.tools.map(tool=><StudioToolCard key={tool.id} tool={tool} onOpen={path=>navigate(path)}/>)}</div>
+        <div className="studio-group__header">
+          <h2>{language==='en'?group.titleEn:group.titleEl}</h2>
+          <p>{language==='en'?group.textEn:group.textEl}</p>
+        </div>
+        <div className="studio-grid">{group.tools.map(tool=><StudioToolCard key={tool.id} tool={tool} language={language} onOpen={path=>navigate(path)}/>)}</div>
       </section>)}
     </div>
-    {visibleGroups.length===0&&<div className="studio-empty">Δεν βρέθηκε εργαλείο με αυτά τα κριτήρια.</div>}
 
-    <p className="studio-admin-note">Το Developer Center παραμένει εκτός της καθημερινής διαχείρισης. Το Audit Trail θα ενεργοποιηθεί εδώ όταν συνδεθεί με πραγματική καταγραφή ενεργειών, ώστε να μην εμφανίζεται μη λειτουργικό εργαλείο.</p>
+    {visibleGroups.length===0&&<div className="studio-empty">{L('Δεν βρέθηκε εργαλείο με αυτά τα κριτήρια.','No tool matched these criteria.')}</div>}
+
+    <p className="studio-admin-note">
+      {L(
+        'Οι ρυθμίσεις Workflows, Rules, Notifications, Dashboard Studio και AI Studio δεν εμφανίζονται ως λειτουργικά εργαλεία μέχρι να συνδεθούν με πραγματικό runtime μηχανισμό. Έτσι αποφεύγονται επιλογές που αποθηκεύουν ρυθμίσεις αλλά δεν επηρεάζουν την εφαρμογή.',
+        'Workflows, Rules, Notifications, Dashboard Studio and AI Studio are not shown as operational tools until they are connected to a real runtime engine. This avoids presenting settings that are stored but do not affect the application.'
+      )}
+    </p>
   </PageChrome>
 }
 
-function StudioToolCard({tool,onOpen}){
+function StudioToolCard({tool,language,onOpen}){
   const Icon=tool.icon
-  const primary=tool.actions[0]
   return <article className="studio-card">
     <div className="studio-card__icon"><Icon size={22}/></div>
-    <div className="studio-card__content"><span>{tool.note}</span><h3>{tool.title}</h3><p>{tool.text}</p></div>
+    <div className="studio-card__content">
+      <span>{language==='en'?tool.noteEn:tool.noteEl}</span>
+      <h3>{language==='en'?tool.titleEn:tool.titleEl}</h3>
+      <p>{language==='en'?tool.textEn:tool.textEl}</p>
+    </div>
     <div className="studio-card__actions">
-      {tool.actions.map((action,index)=><Button key={action.path} variant={index===0?'secondary':'ghost'} onClick={()=>onOpen(action.path)}>{action.label}</Button>)}
+      {tool.actions.map((action,index)=><Button key={action.path} variant={index===0?'secondary':'ghost'} onClick={()=>onOpen(action.path)}>{language==='en'?action.labelEn:action.labelEl}</Button>)}
     </div>
   </article>
 }

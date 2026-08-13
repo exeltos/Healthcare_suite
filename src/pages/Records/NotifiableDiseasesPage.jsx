@@ -21,7 +21,8 @@ import {
 } from '../../components/core'
 import { normalizeText, selectedRows, sortRows } from '../../core/utils/entityList'
 import { downloadCsv, printRows } from '../../core/utils/listExport'
-import { EODY_DISEASES, loadNotifiableDiseases, NOTIFIABLE_DISEASES_EVENT, saveNotifiableDiseases } from '../../services/notifiableDiseasesService'
+import { EODY_DISEASES, loadNotifiableDiseases, NOTIFIABLE_DISEASES_EVENT } from '../../services/notifiableDiseasesService'
+import { deleteClinicalNotifiableDisease, loadClinicalNotifiableDiseases, saveClinicalNotifiableDisease } from '../../services/backend/clinicalSupportBackendService'
 import './RecordsUnified.css'
 
 const EMPTY = { disease:'', deadline:'', patientName:'', patientCode:'', department:'', diagnosisDate:'', declarationDate:'', status:'Πρόχειρο', caseClassification:'Ύποπτο', physician:'', notes:'', attachments:[], history:[] }
@@ -54,7 +55,9 @@ export default function NotifiableDiseasesPage(){
   const [selectedId,setSelectedId]=useState(null)
   const [draft,setDraft]=useState(EMPTY)
 
-  useAppEvents(NOTIFIABLE_DISEASES_EVENT, () => setItems(loadNotifiableDiseases()))
+  async function refreshDiseases(){setItems(await loadClinicalNotifiableDiseases())}
+  useEffect(()=>{refreshDiseases().catch(()=>{})},[])
+  useAppEvents(NOTIFIABLE_DISEASES_EVENT, () => {refreshDiseases().catch(()=>{})})
 
   const filtered=useMemo(()=>{
     const query=normalizeText(search)
@@ -77,17 +80,16 @@ export default function NotifiableDiseasesPage(){
   function close(){ setDrawerOpen(false); setSelectedId(null); setDraft(EMPTY) }
   function update(name,value){ setDraft(current=>({...current,[name]:value})) }
   function diseaseChanged(value){ const match=EODY_DISEASES.find(item=>item.name===value); setDraft(current=>({...current,disease:value,deadline:match?.deadline||''})) }
-  function save(event){
+  async function save(event){
     event.preventDefault()
     if(!draft.disease||!draft.patientName){ notifyAction('Συμπληρώστε νόσημα και ασθενή.'); return }
     const now=new Date().toISOString()
     const next={...draft,id:selectedId||draft.id||makeId(items),history:[...(draft.history||[]),{id:`h-${Date.now()}`,at:now,text:selectedId?'Ενημέρωση δήλωσης':'Δημιουργία δήλωσης'}]}
-    const updated=selectedId?items.map(item=>item.id===selectedId?next:item):[next,...items]
-    saveNotifiableDiseases(updated); setItems(updated); close()
+    await saveClinicalNotifiableDisease(next); setItems(await loadClinicalNotifiableDiseases()); close()
   }
-  function remove(){
+  async function remove(){
     if(!selectedId||!confirmAction('Να διαγραφεί η δήλωση;')) return
-    const updated=items.filter(item=>item.id!==selectedId); saveNotifiableDiseases(updated); setItems(updated); close()
+    await deleteClinicalNotifiableDisease(selectedId); setItems(await loadClinicalNotifiableDiseases()); close()
   }
   function markDeclared(){ setDraft(current=>({...current,status:'Δηλώθηκε',declarationDate:new Date().toISOString().slice(0,10)})) }
   function clearFilters(){ setSearch(''); setStatus(''); setDeadline('') }

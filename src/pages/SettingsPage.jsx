@@ -1,28 +1,26 @@
 import { confirmAction, notifyAction } from '../components/core/feedback/index'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
-import { loadMasterData, saveMasterData } from '../services/masterDataService'
+import { loadMasterData } from '../services/masterDataService'
+import { hydrateMasterDataBackend, saveMasterDataBackend } from '../services/backend/configurationBackendService'
 import {
   loadPatientSourceConfig,
   savePatientSourceConfig,
 } from '../services/patientService'
 
 import { masterDataSections } from '../config/masterDataSections'
-
-function buildInitialData() {
-  const loaded = loadMasterData()
-  return Object.fromEntries(
-    masterDataSections.map((section) => [
-      section.id,
-      Array.isArray(loaded[section.id]) ? loaded[section.id] : section.initialItems,
-    ]),
-  )
-}
+import { useI18n } from '../i18n'
+import { masterSectionPresentation, studioDisplayValue, studioFieldLabel, studioOptionLabel } from './Studio/studioPresentation'
+import { deleteDirectoryDepartment, loadDirectoryDepartments, saveDirectoryDepartment } from '../services/backend/directoryService'
+import { IS_PRODUCTION } from '../core/runtime'
+import { buildInitialMasterData } from './Studio/masterDataPageState'
 
 
 export default function SettingsPage({ embedded = false }) {
+  const { language }=useI18n()
+  const L=(el,en)=>language==='en'?en:el
   const [activeSectionId, setActiveSectionId] = useState('departments')
-  const [masterData, setMasterData] = useState(buildInitialData)
+  const [masterData, setMasterData] = useState(buildInitialMasterData)
   const [search, setSearch] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
@@ -30,6 +28,18 @@ export default function SettingsPage({ embedded = false }) {
   const [patientSourceConfig, setPatientSourceConfig] = useState(
     loadPatientSourceConfig,
   )
+
+  useEffect(()=>{
+    let active=true
+    Promise.all([hydrateMasterDataBackend(),loadDirectoryDepartments()])
+      .then(([libraries,departments])=>{
+        if(!active)return
+        const visible=Object.fromEntries(masterDataSections.map(section=>[section.id,Array.isArray(libraries[section.id])?libraries[section.id]:section.initialItems]))
+        setMasterData({...visible,departments})
+      })
+      .catch(()=>{})
+    return()=>{active=false}
+  },[])
 
   const activeSection = useMemo(
     () =>
@@ -39,24 +49,26 @@ export default function SettingsPage({ embedded = false }) {
     [activeSectionId],
   )
 
+  const activePresentation = masterSectionPresentation(activeSection, language)
+
   const items = masterData[activeSectionId] || []
 
   const filteredItems = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase('el-GR')
+    const query = search.trim().toLocaleLowerCase(language==='en'?'en':'el-GR')
     if (!query) return items
 
     return items.filter((item) =>
       Object.values(item).some((value) =>
         String(value || '')
-          .toLocaleLowerCase('el-GR')
+          .toLocaleLowerCase(language==='en'?'en':'el-GR')
           .includes(query),
       ),
     )
-  }, [items, search])
+  }, [items, search, language])
 
-  function persist(nextData) {
+  async function persist(nextData) {
     setMasterData(nextData)
-    saveMasterData({ ...loadMasterData(), ...nextData })
+    await saveMasterDataBackend({ ...loadMasterData(), ...nextData })
   }
 
   function openNewItem() {
@@ -86,7 +98,7 @@ export default function SettingsPage({ embedded = false }) {
     setFormData({})
   }
 
-  function saveItem(event) {
+  async function saveItem(event) {
     event.preventDefault()
 
     const missingRequired = activeSection.fields.some(
@@ -94,7 +106,30 @@ export default function SettingsPage({ embedded = false }) {
     )
 
     if (missingRequired) {
-      notifyAction('Συμπληρώστε τα υποχρεωτικά πεδία.')
+      notifyAction(L('Συμπληρώστε τα υποχρεωτικά πεδία.','Complete the required fields.'))
+      return
+    }
+
+    const duplicate = items.find((item) => {
+      if (item.id === editingItem?.id) return false
+      const sameName = formData.name && String(item.name || '').trim().toLocaleLowerCase() === String(formData.name).trim().toLocaleLowerCase()
+      const sameCode = formData.code && String(item.code || '').trim().toLocaleLowerCase() === String(formData.code).trim().toLocaleLowerCase()
+      return sameName || sameCode
+    })
+    if (duplicate) {
+      notifyAction(L('Υπάρχει ήδη εγγραφή με την ίδια ονομασία ή κωδικό.','A record with the same name or code already exists.'))
+      return
+    }
+
+    if(activeSectionId==='departments'){
+      try{
+        await saveDirectoryDepartment({...formData,id:editingItem?.id})
+        const departments=await loadDirectoryDepartments()
+        setMasterData(current=>({...current,departments}))
+        closeDrawer()
+      }catch(error){
+        notifyAction(error?.message||L('Δεν ήταν δυνατή η αποθήκευση του τμήματος.','The department could not be saved.'))
+      }
       return
     }
 
@@ -117,8 +152,19 @@ export default function SettingsPage({ embedded = false }) {
     closeDrawer()
   }
 
-  function deleteItem(itemId) {
-    if (!confirmAction('Να διαγραφεί η εγγραφή;')) return
+  async function deleteItem(itemId) {
+    if (!confirmAction(L('Να διαγραφεί η εγγραφή;','Delete this record?'))) return
+
+    if(activeSectionId==='departments'){
+      try{
+        await deleteDirectoryDepartment(itemId)
+        const departments=await loadDirectoryDepartments()
+        setMasterData(current=>({...current,departments}))
+      }catch(error){
+        notifyAction(error?.message||L('Δεν ήταν δυνατή η διαγραφή του τμήματος.','The department could not be deleted.'))
+      }
+      return
+    }
 
     persist({
       ...masterData,
@@ -127,9 +173,13 @@ export default function SettingsPage({ embedded = false }) {
   }
 
   function resetSection() {
+    if(IS_PRODUCTION&&activeSectionId==='departments'){
+      notifyAction(L('Στο Production mode τα τμήματα δεν επαναφέρονται σε demo αρχικές τιμές.','Production departments cannot be reset to demo defaults.'))
+      return
+    }
     if (
       !confirmAction(
-        'Να επανέλθει η συγκεκριμένη λίστα στις αρχικές τιμές;',
+        L('Να επανέλθει η συγκεκριμένη λίστα στις αρχικές τιμές;','Restore this list to its initial values?'),
       )
     ) {
       return
@@ -146,26 +196,20 @@ export default function SettingsPage({ embedded = false }) {
       {!embedded && <div className="settings-page-heading">
         <div>
           <span className="settings-eyebrow">Healthcare Suite</span>
-          <h1>Ρυθμίσεις</h1>
-          <p>
-            Κεντρική διαχείριση των λιστών που χρησιμοποιούνται σε όλες
-            τις φόρμες.
-          </p>
+          <h1>{L('Ρυθμίσεις','Settings')}</h1>
+          <p>{L('Κεντρική διαχείριση των λιστών που χρησιμοποιούνται σε όλες τις φόρμες.','Central management of lists used throughout the application.')}</p>
         </div>
       </div>}
 
       <section className="settings-patient-source">
         <div>
-          <span>Υβριδική λειτουργία ασθενών</span>
-          <strong>Πηγή λίστας ασθενών</strong>
-          <p>
-            Επιλέξτε αν οι φόρμες θα χρησιμοποιούν τη βιβλιοθήκη
-            ρυθμίσεων, χειροκίνητους ασθενείς, demo δεδομένα ή όλα μαζί.
-          </p>
+          <span>{L('Υβριδική λειτουργία ασθενών','Hybrid patient workflow')}</span>
+          <strong>{L('Πηγή λίστας ασθενών','Patient list source')}</strong>
+          <p>{L('Επιλέξτε αν οι φόρμες θα χρησιμοποιούν τη βιβλιοθήκη ρυθμίσεων, χειροκίνητους ασθενείς, demo δεδομένα ή όλα μαζί.','Choose whether forms use the settings library, manually entered patients, demo data or a combination.')}</p>
         </div>
 
         <label>
-          <span>Τρόπος λειτουργίας</span>
+          <span>{L('Τρόπος λειτουργίας','Mode')}</span>
           <select
             value={patientSourceConfig.sourceMode}
             onChange={(event) => {
@@ -176,10 +220,10 @@ export default function SettingsPage({ embedded = false }) {
               setPatientSourceConfig(nextConfig)
             }}
           >
-            <option>Υβριδική</option>
-            <option>Βιβλιοθήκη Ρυθμίσεων</option>
-            <option>Χειροκίνητη Καταχώρηση</option>
-            <option>Προσωρινή Demo Λίστα</option>
+            <option value="Υβριδική">{studioDisplayValue('Υβριδική',language)}</option>
+            <option value="Βιβλιοθήκη Ρυθμίσεων">{studioDisplayValue('Βιβλιοθήκη Ρυθμίσεων',language)}</option>
+            <option value="Χειροκίνητη Καταχώρηση">{studioDisplayValue('Χειροκίνητη Καταχώρηση',language)}</option>
+            <option value="Προσωρινή Demo Λίστα">{studioDisplayValue('Προσωρινή Demo Λίστα',language)}</option>
           </select>
         </label>
 
@@ -195,7 +239,7 @@ export default function SettingsPage({ embedded = false }) {
               setPatientSourceConfig(nextConfig)
             }}
           />
-          Επιτρέπεται δημιουργία νέου ασθενούς από την υβριδική φόρμα
+          {L('Επιτρέπεται δημιουργία νέου ασθενούς από την υβριδική φόρμα','Allow new patient creation from the hybrid form')}
         </label>
       </section>
 
@@ -203,7 +247,7 @@ export default function SettingsPage({ embedded = false }) {
         <aside className="settings-menu">
           <div className="settings-menu-header">
             <span>Master Data Center</span>
-            <strong>Κεντρικά λεξικά</strong>
+            <strong>{L('Κεντρικά λεξικά','Central dictionaries')}</strong>
           </div>
 
           <nav>
@@ -221,9 +265,9 @@ export default function SettingsPage({ embedded = false }) {
               >
                 <span>{section.icon}</span>
                 <div>
-                  <strong>{section.label}</strong>
+                  <strong>{masterSectionPresentation(section,language).label}</strong>
                   <small>
-                    {(masterData[section.id] || []).length} εγγραφές
+                    {(masterData[section.id] || []).length} {L('εγγραφές','records')}
                   </small>
                 </div>
               </button>
@@ -240,8 +284,8 @@ export default function SettingsPage({ embedded = false }) {
 
               <div>
                 <span>Master Data</span>
-                <h2>{activeSection.label}</h2>
-                <p>{activeSection.description}</p>
+                <h2>{activePresentation.label}</h2>
+                <p>{activePresentation.description}</p>
               </div>
             </div>
 
@@ -250,7 +294,7 @@ export default function SettingsPage({ embedded = false }) {
               type="button"
               onClick={openNewItem}
             >
-              ＋ Νέα εγγραφή
+              {L('＋ Νέα εγγραφή','＋ New record')}
             </button>
           </header>
 
@@ -259,15 +303,15 @@ export default function SettingsPage({ embedded = false }) {
               <span>⌕</span>
               <input
                 value={search}
-                placeholder={`Αναζήτηση σε ${activeSection.label.toLocaleLowerCase(
-                  'el-GR',
-                )}...`}
+                placeholder={language==='en'
+                  ? `Search ${activePresentation.label.toLocaleLowerCase('en')}...`
+                  : `Αναζήτηση σε ${activePresentation.label.toLocaleLowerCase('el-GR')}...`}
                 onChange={(event) => setSearch(event.target.value)}
               />
             </label>
 
-            <button type="button" onClick={resetSection}>
-              Επαναφορά αρχικών τιμών
+            <button type="button" onClick={resetSection} disabled={IS_PRODUCTION&&activeSectionId==='departments'}>
+              {IS_PRODUCTION&&activeSectionId==='departments'?L('Διαχείριση από Supabase','Managed by Supabase'):L('Επαναφορά αρχικών τιμών','Restore defaults')}
             </button>
           </div>
 
@@ -283,12 +327,12 @@ export default function SettingsPage({ embedded = false }) {
 
                       return (
                         <th key={column}>
-                          {field?.label || column}
+                          {field ? studioFieldLabel(field,language) : column}
                         </th>
                       )
                     })}
 
-                    <th>Ενέργειες</th>
+                    <th>{L('Ενέργειες','Actions')}</th>
                   </tr>
                 </thead>
 
@@ -305,7 +349,7 @@ export default function SettingsPage({ embedded = false }) {
                                   : 'inactive'
                               }`}
                             >
-                              {item[column]}
+                              {studioDisplayValue(item[column],language)}
                             </span>
                           ) : column === 'resistance' &&
                             item[column] ? (
@@ -313,7 +357,7 @@ export default function SettingsPage({ embedded = false }) {
                               {item[column]}
                             </span>
                           ) : (
-                            item[column] || '—'
+                            studioDisplayValue(item[column],language) || '—'
                           )}
                         </td>
                       ))}
@@ -323,8 +367,8 @@ export default function SettingsPage({ embedded = false }) {
                           <button
                             className="icon-action"
                             type="button"
-                            title="Επεξεργασία"
-                            aria-label="Επεξεργασία"
+                            title={L('Επεξεργασία','Edit')}
+                            aria-label={L('Επεξεργασία','Edit')}
                             onClick={() => openEditItem(item)}
                           >
                             <Pencil size={16} aria-hidden="true" />
@@ -333,8 +377,8 @@ export default function SettingsPage({ embedded = false }) {
                           <button
                             className="delete icon-action"
                             type="button"
-                            title="Διαγραφή"
-                            aria-label="Διαγραφή"
+                            title={L('Διαγραφή','Delete')}
+                            aria-label={L('Διαγραφή','Delete')}
                             onClick={() => deleteItem(item.id)}
                           >
                             <Trash2 size={16} aria-hidden="true" />
@@ -350,7 +394,7 @@ export default function SettingsPage({ embedded = false }) {
                         className="settings-empty"
                         colSpan={activeSection.columns.length + 1}
                       >
-                        Δεν βρέθηκαν εγγραφές.
+                        {L('Δεν βρέθηκαν εγγραφές.','No records found.')}
                       </td>
                     </tr>
                   )}
@@ -372,9 +416,9 @@ export default function SettingsPage({ embedded = false }) {
           >
             <header>
               <div>
-                <span>{activeSection.label}</span>
+                <span>{activePresentation.label}</span>
                 <h3>
-                  {editingItem ? 'Επεξεργασία εγγραφής' : 'Νέα εγγραφή'}
+                  {editingItem ? L('Επεξεργασία εγγραφής','Edit record') : L('Νέα εγγραφή','New record')}
                 </h3>
               </div>
 
@@ -388,7 +432,7 @@ export default function SettingsPage({ embedded = false }) {
                 {activeSection.fields.map((field) => (
                   <label key={field.id}>
                     <span>
-                      {field.label}
+                      {studioFieldLabel(field,language)}
                       {field.required ? ' *' : ''}
                     </span>
 
@@ -404,7 +448,7 @@ export default function SettingsPage({ embedded = false }) {
                       >
                         {field.options.map((option) => (
                           <option key={option} value={option}>
-                            {option || '—'}
+                            {studioOptionLabel(option,language) || '—'}
                           </option>
                         ))}
                       </select>
@@ -425,11 +469,11 @@ export default function SettingsPage({ embedded = false }) {
 
               <footer>
                 <button type="button" onClick={closeDrawer}>
-                  Ακύρωση
+                  {L('Ακύρωση','Cancel')}
                 </button>
 
                 <button className="primary" type="submit">
-                  Αποθήκευση
+                  {L('Αποθήκευση','Save')}
                 </button>
               </footer>
             </form>

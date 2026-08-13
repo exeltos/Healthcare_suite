@@ -1,0 +1,20 @@
+import fs from 'node:fs'
+const read=p=>fs.readFileSync(p,'utf8')
+const vaccination=read('src/pages/Prevention/VaccinationsPage.jsx')
+const preventionBackend=read('src/services/backend/preventionBackendService.js')
+const directory=read('src/services/backend/directoryService.js')
+const training=read('src/pages/Organization/TrainingPage.jsx')
+const trainingBackend=read('src/services/backend/organizationBackendService.js')
+const migration=read('supabase/migrations/20260813_000011_staff_health_training_integrity.sql')
+const failures=[]
+if(!/await deletePreventionRecord\('staff_vaccination'/.test(vaccination)) failures.push('Vaccination deletion bypasses the Production backend.')
+if(!/status !== 'Ανενεργό'/.test(vaccination)) failures.push('Inactive staff can still be selected for a new vaccination.')
+if(!/Vaccination cannot be added to an inactive employee/.test(preventionBackend)) failures.push('Backend allows new vaccination records for inactive staff.')
+if(!/duplicateCode/.test(directory)) failures.push('Production employee registry lacks duplicate employee-code protection.')
+if(!/Next review date cannot precede/.test(directory)) failures.push('Occupational-health review date integrity is missing.')
+if(!/items=\{employees\.filter\(item=>item\.status!=='Ανενεργό'\)\}/.test(training)) failures.push('Inactive staff can still be newly assigned to training.')
+if(!/seenAttendance/.test(trainingBackend)) failures.push('Training backend does not reject duplicate attendees.')
+if(!/Training validity date cannot precede/.test(trainingBackend)) failures.push('Training validity chronology is not validated.')
+if(!/employees_org_employee_code_unique/.test(migration)||!/prevention_staff_vaccination_identity_unique/.test(migration)||!/occupational_employee_relationship_guard/.test(migration)) failures.push('Database staff relationship/identity guards are incomplete.')
+if(failures.length){console.error('Staff integrity audit failed:');failures.forEach(x=>console.error('- '+x));process.exitCode=1}
+else console.log('Staff integrity audit OK: employee identity, vaccinations, training attendance and occupational-health relationships are protected.')

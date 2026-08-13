@@ -7,6 +7,7 @@ import { Download, FlaskConical, Plus, Printer } from 'lucide-react'
 import {
   LABORATORY_SOURCE_EVENTS,
   loadAllLaboratoryRecords,
+  loadAllLaboratoryRecordsAsync,
 } from '../../services/laboratoryService'
 import {
   Badge,
@@ -32,6 +33,7 @@ export default function LaboratoryPage() {
   const view = params.view || ''
   const [searchParams, setSearchParams] = useSearchParams()
   const [records, setRecords] = useState(loadAllLaboratoryRecords)
+  const [laboratoryLoading,setLaboratoryLoading]=useState(true)
   const [search, setSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState(() => view === 'environment' ? 'Περιβάλλον' : view === 'water' ? 'Νερό' : view === 'staff' ? 'Προσωπικό' : '')
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '')
@@ -48,8 +50,15 @@ export default function LaboratoryPage() {
     setResistanceFilter(searchParams.get('attention') === 'resistant' ? 'resistant' : '')
   }, [searchParams])
 
+  async function refreshLaboratory(){
+    try{setRecords(await loadAllLaboratoryRecordsAsync())}
+    finally{setLaboratoryLoading(false)}
+  }
+
+  useEffect(()=>{refreshLaboratory()},[])
+
   useAppEvents(LABORATORY_SOURCE_EVENTS, () => {
-    setRecords(loadAllLaboratoryRecords())
+    refreshLaboratory()
   }, { includeStorage: true })
 
   const filtered = useMemo(() => {
@@ -257,10 +266,10 @@ export default function LaboratoryPage() {
         sort={sort}
         onSortChange={setSort}
         ariaLabel={L('Εργαστηριακές εγγραφές', 'Laboratory records')}
-        footer={<span>{language === 'en'
+        footer={<span>{laboratoryLoading?L('Φόρτωση…','Loading…'):(language === 'en'
           ? `${filtered.length} records${selectedKeys.length ? ` · ${selectedKeys.length} selected` : ''}`
-          : `${filtered.length} εγγραφές${selectedKeys.length ? ` · ${selectedKeys.length} επιλεγμένες` : ''}`}</span>}
-        emptyTitle={L('Δεν υπάρχουν εγγραφές', 'No records')}
+          : `${filtered.length} εγγραφές${selectedKeys.length ? ` · ${selectedKeys.length} επιλεγμένες` : ''}`)}</span>}
+        emptyTitle={laboratoryLoading?L('Φόρτωση…','Loading…'):L('Δεν υπάρχουν εγγραφές', 'No records')}
         emptyMessage={L('Δημιουργήστε νέα εργαστηριακή εγγραφή ή αλλάξτε τα φίλτρα.', 'Create a laboratory record or change the filters.')}
       />
     </PageChrome>

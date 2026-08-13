@@ -25,9 +25,12 @@ import { createWhoSession } from './NewEntryLauncher.logic'
 import { activeMasterItems, loadMasterData } from '../../services/masterDataService'
 import { persistNewEntry } from './NewEntryLauncher.persistence'
 import { EnvironmentEntryFlow, WhoEntryFlow } from './NewEntryLauncher.flows'
+import { useI18n } from '../../i18n'
 import './NewEntryLauncher.css'
 
 export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) {
+  const { language } = useI18n()
+  const L = (el,en) => language === 'en' ? en : el
   const [step, setStep] = useState(1)
   const [selectedTypeId, setSelectedTypeId] = useState('')
   const [mode, setMode] = useState('')
@@ -149,7 +152,7 @@ export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) 
     ]
 
     if (directWithoutPatientTypes.includes(typeId)) {
-      const today = new Date().toLocaleDateString('el-GR')
+      const today = new Date().toLocaleDateString(language === 'en' ? 'en-GB' : 'el-GR')
 
       setMode('without-patient')
       setEntry((current) => ({
@@ -241,9 +244,9 @@ export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) 
   }
 
 
-  function saveEntry(event) {
+  async function saveEntry(event) {
     event.preventDefault()
-    const result = persistNewEntry({
+    const result = await persistNewEntry({
       selectedType, mode, selectedPatient, availableCases, selectedCaseId, createNewCase,
       newPatient, entry, whoSession, whoObservations, environmentSession, environmentSamples,
     })
@@ -292,12 +295,12 @@ export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) 
         onMouseDown={(event) => event.stopPropagation()}
       >
         <EntryFormHeader
-          eyebrow={initialTypeId ? 'Πρόληψη λοιμώξεων' : 'Healthcare Suite'}
-          title={initialTypeId === 'hand-hygiene' ? 'Νέα παρατήρηση Υγιεινής Χεριών' : 'Νέα καταχώρηση'}
+          eyebrow={initialTypeId ? L('Πρόληψη λοιμώξεων','Infection Prevention') : 'Healthcare Suite'}
+          title={initialTypeId === 'hand-hygiene' ? L('Νέα παρατήρηση Υγιεινής Χεριών','New Hand Hygiene Observation') : L('Νέα καταχώρηση','New Entry')}
           description={
             initialTypeId === 'hand-hygiene'
-              ? 'Καταγραφή συνεδρίας και ευκαιριών σύμφωνα με τα 5 Σημεία του Παγκόσμιου Οργανισμού Υγείας.'
-              : 'Επιλέξτε τον τύπο καταχώρησης και ακολουθήστε τα αντίστοιχα βήματα.'
+              ? L('Καταγραφή συνεδρίας και ευκαιριών σύμφωνα με τα 5 Σημεία του Παγκόσμιου Οργανισμού Υγείας.','Record a session and opportunities according to the WHO 5 Moments.')
+              : L('Επιλέξτε τον τύπο καταχώρησης και ακολουθήστε τα αντίστοιχα βήματα.','Select the entry type and follow the corresponding steps.')
           }
           onClose={resetAndClose}
         />
@@ -702,7 +705,7 @@ export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) 
             onCancel={resetAndClose}
             showBack
             onBack={() => setStep(step === 2 ? 1 : 2)}
-            primaryLabel={step === 3 ? 'Επόμενο' : 'Συνέχεια'}
+            primaryLabel={step === 3 ? L('Επόμενο','Next') : L('Συνέχεια','Continue')}
             onPrimary={step === 3 ? continueToEntry : undefined}
             primaryDisabled={step === 2}
           />
@@ -716,7 +719,7 @@ export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) 
               setSavedMessage('')
               setStep(1)
             }}
-            primaryLabel="Αποθήκευση ελέγχου WHO"
+            primaryLabel={L('Αποθήκευση ελέγχου WHO','Save WHO observation')}
             primaryType="submit"
             form="hand-hygiene-entry-form"
             primaryDisabled={whoObservations.length === 0}

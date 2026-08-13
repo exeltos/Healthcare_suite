@@ -56,9 +56,16 @@ export function getDeviceRecords(data = {}) {
   if (Array.isArray(data.deviceRecords) && data.deviceRecords.length) return data.deviceRecords
   return normalizeValues(data.questionnaire?.devices).map((type, index) => ({ id: `legacy-device-${index}`, type, startDate: data.startDate || '', endDate: '', related: 'Όχι', notes: '' }))
 }
-export function getPatientSignals({ patient, samples, isolations }) {
-  const resistance = highestResistance(samples.flatMap((item) => normalizeOrganismResults(item).map((org) => org.resistance))) || (patient.mdr ? 'MDR' : '')
-  return { positive: samples.some((item) => item.status === 'Θετικό') || Boolean(patient.positiveCulture), resistance, isolation: isolations.some((item) => item.status === 'Ενεργή') || Boolean(patient.isolation), pending: samples.some((item) => item.status === 'Εκκρεμεί') }
+export function getPatientSignals({ patient, cases = [], samples, isolations }) {
+  const activeCaseIds = new Set(cases.filter((item) => item.status !== 'Κλειστό' && !String(item.workflowPhase || '').startsWith('closed-') && !item.closedDate).map((item) => String(item.id)))
+  const currentSamples = samples.filter((item) => !item.clinicalCaseId || activeCaseIds.has(String(item.clinicalCaseId)))
+  const resistance = highestResistance(currentSamples.flatMap((item) => normalizeOrganismResults(item).map((org) => org.resistance)))
+  return {
+    positive: currentSamples.some((item) => item.status === 'Θετικό'),
+    resistance,
+    isolation: isolations.some((item) => item.status === 'Ενεργή' && (!item.clinicalCaseId || activeCaseIds.has(String(item.clinicalCaseId)))),
+    pending: currentSamples.some((item) => item.status === 'Εκκρεμεί'),
+  }
 }
 
 export function today() { return todayIso() }

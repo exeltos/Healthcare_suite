@@ -1,4 +1,7 @@
 import { loadInfections, upsertInfection } from './infectionsService'
+import { IS_PRODUCTION } from '../core/runtime'
+import { deleteClinicalInfection, deleteClinicalPatientSample, deleteClinicalSurveillanceCase, hydrateClinicalPatient, loadClinicalInfections, saveClinicalInfection, saveClinicalPatientSample, saveClinicalSurveillanceCase } from './backend/clinicalDirectoryService'
+import { loadClinicalIsolations, saveClinicalIsolation } from './backend/clinicalSupportBackendService'
 import { loadPatientSamples, upsertPatientSample } from './patientSamplesService'
 import {
   SURVEILLANCE_CASE_STATUS,
@@ -55,6 +58,32 @@ function existingInfectionForSample(sampleId) {
   return loadInfections().find((item) => String(item.relatedSample || item.initialSampleId || '') === String(sampleId)) || null
 }
 
+function retractAutoInfectionForNonPositiveSample(sample) {
+  const existing = existingInfectionForSample(sample.id)
+  if (!existing) return null
+  const autoLinked = existing.autoCreatedFromLaboratory || existing.verificationStatus === 'Εργαστηριακά επιβεβαιωμένο εύρημα'
+  if (!autoLinked) return null
+  return upsertInfection({
+    ...existing,
+    status: 'Ακυρωμένη',
+    verificationStatus: sample.status === 'Αρνητικό' ? 'Αρνητικό εργαστηριακό αποτέλεσμα' : 'Αναμονή εργαστηριακής επιβεβαίωσης',
+    cancellationReason: 'laboratory-result-revised',
+    cancellationDate: sample.resultDate || new Date().toISOString().slice(0, 10),
+    updatedAt: new Date().toISOString(),
+  })
+}
+
+function clearSampleInfectionLink(sample) {
+  if (!sample.relatedInfection && !sample.infectionCaseId && !sample.createInfection && !sample.requiresInfectionReview) return sample
+  return upsertPatientSample({
+    ...sample,
+    relatedInfection: '',
+    infectionCaseId: '',
+    createInfection: false,
+    requiresInfectionReview: false,
+  })
+}
+
 function buildCaseBase(sample, existing = {}) {
   return {
     ...existing,
@@ -102,7 +131,24 @@ function syncExistingPatientCase(sample) {
 
   const patch = buildCaseBase(sample, current)
   if (sample.status === 'Θετικό') return activateCaseFromPositiveSample(current.id, sample, patch)
-  if (sample.status === 'Αρνητικό') return closeCaseFromNegativeSample(current.id, sample, patch)
+  if (sample.status === 'Αρνητικό') {
+    // A negative follow-up is a monitoring result, not an automatic closure of
+    // an already confirmed infection/surveillance episode. Closure remains a
+    // clinical decision in Reassessment & Outcome.
+    if (isPatientSampleRecheck(sample) && current.status === SURVEILLANCE_CASE_STATUS.ACTIVE) {
+      return upsertSurveillanceCase({
+        ...current,
+        ...patch,
+        status: SURVEILLANCE_CASE_STATUS.ACTIVE,
+        workflowPhase: 'recheck-negative',
+        laboratoryOutcome: 'negative-recheck',
+        lastRecheckSampleId: sample.id,
+        lastRecheckDate: sample.resultDate || sample.collectionDate || '',
+        closedDate: '',
+      })
+    }
+    return closeCaseFromNegativeSample(current.id, sample, patch)
+  }
   if (sample.status !== 'Θετικό' && sample.status !== 'Αρνητικό') {
     // A pending recheck must not downgrade an already confirmed active case to
     // "Αναμονή εργαστηρίου". The surveillance remains active while the new
@@ -115,6 +161,24 @@ function syncExistingPatientCase(sample) {
         workflowPhase: 'recheck-pending',
         laboratoryOutcome: 'pending',
         closedDate: '',
+      })
+    }
+    if (current.autoCreatedFromLaboratory) {
+      const closeDate = sample.resultDate || new Date().toISOString().slice(0, 10)
+      return upsertSurveillanceCase({
+        ...current,
+        ...patch,
+        status: SURVEILLANCE_CASE_STATUS.CLOSED,
+        workflowPhase: 'closed-result-revised',
+        laboratoryOutcome: 'pending',
+        closedDate: closeDate,
+        close: {
+          ...(current.close || {}),
+          date: closeDate,
+          result: 'Αναμονή εργαστηριακής επιβεβαίωσης',
+          reason: 'laboratory-result-revised',
+          notes: 'Το προηγούμενο θετικό αποτέλεσμα αναθεωρήθηκε σε εκκρεμές.',
+        },
       })
     }
     return markCaseAwaitingLaboratory(current.id, patch)
@@ -143,6 +207,10 @@ export function savePatientSampleWithClinicalWorkflow(input = {}) {
     ? (parent?.rootSampleId || parent?.id || input.rootSampleId || '')
     : (input.rootSampleId || '')
 
+  if (recheck && input.clinicalCaseId && parent?.clinicalCaseId && String(input.clinicalCaseId) !== String(parent.clinicalCaseId)) {
+    throw new Error('Ο επανέλεγχος πρέπει να παραμένει στην ίδια επιτήρηση με το προηγούμενο δείγμα.')
+  }
+
   let sample = upsertPatientSample({
     ...input,
     isRecheck: recheck,
@@ -158,21 +226,27 @@ export function savePatientSampleWithClinicalWorkflow(input = {}) {
   let surveillanceCase = syncExistingPatientCase(sample)
 
   if (sample.status === 'Αρνητικό') {
+    const retractedInfection = retractAutoInfectionForNonPositiveSample(sample)
+    if (retractedInfection) sample = clearSampleInfectionLink(sample)
     return {
       sample,
       surveillanceCase,
-      infection: null,
+      infection: retractedInfection,
       createdInfection: false,
+      retractedInfection: Boolean(retractedInfection),
       workflowState: sample.clinicalWorkflowState,
     }
   }
 
   if (sample.status !== 'Θετικό') {
+    const retractedInfection = retractAutoInfectionForNonPositiveSample(sample)
+    if (retractedInfection) sample = clearSampleInfectionLink(sample)
     return {
       sample,
       surveillanceCase,
-      infection: null,
+      infection: retractedInfection,
       createdInfection: false,
+      retractedInfection: Boolean(retractedInfection),
       workflowState: sample.clinicalWorkflowState,
     }
   }
@@ -213,9 +287,11 @@ export function savePatientSampleWithClinicalWorkflow(input = {}) {
     infectionDate: sample.collectionDate || sample.resultDate || existing?.infectionDate || '',
     onsetDate: sample.collectionDate || sample.resultDate || existing?.onsetDate || '',
     infectionType: existing?.infectionType || 'Υπό κλινική αξιολόγηση',
-    status: existing?.status || 'Υπό διερεύνηση',
+    status: existing?.cancellationReason === 'laboratory-result-revised' ? 'Υπό διερεύνηση' : (existing?.status || 'Υπό διερεύνηση'),
     origin: sample.clinicalCaseId ? 'Θετικό αποτέλεσμα συνδεδεμένης επιτήρησης' : 'Αυτόματα από θετικό εργαστηριακό αποτέλεσμα',
     verificationStatus: 'Εργαστηριακά επιβεβαιωμένο εύρημα',
+    cancellationReason: '',
+    cancellationDate: '',
     microorganism: overallMicroorganism(sample) || existing?.microorganism || '',
     resistance: sample.resistance || existing?.resistance || '',
     relatedSample: sample.id,
@@ -241,4 +317,139 @@ export function savePatientSampleWithClinicalWorkflow(input = {}) {
     createdInfection: !existing,
     workflowState: sample.clinicalWorkflowState,
   }
+}
+
+
+/**
+ * Production-aware async boundary.
+ * Demo mode keeps the established synchronous workflow.
+ * Production mode hydrates the current clinical context from Supabase,
+ * runs the same lifecycle rules, then persists the resulting entities back.
+ */
+export async function savePatientSampleWithClinicalWorkflowAsync(input = {}) {
+  if (!IS_PRODUCTION) return savePatientSampleWithClinicalWorkflow(input)
+
+  const patientKey=input.patientId||input.patientCode
+  if(patientKey) await hydrateClinicalPatient(patientKey)
+
+  const result=savePatientSampleWithClinicalWorkflow(input)
+
+  if(result?.surveillanceCase) await saveClinicalSurveillanceCase(result.surveillanceCase)
+  if(result?.infection) await saveClinicalInfection(result.infection)
+  if(result?.sample) await saveClinicalPatientSample(result.sample)
+
+  return result
+}
+
+
+export async function closeClinicalSurveillanceEpisode({ surveillanceCase, patient, review = {}, close = {} } = {}) {
+  if (!surveillanceCase?.id) throw new Error('Δεν υπάρχει ενεργή επιτήρηση για κλείσιμο.')
+  const closeDate = close.date || review.date || new Date().toISOString().slice(0, 10)
+  const result = close.result || review.outcome || ''
+  if (!closeDate || !result) throw new Error('Συμπληρώστε ημερομηνία και έκβαση πριν από το κλείσιμο.')
+
+  const closedCase = await saveClinicalSurveillanceCase({
+    ...surveillanceCase,
+    review: { ...(surveillanceCase.review || {}), ...review, date: review.date || closeDate },
+    close: { ...(surveillanceCase.close || {}), ...close, date: closeDate, result },
+    status: SURVEILLANCE_CASE_STATUS.CLOSED,
+    workflowPhase: 'closed-clinical-outcome',
+    closedDate: closeDate,
+  })
+
+  const patientId = patient?.id || surveillanceCase.patientId || surveillanceCase.patientKey
+  if (patientId) {
+    const [infectionRows, isolationRows] = await Promise.all([
+      loadClinicalInfections(patientId),
+      loadClinicalIsolations(patientId),
+    ])
+
+    for (const infection of infectionRows.filter((item) => String(item.clinicalCaseId || '') === String(surveillanceCase.id) && item.status !== 'Ολοκληρωμένη')) {
+      await saveClinicalInfection({
+        ...infection,
+        status: 'Ολοκληρωμένη',
+        completedDate: closeDate,
+        outcome: result,
+        closureReason: 'clinical-surveillance-closure',
+      })
+    }
+
+    for (const isolation of isolationRows.filter((item) => String(item.clinicalCaseId || '') === String(surveillanceCase.id) && item.status === 'Ενεργή')) {
+      await saveClinicalIsolation({
+        ...isolation,
+        status: 'Ολοκληρωμένη',
+        endDate: isolation.endDate || closeDate,
+        closureReason: 'clinical-surveillance-closure',
+      })
+    }
+  }
+
+  return closedCase
+}
+
+
+export async function deletePatientSampleWithClinicalWorkflowAsync(sampleOrId) {
+  const sampleId = typeof sampleOrId === 'object' ? sampleOrId?.id : sampleOrId
+  if (!sampleId) return false
+
+  let sample = typeof sampleOrId === 'object'
+    ? sampleOrId
+    : loadPatientSamples().find((item) => String(item.id) === String(sampleId))
+
+  if (IS_PRODUCTION && sample?.patientId) {
+    await hydrateClinicalPatient(sample.patientId)
+    sample = loadPatientSamples().find((item) => String(item.id) === String(sampleId)) || sample
+  }
+  if (!sample) {
+    await deleteClinicalPatientSample(sampleId)
+    return true
+  }
+
+  const linkedInfection = existingInfectionForSample(sample.id)
+  const linkedCase = sample.clinicalCaseId ? getSurveillanceCase(sample.clinicalCaseId) : null
+  const remainingCaseSamples = loadPatientSamples().filter((item) =>
+    String(item.id) !== String(sample.id) &&
+    sample.clinicalCaseId &&
+    String(item.clinicalCaseId || '') === String(sample.clinicalCaseId)
+  )
+  const linkedIsolations = sample.patientId && sample.clinicalCaseId
+    ? (await loadClinicalIsolations(sample.patientId)).filter((item) => String(item.clinicalCaseId || '') === String(sample.clinicalCaseId))
+    : []
+
+  await deleteClinicalPatientSample(sample.id)
+
+  if (linkedInfection && (linkedInfection.autoCreatedFromLaboratory || linkedInfection.verificationStatus === 'Εργαστηριακά επιβεβαιωμένο εύρημα')) {
+    await deleteClinicalInfection(linkedInfection.id)
+  }
+
+  if (linkedCase?.autoCreatedFromLaboratory && remainingCaseSamples.length === 0) {
+    const hasClinicalContent = Boolean(
+      (Array.isArray(linkedCase.therapies) && linkedCase.therapies.length) ||
+      linkedCase.therapy?.antibiotic ||
+      linkedCase.assessment?.classification ||
+      linkedCase.assessment?.infectionSite ||
+      linkedCase.questionnaire?.completed ||
+      linkedCase.questionnaire?.notes ||
+      linkedCase.review?.outcome ||
+      linkedIsolations.length
+    )
+    if (hasClinicalContent) {
+      await saveClinicalSurveillanceCase({
+        ...linkedCase,
+        status: SURVEILLANCE_CASE_STATUS.AWAITING_LAB,
+        workflowPhase: 'awaiting-laboratory',
+        laboratoryOutcome: 'pending',
+        initialSampleId: '',
+        confirmingSampleId: '',
+        confirmationDate: '',
+        closedDate: '',
+        close: {},
+        sourceSampleDeletedAt: new Date().toISOString(),
+      })
+    } else {
+      await deleteClinicalSurveillanceCase(linkedCase.id)
+    }
+  }
+
+  return true
 }

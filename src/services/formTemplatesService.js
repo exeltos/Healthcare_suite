@@ -119,3 +119,7 @@ export function saveFormTemplates(templates = []) { const rows = Array.isArray(t
 export function upsertFormTemplate(template) { const normalized=normalizeTemplate(template); const rows=loadFormTemplates(); const exists=rows.some((item)=>item.id===normalized.id); saveFormTemplates(exists?rows.map((item)=>item.id===normalized.id?normalized:item):[normalized,...rows]); return normalized }
 export function deleteFormTemplate(templateId) { return saveFormTemplates(loadFormTemplates().filter((item)=>item.id!==templateId)) }
 export function getTemplatesForContext(module, context) { return loadFormTemplates().filter((template)=>template.status==='active' && template.appliesTo?.some((link)=>link.module===module && (!context || link.context===context || link.context==='*'))) }
+
+export async function loadFormTemplatesAsync(){const {hydrateFormsBackend}=await import('./backend/configurationBackendService');return (await hydrateFormsBackend()).templates}
+export async function upsertFormTemplateAsync(template){const {saveFormTemplateBackend}=await import('./backend/configurationBackendService');return saveFormTemplateBackend(template)}
+export async function deleteFormTemplateAsync(id){const {deleteFormTemplateBackend}=await import('./backend/configurationBackendService');return deleteFormTemplateBackend(id)}

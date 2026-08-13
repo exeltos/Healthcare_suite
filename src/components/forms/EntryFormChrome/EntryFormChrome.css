@@ -22,7 +22,7 @@
   margin-bottom: 4px;
   color: var(--primary);
   font-size: .72rem;
-  font-weight: 850;
+  font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -92,7 +92,7 @@
   color: #799098;
   background: #fff;
   font-size: .72rem;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .entry-form-stepper__line {
@@ -107,7 +107,7 @@
   margin-top: 6px;
   color: #7a8d94;
   font-size: .72rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .entry-form-stepper__item.active .entry-form-stepper__circle,
@@ -146,7 +146,7 @@
   margin-bottom: 4px;
   color: var(--primary);
   font-size: .7rem;
-  font-weight: 850;
+  font-weight: 800;
   letter-spacing: .07em;
   text-transform: uppercase;
 }

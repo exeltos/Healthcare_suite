@@ -1,7 +1,7 @@
 {
   "name": "limoxis-observer",
   "private": true,
-  "version": "0.7.8",
+  "version": "0.12.0-rc.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,18 +11,30 @@
     "audit:ui": "node tools/ui-audit.mjs",
     "audit:imports": "node tools/check-imports.mjs",
     "audit:production": "node tools/production-audit.mjs",
-    "check": "npm run audit:imports && npm run audit:architecture && npm run audit:integration && npm run audit:ui && npm run audit:production && npm run audit:consistency && npm run audit:workflow && npm run audit:i18n && npm run check:syntax",
+    "check": "npm run audit:imports && npm run audit:navigation && npm run audit:architecture && npm run audit:integration && npm run audit:ui && npm run audit:production && npm run audit:consistency && npm run audit:design && npm run audit:workflow && npm run audit:i18n && npm run audit:security && npm run audit:clinical && npm run audit:staff && npm run audit:quality && npm run audit:organization && npm run audit:management && npm run audit:release && npm run audit:migrations && npm run check:syntax",
     "audit:architecture": "node tools/architecture-structure-audit.mjs",
     "audit:integration": "node tools/integration-readiness-audit.mjs",
     "audit:consistency": "node tools/consistency-audit.mjs",
     "audit:workflow": "node tools/workflow-stability-audit.mjs",
-    "audit:i18n": "node tools/i18n-audit.mjs"
+    "audit:i18n": "node tools/i18n-audit.mjs",
+    "audit:deployment": "node scripts/audit-deployment-readiness.mjs",
+    "audit:navigation": "node tools/navigation-audit.mjs",
+    "audit:design": "node tools/design-system-audit.mjs",
+    "audit:security": "node tools/security-access-audit.mjs",
+    "audit:clinical": "node tools/clinical-integrity-audit.mjs",
+    "audit:staff": "node tools/staff-integrity-audit.mjs",
+    "audit:quality": "node tools/quality-integrity-audit.mjs",
+    "audit:organization": "node tools/organization-integrity-audit.mjs",
+    "audit:management": "node tools/management-center-integrity-audit.mjs",
+    "audit:release": "node tools/release-candidate-audit.mjs",
+    "audit:migrations": "node tools/migration-schema-audit.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.1.1"
+    "react-router-dom": "^7.1.1",
+    "@supabase/supabase-js": "^2.0.0"
   },
   "devDependencies": {
     "@babel/parser": "^7.29.8",

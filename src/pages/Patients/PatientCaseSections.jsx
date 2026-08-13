@@ -8,7 +8,7 @@ import MultiSelect from '../../components/core/MultiSelect/MultiSelect'
 import LibraryField from '../../components/core/LibraryField/LibraryField'
 import { deletePromotedAntibiotic, loadPromotedAntibiotics, promotedRecordIdForTherapy, syncPromotedTherapy } from '../../services/preventionService'
 import { CLINICAL_ASSESSMENT_OPTIONS, PROMOTED_ANTIBIOTIC_DEFAULTS, PROMOTED_APPROVAL_OPTIONS } from '../../core/constants/clinicalOptions'
-import { masterNames, upsertMasterItem } from '../../services/masterDataService'
+import { masterNames, upsertMasterItemAsync } from '../../services/masterDataService'
 import { buildPatientTimeline } from './patientWorkflowTimeline'
 import { buildSampleChainRows, formatDate, getDeviceRecords, getTherapies, highestResistance, isRepeatSample, normalizeOrganismResults, sampleMicroorganismLabel, sampleResistanceLabel, today } from './patientWorkflowUtils'
 import { AttachmentTools, EmptyState, Field, IconButton, Input, IsolationEditor, SampleEditor, SectionHeader, Select, Tab } from './PatientWorkflowEditors'
@@ -17,7 +17,7 @@ import { patientClinicalCopy } from './patientClinicalCopy'
 
 const EMPTY_ISOLATION = { isolationType: '', pathogen: '', startDate: '', endDate: '', status: 'Ενεργή', notes: '' }
 
-export function CaseWorkspace({ patient, data, tab, setTab, patch, patchNested, focusedRecord, samples, sampleForm, setSampleForm, beginSample, saveSample, isolations, isolationForm, setIsolationForm, saveIsolation, attachments, filesFor, upload, deleteAttachment, removeCase, removeSample, removeIsolation }) {
+export function CaseWorkspace({ patient, data, tab, setTab, patch, patchNested, closeEpisode, focusedRecord, samples, sampleForm, setSampleForm, beginSample, saveSample, isolations, isolationForm, setIsolationForm, saveIsolation, attachments, filesFor, upload, deleteAttachment, removeCase, removeSample, removeIsolation }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
   const timeline = buildPatientTimeline({ patient, cases: [data], samples, isolations, language })
@@ -33,7 +33,7 @@ export function CaseWorkspace({ patient, data, tab, setTab, patch, patchNested, 
       {readOnly && <div className="pw-readonly-notice">{patientClinicalCopy("caseReadOnly", language)}</div>}
       {tab === 'assessment' && <AssessmentPanel readOnly={readOnly} data={data} patch={patch} patchNested={patchNested} focusedRecord={focusedRecord} files={filesFor('questionnaire')} upload={() => upload({ step: 'questionnaire' })} deleteAttachment={deleteAttachment} />}
       {tab === 'samples' && <SamplesPanel readOnly={readOnly} samples={samples} form={sampleForm} setForm={setSampleForm} beginSample={beginSample} save={saveSample} remove={removeSample} filesFor={filesFor} upload={upload} deleteAttachment={deleteAttachment} />}
-      {tab === 'care' && <CarePanel readOnly={readOnly} patient={patient} data={data} patch={patch} patchNested={patchNested} focusedRecord={focusedRecord} isolations={isolations} isolationForm={isolationForm} setIsolationForm={setIsolationForm} saveIsolation={saveIsolation} removeIsolation={removeIsolation} filesFor={filesFor} upload={upload} deleteAttachment={deleteAttachment} />}
+      {tab === 'care' && <CarePanel readOnly={readOnly} patient={patient} data={data} patch={patch} patchNested={patchNested} closeEpisode={closeEpisode} focusedRecord={focusedRecord} isolations={isolations} isolationForm={isolationForm} setIsolationForm={setIsolationForm} saveIsolation={saveIsolation} removeIsolation={removeIsolation} filesFor={filesFor} upload={upload} deleteAttachment={deleteAttachment} />}
     </section>
   </div>
 }
@@ -55,7 +55,7 @@ export function AssessmentPanel({ readOnly = false, data, patch, patchNested, fo
     const next = devices.some((item) => String(item.id) === String(deviceForm.id))
       ? devices.map((item) => String(item.id) === String(deviceForm.id) ? deviceForm : item)
       : [...devices, deviceForm]
-    if (deviceForm.customDevice) upsertMasterItem('devices', { name: deviceForm.type })
+    if (deviceForm.customDevice) upsertMasterItemAsync('devices', { name: deviceForm.type })
     patch({ deviceRecords: next, questionnaire: { ...(data.questionnaire || {}), devices: next.map((item) => item.type) } })
     setDeviceForm(null)
   }
@@ -75,8 +75,8 @@ export function AssessmentPanel({ readOnly = false, data, patch, patchNested, fo
       <Field label={L("Θερμοκρασία (°C)", "Temperature (°C)")}><Input disabled={readOnly} type="number" step="0.1" value={data.assessment?.temperature} onChange={(v) => patchNested('assessment', { temperature: v })} /></Field>
       <Field label="CRP"><Input disabled={readOnly} value={data.assessment?.crp} onChange={(v) => patchNested('assessment', { crp: v })} placeholder={L("π.χ. mg/L", "e.g. mg/L")} /></Field>
       <Field label="PCT"><Input disabled={readOnly} value={data.assessment?.pct} onChange={(v) => patchNested('assessment', { pct: v })} placeholder={L("π.χ. ng/mL", "e.g. ng/mL")} /></Field>
-      <Field label={L("Συμπτώματα", "Symptoms")} wide><MultiSelect disabled={readOnly} value={data.questionnaire?.symptoms} options={masterNames('symptoms')} getOptionLabel={(value) => patientDisplayValue(value, language)} onChange={(v) => patchNested('questionnaire', { symptoms: v })} emptyLabel={L("Χωρίς καταχωρημένα συμπτώματα", "No symptoms recorded")} allowCustom customLabel={L("Προσθήκη συμπτώματος", "Add symptom")} onAddCustom={(name) => upsertMasterItem('symptoms', { name })} /></Field>
-      <Field label={L("Παράγοντες κινδύνου", "Risk factors")} wide><MultiSelect disabled={readOnly} value={data.questionnaire?.riskFactors} options={masterNames('risk-factors')} getOptionLabel={(value) => patientDisplayValue(value, language)} onChange={(v) => patchNested('questionnaire', { riskFactors: v })} emptyLabel={L("Κανένας καταχωρημένος παράγοντας", "No risk factors recorded")} allowCustom customLabel={L("Προσθήκη παράγοντα", "Add risk factor")} onAddCustom={(name) => upsertMasterItem('risk-factors', { name })} /></Field>
+      <Field label={L("Συμπτώματα", "Symptoms")} wide><MultiSelect disabled={readOnly} value={data.questionnaire?.symptoms} options={masterNames('symptoms')} getOptionLabel={(value) => patientDisplayValue(value, language)} onChange={(v) => patchNested('questionnaire', { symptoms: v })} emptyLabel={L("Χωρίς καταχωρημένα συμπτώματα", "No symptoms recorded")} allowCustom customLabel={L("Προσθήκη συμπτώματος", "Add symptom")} onAddCustom={(name) => upsertMasterItemAsync('symptoms', { name })} /></Field>
+      <Field label={L("Παράγοντες κινδύνου", "Risk factors")} wide><MultiSelect disabled={readOnly} value={data.questionnaire?.riskFactors} options={masterNames('risk-factors')} getOptionLabel={(value) => patientDisplayValue(value, language)} onChange={(v) => patchNested('questionnaire', { riskFactors: v })} emptyLabel={L("Κανένας καταχωρημένος παράγοντας", "No risk factors recorded")} allowCustom customLabel={L("Προσθήκη παράγοντα", "Add risk factor")} onAddCustom={(name) => upsertMasterItemAsync('risk-factors', { name })} /></Field>
       <Field label={L("Πρόσφατη επέμβαση", "Recent surgery")}><Select disabled={readOnly} value={data.questionnaire?.surgery} onChange={(v) => patchNested('questionnaire', { surgery: v })}><option value="">{L("Επιλογή", "Select")}</option><option value="Όχι">{L("Όχι", "No")}</option><option value="Ναι, εντός 30 ημερών">{L("Ναι, εντός 30 ημερών", "Yes, within 30 days")}</option><option value="Ναι, εντός 90 ημερών">{L("Ναι, εντός 90 ημερών", "Yes, within 90 days")}</option></Select></Field>
       <Field label={L("Κλινικές παρατηρήσεις", "Clinical notes")} wide><textarea disabled={readOnly} value={data.questionnaire?.notes || ''} onChange={(e) => patchNested('questionnaire', { notes: e.target.value })} /></Field>
     </div>
@@ -115,7 +115,7 @@ export function SamplesPanel({ readOnly = false, samples, form, setForm, beginSa
   </div>
 }
 
-export function CarePanel({ readOnly = false, patient, data, patch, patchNested, focusedRecord, isolations, isolationForm, setIsolationForm, saveIsolation, removeIsolation, filesFor, upload, deleteAttachment }) {
+export function CarePanel({ readOnly = false, patient, data, patch, patchNested, closeEpisode, focusedRecord, isolations, isolationForm, setIsolationForm, saveIsolation, removeIsolation, filesFor, upload, deleteAttachment }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
   const therapies = getTherapies(data)
@@ -162,7 +162,7 @@ export function CarePanel({ readOnly = false, patient, data, patch, patchNested,
     })
   }
 
-  function saveTherapy(event) {
+  async function saveTherapy(event) {
     event.preventDefault()
     if (!therapyForm?.antibiotic || !therapyForm?.startDate) {
       notifyAction(L('Συμπληρώστε αντιμικροβιακό και ημερομηνία έναρξης.', 'Enter antimicrobial and start date.'))
@@ -172,15 +172,15 @@ export function CarePanel({ readOnly = false, patient, data, patch, patchNested,
     const next = therapies.some((item) => String(item.id) === String(savedTherapy.id))
       ? therapies.map((item) => String(item.id) === String(savedTherapy.id) ? savedTherapy : item)
       : [...therapies, savedTherapy]
-    patch({ therapies: next, therapy: next[0] || {} })
-    syncPromotedTherapy({ therapy: savedTherapy, patient, surveillanceCase: data })
+    await patch({ therapies: next, therapy: next[0] || {} })
+    syncPromotedTherapy({ therapy: savedTherapy, patient, surveillanceCase: { ...data, therapies: next, therapy: next[0] || {} } })
     setTherapyForm(null)
   }
 
-  function removeTherapy(id) {
+  async function removeTherapy(id) {
     if (!confirmAction(L('Να διαγραφεί η αντιμικροβιακή αγωγή;', 'Delete this antimicrobial therapy?'))) return
     const next = therapies.filter((item) => String(item.id) !== String(id))
-    patch({ therapies: next, therapy: next[0] || {} })
+    await patch({ therapies: next, therapy: next[0] || {} })
     deletePromotedAntibiotic(promotedRecordIdForTherapy(id))
     setTherapyForm(null)
   }
@@ -217,6 +217,6 @@ export function CarePanel({ readOnly = false, patient, data, patch, patchNested,
       {!therapies.length ? <EmptyState icon={<Pill size={24} />} title={L("Δεν υπάρχει αντιμικροβιακή αγωγή", "No antimicrobial therapy")} text={patientClinicalCopy("therapyEmpty", language)} /> : <div className="pw-record-list compact">{therapies.map((item) => <div key={item.id} className="pw-record-row" onClick={() => !readOnly && beginTherapy(item)}><div className="pw-record-icon"><Pill size={17} /></div><div className="pw-record-copy"><b>{item.antibiotic}</b><span>{[item.dosage, item.frequency, patientDisplayValue(item.route, language)].filter(Boolean).join(' · ') || 'Χωρίς στοιχεία δοσολογίας'}{item.startDate ? ` · ${formatDate(item.startDate)}` : ''}{item.endDate ? ` – ${formatDate(item.endDate)}` : ''}</span></div><div className="pw-record-badges">{item.isPromoted && <Badge tone={item.approval === 'Εγκρίθηκε' ? 'success' : item.approval === 'Απορρίφθηκε' ? 'danger' : 'warning'}>Προωθημένο · {patientDisplayValue(item.approval || 'Εκκρεμεί', language)}</Badge>}<Badge tone={item.endDate && item.endDate < today() ? 'neutral' : 'success'}>{item.endDate && item.endDate < today() ? 'Ολοκληρωμένη' : 'Ενεργή'}</Badge></div><div className="pw-icon-actions" onClick={(e) => e.stopPropagation()}>{!readOnly && <><IconButton label={L("Επισύναψη", "Attach")} icon={<Paperclip size={15} />} onClick={() => upload({ step: 'treatment', recordId: item.id })} /><IconButton danger label={L("Διαγραφή", "Delete")} icon={<Trash2 size={15} />} onClick={() => removeTherapy(item.id)} /></>}</div></div>)}</div>}
     </section>
     <section className="pw-care-card"><SectionHeader eyebrow={L("ΑΠΟΜΟΝΩΣΗ", "ISOLATION")} title={L("Μέτρα προφύλαξης", "Precaution measures")} actions={!readOnly ? <Button size="sm" icon={<Plus size={15} />} onClick={() => setIsolationForm({ ...EMPTY_ISOLATION, startDate: today() })}>{L('Νέα απομόνωση', 'New isolation')}</Button> : null} />{isolationForm && !readOnly && <IsolationEditor form={isolationForm} setForm={setIsolationForm} save={saveIsolation} cancel={() => setIsolationForm(null)} />}{isolations.length === 0 ? <EmptyState icon={<ShieldAlert size={24} />} title={L("Δεν υπάρχει απομόνωση", "No isolation")} text={L("Καταχωρίστε μέτρα μόνο όταν απαιτούνται.", "Record isolation precautions only when required.")} /> : <div className="pw-record-list compact">{isolations.map((item) => <div key={item.id} className="pw-record-row" onClick={() => !readOnly && setIsolationForm({ ...item })}><div className="pw-record-icon"><ShieldAlert size={17} /></div><div className="pw-record-copy"><b>{patientDisplayValue(item.isolationType || 'Απομόνωση', language)}</b><span>{formatDate(item.startDate)}{item.endDate ? ` – ${formatDate(item.endDate)}` : ''}{item.pathogen ? ` · ${item.pathogen}` : ''}</span></div><Badge tone={item.status === 'Ενεργή' ? 'danger' : 'neutral'}>{patientDisplayValue(item.status || 'Ενεργή', language)}</Badge><div className="pw-icon-actions" onClick={(e) => e.stopPropagation()}>{!readOnly && <><IconButton label={L("Επισύναψη", "Attach")} icon={<Paperclip size={15} />} onClick={() => upload({ step: 'isolation', recordId: item.id })} /><IconButton danger label={L("Διαγραφή", "Delete")} icon={<Trash2 size={15} />} onClick={() => removeIsolation(item.id)} /></>}</div></div>)}</div>}</section>
-    <section className="pw-care-card"><SectionHeader eyebrow={L("ΕΠΑΝΕΚΤΙΜΗΣΗ & ΕΚΒΑΣΗ", "REASSESSMENT & OUTCOME")} title={L("Κλινική πορεία", "Clinical course")} actions={<AttachmentTools readOnly={readOnly} files={filesFor('review')} upload={() => upload({ step: 'review' })} deleteAttachment={deleteAttachment} />} /><div className="pw-form-grid compact"><Field label={L("Ημερομηνία", "Date")}><Input disabled={readOnly} type="date" value={data.review?.date} onChange={(v) => patchNested('review', { date: v })} /></Field><Field label={L("Έκβαση", "Outcome")}><Select disabled={readOnly} value={data.review?.outcome} onChange={(v) => patchNested('review', { outcome: v })}><option value="">{L("Επιλογή", "Select")}</option><option>Ίαση / αρνητικοποίηση</option><option>Κλινική βελτίωση</option><option>Επιμονή</option><option>Υποτροπή</option><option>Επαναλοίμωξη</option><option>Νέο παθογόνο</option></Select></Field><Field label={L("Παρατηρήσεις", "Notes")} wide><textarea disabled={readOnly} value={data.review?.notes || ''} onChange={(e) => patchNested('review', { notes: e.target.value })} /></Field></div></section>
+    <section className="pw-care-card"><SectionHeader eyebrow={L("ΕΠΑΝΕΚΤΙΜΗΣΗ & ΕΚΒΑΣΗ", "REASSESSMENT & OUTCOME")} title={L("Κλινική πορεία", "Clinical course")} actions={<AttachmentTools readOnly={readOnly} files={filesFor('review')} upload={() => upload({ step: 'review' })} deleteAttachment={deleteAttachment} />} /><div className="pw-form-grid compact"><Field label={L("Ημερομηνία", "Date")}><Input disabled={readOnly} type="date" value={data.review?.date} onChange={(v) => patchNested('review', { date: v })} /></Field><Field label={L("Έκβαση", "Outcome")}><Select disabled={readOnly} value={data.review?.outcome} onChange={(v) => patchNested('review', { outcome: v })}><option value="">{L("Επιλογή", "Select")}</option><option>Ίαση / αρνητικοποίηση</option><option>Κλινική βελτίωση</option><option>Επιμονή</option><option>Υποτροπή</option><option>Επαναλοίμωξη</option><option>Νέο παθογόνο</option></Select></Field><Field label={L("Παρατηρήσεις", "Notes")} wide><textarea disabled={readOnly} value={data.review?.notes || ''} onChange={(e) => patchNested('review', { notes: e.target.value })} /></Field></div>{!readOnly && <div className="pw-form-actions"><Button variant="secondary" onClick={() => closeEpisode?.()}>{L("Κλείσιμο επιτήρησης", "Close surveillance")}</Button></div>}</section>
   </div>
 }

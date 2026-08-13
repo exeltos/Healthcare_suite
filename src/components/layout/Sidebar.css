@@ -50,7 +50,7 @@
 .nav-section-title {
   padding: 8px 10px 5px;
   color: rgba(255, 255, 255, 0.45);
-  font-size: 0.69rem;
+  font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -134,7 +134,7 @@
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
-  line-height: 1.18;
+  line-height: 1.25;
 }
 
 .sidebar-group-button {
@@ -142,7 +142,7 @@
 }
 
 .sidebar-group-button .nav-label {
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 800;
 }
 
@@ -194,7 +194,7 @@
   padding: 0 10px;
   border-radius: 9px;
   color: rgba(255, 255, 255, 0.68);
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-weight: 650;
   text-decoration: none;
 }
@@ -360,7 +360,7 @@
   background: transparent;
   font: inherit;
   font-size: .76rem;
-  font-weight: 750;
+  font-weight: 700;
   text-align: left;
   cursor: pointer;
 }

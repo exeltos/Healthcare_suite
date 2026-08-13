@@ -6,7 +6,9 @@ import { APP_ROUTES } from '../../config/routes'
 import { useI18n } from '../../i18n'
 import './LoginPage.css'
 import { removeSessionValue, writeSessionValue } from '../../core/storage'
-import { clearDemoDataset, generateDemoDataset } from '../../data/demoDataGenerator'
+import { generateDemoDataset } from '../../data/demoDataGenerator'
+import { authenticateUser, requestRecovery } from '../../services/auth'
+import { IS_DEMO, IS_PRODUCTION } from '../../core/runtime'
 
 export default function LoginPage() {
   const [view, setView] = useState('welcome')
@@ -16,24 +18,42 @@ export default function LoginPage() {
   const { t } = useI18n()
 
   function enterDemo() {
+    if(!IS_DEMO) {
+      setMessage(t('login.demoDisabledProduction'))
+      setView('login')
+      return
+    }
     generateDemoDataset()
     writeSessionValue('healthcare-suite.session','active')
     writeSessionValue('healthcare-suite.demo','true')
-    writeSessionValue('healthcare-suite.user', JSON.stringify({ name: t('login.demoUser'), initials: 'DEMO', role: 'administrator', demo: true }))
+    writeSessionValue('healthcare-suite.user', JSON.stringify({ name: t('login.demoUser'), initials: 'DEMO', role: 'administrator', demo: true, authSource: 'demo-entry' }))
     navigate(APP_ROUTES.DASHBOARD, { replace: true })
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
+    setMessage('')
     const form = new FormData(event.currentTarget)
     const username = String(form.get('username') || '').trim()
     const password = String(form.get('password') || '').trim()
     if (!username || !password) { setMessage(t('login.missingCredentials')); return }
-    clearDemoDataset()
-    removeSessionValue('healthcare-suite.demo')
-    writeSessionValue('healthcare-suite.session','active')
-    writeSessionValue('healthcare-suite.user', JSON.stringify({ name: username, initials: username.slice(0,2).toUpperCase(), role: 'administrator', demo: false }))
-    navigate(APP_ROUTES.DASHBOARD, { replace: true })
+    try {
+      const authenticated = await authenticateUser({ username, password })
+      removeSessionValue('healthcare-suite.demo')
+      writeSessionValue('healthcare-suite.session',authenticated.session)
+      writeSessionValue('healthcare-suite.user', JSON.stringify(authenticated.user))
+      navigate(APP_ROUTES.DASHBOARD, { replace: true })
+    } catch (error) {
+      if(error?.code==='AUTH_NOT_CONFIGURED') {
+        setMessage(t('login.productionAuthRequired'))
+        return
+      }
+      if(error?.code==='EMAIL_REQUIRED') {
+        setMessage(t('login.productionEmailRequired'))
+        return
+      }
+      setMessage(t('login.invalidCredentials'))
+    }
   }
 
   return (
@@ -52,15 +72,15 @@ export default function LoginPage() {
           <div className="login-language-row"><LanguageSwitcher /></div>
           {view === 'welcome' ? (
             <section className="login-auth-view"><header className="login-auth-header"><h2>{t('login.welcome')}</h2><p>{t('login.welcomeText')}</p></header>
-              <div className="login-welcome-actions"><button type="button" className="login-primary-button" onClick={() => setView('login')}>{t('login.enter')}</button><button type="button" className="login-demo-button" onClick={enterDemo}>{t('login.demoEnter')}</button><button type="button" className="login-secondary-button" onClick={() => notifyAction(t('login.supportLater'))}>{t('login.support')}</button></div>
-              <div className="login-system-status"><span className="login-status-dot"/>{t('login.available')}</div><footer className="login-auth-footer">Healthcare Suite</footer>
+              <div className="login-welcome-actions"><button type="button" className="login-primary-button" onClick={() => setView('login')}>{t('login.enter')}</button>{IS_DEMO&&<button type="button" className="login-demo-button" onClick={enterDemo}>{t('login.demoEnter')}</button>}<button type="button" className="login-secondary-button" onClick={() => notifyAction(t('login.supportLater'))}>{t('login.support')}</button></div>
+              <div className={`login-system-status ${IS_PRODUCTION?'is-production':''}`}><span className="login-status-dot"/>{IS_PRODUCTION?t('login.productionMode'):t('login.demoMode')}</div><footer className="login-auth-footer">Healthcare Suite</footer>
             </section>
           ) : view === 'login' ? (
             <section className="login-auth-view"><button type="button" className="login-back-button" onClick={() => setView('welcome')}>{t('login.back')}</button><header className="login-auth-header"><h2>{t('login.signInTitle')}</h2><p>{t('login.signInText')}</p></header>
-              <form className="login-form-grid" onSubmit={handleSubmit}><label className="login-form-group"><span>{t('login.username')}</span><input name="username" type="text" autoComplete="username"/></label><label className="login-form-group"><span>{t('login.password')}</span><div className="login-input-wrapper"><input name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password"/><button type="button" aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')} onClick={() => setShowPassword(v => !v)}>{showPassword ? '🙈' : '👁'}</button></div></label>{message && <div className="login-form-message">{message}</div>}<button type="button" className="login-forgot-link" onClick={() => { setMessage(''); setView('forgot') }}>{t('login.forgotPassword')}</button><button className="login-primary-button" type="submit">{t('login.signIn')}</button></form>
+              <form className="login-form-grid" onSubmit={handleSubmit}><label className="login-form-group"><span>{IS_PRODUCTION?t('login.email'):t('login.username')}</span><input name="username" type={IS_PRODUCTION?'email':'text'} autoComplete={IS_PRODUCTION?'email':'username'}/></label><label className="login-form-group"><span>{t('login.password')}</span><div className="login-input-wrapper"><input name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password"/><button type="button" aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')} onClick={() => setShowPassword(v => !v)}>{showPassword ? '🙈' : '👁'}</button></div></label>{message && <div className="login-form-message">{message}</div>}<button type="button" className="login-forgot-link" onClick={() => { setMessage(''); setView('forgot') }}>{t('login.forgotPassword')}</button><button className="login-primary-button" type="submit">{t('login.signIn')}</button></form>
             </section>
           ) : (
-            <section className="login-auth-view"><button type="button" className="login-back-button" onClick={() => { setMessage(''); setView('login') }}>{t('login.back')}</button><header className="login-auth-header"><h2>{t('login.forgotTitle')}</h2><p>{t('login.forgotText')}</p></header><form className="login-form-grid" onSubmit={(e)=>{e.preventDefault();setMessage(t('login.recoverySent'))}}><label className="login-form-group"><span>{t('login.username')}</span><input required name="recovery" type="text" autoComplete="username"/></label>{message&&<div className="login-form-message login-form-message--success">{message}</div>}<button className="login-primary-button" type="submit">{t('login.sendRecovery')}</button></form></section>
+            <section className="login-auth-view"><button type="button" className="login-back-button" onClick={() => { setMessage(''); setView('login') }}>{t('login.back')}</button><header className="login-auth-header"><h2>{t('login.forgotTitle')}</h2><p>{t('login.forgotText')}</p></header><form className="login-form-grid" onSubmit={async(e)=>{e.preventDefault();const username=String(new FormData(e.currentTarget).get('recovery')||'').trim();try{await requestRecovery({username});setMessage(IS_PRODUCTION?t('login.recoverySentProduction'):t('login.recoverySentDemo'))}catch(error){setMessage(error?.code==='AUTH_NOT_CONFIGURED'?t('login.productionRecoveryRequired'):error?.code==='EMAIL_REQUIRED'?t('login.productionEmailRequired'):t('login.missingCredentials'))}}}><label className="login-form-group"><span>{IS_PRODUCTION?t('login.email'):t('login.username')}</span><input required name="recovery" type={IS_PRODUCTION?'email':'text'} autoComplete={IS_PRODUCTION?'email':'username'}/></label>{message&&<div className="login-form-message">{message}</div>}<button className="login-primary-button" type="submit">{t('login.sendRecovery')}</button></form></section>
           )}
         </div></section>
       </section>

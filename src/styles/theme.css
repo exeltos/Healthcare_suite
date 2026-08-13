@@ -1,6 +1,6 @@
 :root {
   color-scheme: light;
-  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
   --primary: #0a6f78;
   --primary-hover: #075f67;
@@ -37,8 +37,8 @@
 
   --font-size-xs: .75rem;
   --font-size-sm: .875rem;
-  --font-size-body: .96rem;
-  --font-size-section-title: 1.13rem;
+  --font-size-body: .9rem;
+  --font-size-section-title: 1.08rem;
   --font-size-page-title: clamp(1.72rem, 2.2vw, 2.22rem);
   --modal-font-size: .82rem;
   --modal-title-size: 1.18rem;
@@ -109,7 +109,7 @@
 
 * { box-sizing: border-box; }
 html, body, #root { min-height: 100%; margin: 0; }
-body { min-width: 320px; background: var(--background); -webkit-font-smoothing: antialiased; }
+body { min-width: 320px; background: var(--background); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; line-height: 1.45; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 a { color: inherit; text-decoration: none; }
@@ -622,10 +622,10 @@ a { color: inherit; text-decoration: none; }
   --app-content-max: 1480px;
   --app-card-width: min(1040px, calc(100vw - 48px));
   --app-card-height: min(760px, calc(100vh - 48px));
-  --app-font-body: .88rem;
-  --app-font-label: .72rem;
-  --app-font-tab: .74rem;
-  --app-font-title: 1.55rem;
+  --app-font-body: .9rem;
+  --app-font-label: .75rem;
+  --app-font-tab: .78rem;
+  --app-font-title: 1.58rem;
   --app-control-height: 36px;
   --app-button-radius: 9px;
 }
@@ -640,7 +640,7 @@ body{font-size:var(--app-font-body)}
 :where(.prevention-modal>form,.organization-card-body,.quality-card-body){min-height:0;overflow:auto}
 :where(.prevention-tabs,.organization-tabs,.quality-tabs,.core-drawer__tabs){min-height:34px}
 :where(.prevention-tabs button,.organization-tabs button,.quality-tabs button,.core-drawer__tabs button){min-height:33px!important;padding:0 9px!important;font-size:var(--app-font-tab)!important;font-weight:700!important}
-:where(.app-primary-button,.organization-button,.quality-button,.prevention-modal footer button,.organization-card footer button,.quality-card footer button,.primary,.secondary){min-height:var(--app-control-height)!important;padding:0 13px!important;border-radius:var(--app-button-radius)!important;font-size:.8rem!important;font-weight:750!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:7px!important}
+:where(.app-primary-button,.organization-button,.quality-button,.prevention-modal footer button,.organization-card footer button,.quality-card footer button,.primary,.secondary){min-height:var(--app-control-height)!important;padding:0 13px!important;border-radius:var(--app-button-radius)!important;font-size:.8rem!important;font-weight:700!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:7px!important}
 :where(.prevention-form label>span,.organization-form label>span,.quality-form label>span){font-size:var(--app-font-label)!important;color:var(--muted)!important;font-weight:700!important}
 :where(.prevention-form input,.prevention-form select,.organization-form input,.organization-form select,.quality-form input,.quality-form select){height:38px!important;border-radius:9px!important}
 :where(.prevention-form textarea,.organization-form textarea,.quality-form textarea){min-height:82px!important;border-radius:9px!important}
@@ -661,7 +661,7 @@ body{font-size:var(--app-font-body)}
 :where(.source-samples-header,.patient-samples-header,.water-control-header,.surveillance-header) > div > span,
 :where(.source-drawer,.patient-sample-drawer,.water-drawer) header > div > span,
 .surveillance-eyebrow,.water-control-eyebrow{display:none!important}
-:where(.source-samples-header,.patient-samples-header,.water-control-header,.surveillance-header) h1{margin:0!important;font-size:1.45rem!important;font-weight:750!important;letter-spacing:-.025em!important}
+:where(.source-samples-header,.patient-samples-header,.water-control-header,.surveillance-header) h1{margin:0!important;font-size:1.45rem!important;font-weight:700!important;letter-spacing:-.025em!important}
 :where(.source-samples-header,.patient-samples-header,.water-control-header,.surveillance-header) p{margin:4px 0 0!important;font-size:.82rem!important;line-height:1.45!important;color:var(--muted)!important}
 :where(.source-samples-header,.patient-samples-header,.water-control-header) > button,
 .water-primary-button{min-height:36px!important;height:36px!important;padding:0 13px!important;border-radius:9px!important;font-size:.8rem!important;font-weight:700!important}

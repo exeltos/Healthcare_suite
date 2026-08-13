@@ -18,7 +18,8 @@ import {
 
 import './IsolationPage.css'
 import HybridPatientSelector from '../../components/core/HybridPatientSelector/HybridPatientSelector'
-import { deleteIsolation, getIsolationStats, ISOLATIONS_EVENT, loadIsolations, saveIsolation } from '../../services/isolationsService'
+import { getIsolationStats, ISOLATIONS_EVENT, loadIsolations } from '../../services/isolationsService'
+import { deleteClinicalIsolation, loadClinicalIsolations, saveClinicalIsolation } from '../../services/backend/clinicalSupportBackendService'
 import { activeMasterItems, loadMasterDataWithFallback } from '../../services/masterDataService'
 
 import { Button, PageHeader, StatCard } from '../../components/core'
@@ -86,9 +87,9 @@ export default function IsolationPage() {
     setMasterData(loadMasterData())
   }, { includeStorage: true })
 
-  useAppEvents(ISOLATIONS_EVENT, () => {
-    setRecords(loadIsolations())
-  }, { includeStorage: true })
+  async function refreshIsolations(){setRecords(await loadClinicalIsolations())}
+  useEffect(()=>{refreshIsolations().catch(()=>{})},[])
+  useAppEvents(ISOLATIONS_EVENT, () => {refreshIsolations().catch(()=>{})}, { includeStorage: true })
 
   const departments = useMemo(
     () => activeItems(masterData, 'departments'),
@@ -159,7 +160,7 @@ export default function IsolationPage() {
     setFormData(emptyIsolation)
   }
 
-  function saveRecord(event) {
+  async function saveRecord(event) {
     event.preventDefault()
 
     if (
@@ -174,8 +175,8 @@ export default function IsolationPage() {
       return
     }
 
-    saveIsolation(formData, selectedRecord)
-    setRecords(loadIsolations())
+    await saveClinicalIsolation({...selectedRecord,...formData,id:selectedRecord?.id||formData.id})
+    setRecords(await loadClinicalIsolations())
 
     closeDrawer()
   }
@@ -204,13 +205,13 @@ export default function IsolationPage() {
     }))
   }
 
-  function deleteRecord(recordId) {
+  async function deleteRecord(recordId) {
     if (!confirmAction('Να διαγραφεί η απομόνωση;')) {
       return
     }
 
-    const nextRecords = deleteIsolation(recordId)
-    setRecords(nextRecords)
+    await deleteClinicalIsolation(recordId)
+    setRecords(await loadClinicalIsolations())
     closeDrawer()
   }
 

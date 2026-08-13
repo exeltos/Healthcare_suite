@@ -8,50 +8,97 @@ export const ROLE_DEFINITIONS = Object.freeze([
   {
     id:'admin',
     label:'Διαχειριστής',
+    labelEn:'Administrator',
     description:'Πλήρης λειτουργική και διοικητική πρόσβαση στην εγκατάσταση του Healthcare Suite.',
+    descriptionEn:'Full functional and administrative access to the Healthcare Suite installation.',
     permissions:['Πλήρης πρόσβαση','Κέντρο Διαχείρισης','Χρήστες & Ρόλοι','Όλα τα τμήματα','Διαγραφή όπου επιτρέπεται'],
+    permissionsEn:['Full access','Management Center','Users & Roles','All departments','Deletion where allowed'],
+  },
+  {
+    id:'infection_lead',
+    label:'Προϊστάμενος Λοιμώξεων',
+    labelEn:'Infection Control Lead',
+    description:'Διευρυμένη λειτουργική πρόσβαση στην επιτήρηση, πρόληψη, εργαστήριο, δείκτες και συντονισμό λοιμώξεων.',
+    descriptionEn:'Extended functional access to surveillance, prevention, laboratory, indicators and infection-control coordination.',
+    permissions:['Επιτήρηση & Ασθενείς','Εργαστήριο','Πρόληψη','Δείκτες','Εκπαίδευση','Επιτροπές'],
+    permissionsEn:['Surveillance & Patients','Laboratory','Prevention','Indicators','Training','Committees'],
   },
   {
     id:'infection_liaison',
     label:'Σύνδεσμος Λοιμώξεων',
+    labelEn:'Infection Control Liaison',
     description:'Επιτήρηση και πρόληψη στα τμήματα ευθύνης του, χωρίς πρόσβαση στη διαχείριση της πλατφόρμας.',
+    descriptionEn:'Surveillance and prevention in assigned departments, without platform administration access.',
     permissions:['Επιτήρηση','Ασθενείς','Εργαστήριο','Νερό','Επιφάνειες','Πρόληψη','Δείκτες'],
+    permissionsEn:['Surveillance','Patients','Laboratory','Water','Surfaces','Prevention','Indicators'],
+  },
+  {
+    id:'medical_reviewer',
+    label:'Ιατρός Ελεγκτής',
+    labelEn:'Medical Reviewer',
+    description:'Κλινική αξιολόγηση, έλεγχος αντιμικροβιακής αγωγής και πρόσβαση σε σχετικά εργαστηριακά και ποιοτικά δεδομένα.',
+    descriptionEn:'Clinical review, antimicrobial-therapy oversight and access to related laboratory and quality data.',
+    permissions:['Ασθενείς','Εργαστήριο','Προωθημένα Αντιβιοτικά','Δείκτες','Κέντρο Ποιότητας'],
+    permissionsEn:['Patients','Laboratory','Restricted Antibiotics','Indicators','Quality Center'],
   },
   {
     id:'department_user',
     label:'Χρήστης Τμήματος',
+    labelEn:'Department User',
     description:'Περιορισμένη πρόσβαση στις επιτρεπόμενες λειτουργίες και στα δεδομένα των τμημάτων που του έχουν δοθεί.',
+    descriptionEn:'Limited access to permitted functions and data from assigned departments.',
     permissions:['Προβολή στα επιτρεπόμενα τμήματα','Καταχώρηση στα επιτρεπόμενα τμήματα','Χωρίς Κέντρο Διαχείρισης'],
+    permissionsEn:['View assigned departments','Entry in assigned departments','No Management Center'],
+  },
+  {
+    id:'laboratory',
+    label:'Εργαστήριο',
+    labelEn:'Laboratory',
+    description:'Πλήρης λειτουργική πρόσβαση στις εργαστηριακές εγγραφές και περιορισμένη προβολή των σχετικών κλινικών στοιχείων.',
+    descriptionEn:'Full functional access to laboratory records and limited view of related clinical data.',
+    permissions:['Εργαστήριο','Σχετικά στοιχεία ασθενών','Επιτήρηση αποτελεσμάτων','Χωρίς Κέντρο Διαχείρισης'],
+    permissionsEn:['Laboratory','Related patient details','Result surveillance','No Management Center'],
+  },
+  {
+    id:'demo',
+    label:'Demo',
+    labelEn:'Demo',
+    description:'Περιβάλλον επίδειξης χωρίς διοικητικές αλλαγές και χωρίς πρόσβαση σε πραγματικά δεδομένα.',
+    descriptionEn:'Demonstration environment without administrative changes or access to real data.',
+    permissions:['Προβολή demo δεδομένων','Δοκιμαστικές καταχωρήσεις όπου επιτρέπεται','Χωρίς διαχείριση'],
+    permissionsEn:['View demo data','Demo entries where allowed','No administration'],
   },
 ])
 
 export const EXTRA_CAPABILITIES = Object.freeze([
-  {id:'hand_hygiene_observer',label:'Παρατηρητής Υγιεινής Χεριών'},
-  {id:'quality',label:'Κέντρο Ποιότητας'},
-  {id:'committees',label:'Επιτροπές'},
-  {id:'training',label:'Εκπαίδευση'},
-  {id:'laboratory',label:'Εργαστήριο'},
-  {id:'lira',label:'LIRA AI'},
+  {id:'hand_hygiene_observer',label:'Παρατηρητής Υγιεινής Χεριών',labelEn:'Hand Hygiene Observer'},
+  {id:'staff_directory',label:'Διαχείριση Προσωπικού',labelEn:'Staff Directory Management'},
+  {id:'quality',label:'Κέντρο Ποιότητας',labelEn:'Quality Center'},
+  {id:'committees',label:'Επιτροπές',labelEn:'Committees'},
+  {id:'training',label:'Εκπαίδευση',labelEn:'Training'},
+  {id:'documents',label:'Έγγραφα',labelEn:'Documents'},
+  {id:'laboratory',label:'Εργαστήριο',labelEn:'Laboratory'},
+  {id:'lira',label:'LIRA AI',labelEn:'LIRA AI'},
 ])
 
 export const ROLE_PERMISSION_MATRIX = Object.freeze([
-  {module:'Κεντρική εικόνα',admin:'Πλήρης',infection_liaison:'Προβολή στα επιτρεπόμενα τμήματα',department_user:'Προβολή στα επιτρεπόμενα τμήματα'},
-  {module:'Εργαστήριο',admin:'Πλήρης',infection_liaison:'Προβολή · Καταχώρηση · Επεξεργασία',department_user:'Προβολή · Καταχώρηση στα επιτρεπόμενα τμήματα'},
-  {module:'Ασθενείς',admin:'Πλήρης',infection_liaison:'Προβολή · Καταχώρηση · Επεξεργασία',department_user:'Προβολή · Καταχώρηση στα επιτρεπόμενα τμήματα'},
-  {module:'Προσωπικό',admin:'Πλήρης',infection_liaison:'Προβολή · Επεξεργασία στα επιτρεπόμενα τμήματα',department_user:'Μόνο με ειδική αρμοδιότητα'},
-  {module:'Νερό',admin:'Πλήρης',infection_liaison:'Προβολή · Καταχώρηση · Επεξεργασία',department_user:'Προβολή · Καταχώρηση στα επιτρεπόμενα τμήματα'},
-  {module:'Επιφάνειες',admin:'Πλήρης',infection_liaison:'Προβολή · Καταχώρηση · Επεξεργασία',department_user:'Προβολή · Καταχώρηση στα επιτρεπόμενα τμήματα'},
-  {module:'Δηλούμενα Νοσήματα',admin:'Πλήρης',infection_liaison:'Πλήρης λειτουργική',department_user:'Χωρίς πρόσβαση'},
-  {module:'Υγιεινή Χεριών',admin:'Πλήρης',infection_liaison:'Προβολή',department_user:'Με αρμοδιότητα WHO'},
-  {module:'Εμβολιασμοί',admin:'Πλήρης',infection_liaison:'Προβολή · Επεξεργασία στα επιτρεπόμενα τμήματα',department_user:'Χωρίς πρόσβαση'},
-  {module:'Προωθημένα Αντιβιοτικά',admin:'Πλήρης',infection_liaison:'Προβολή · Διαχείριση',department_user:'Περιορισμένη προβολή'},
-  {module:'Αντισηπτικά / Απόβλητα',admin:'Πλήρης',infection_liaison:'Προβολή · Καταχώρηση',department_user:'Καταχώρηση στα επιτρεπόμενα τμήματα'},
-  {module:'Κέντρο Ποιότητας',admin:'Πλήρης',infection_liaison:'Προβολή',department_user:'Με αρμοδιότητα Quality'},
-  {module:'Επιτροπές',admin:'Πλήρης',infection_liaison:'Με αρμοδιότητα',department_user:'Με αρμοδιότητα'},
-  {module:'Εκπαίδευση',admin:'Πλήρης',infection_liaison:'Προβολή · Διαχείριση στα επιτρεπόμενα τμήματα',department_user:'Προβολή τμήματος'},
-  {module:'Έγγραφα',admin:'Πλήρης',infection_liaison:'Προβολή στα επιτρεπόμενα τμήματα',department_user:'Προβολή επιτρεπόμενων'},
-  {module:'LIRA AI',admin:'Πλήρης',infection_liaison:'Με αρμοδιότητα LIRA',department_user:'Με αρμοδιότητα LIRA'},
-  {module:'Κέντρο Διαχείρισης',admin:'Πλήρης',infection_liaison:'Χωρίς πρόσβαση',department_user:'Χωρίς πρόσβαση'},
+  {module:'Κεντρική εικόνα',admin:'Πλήρης',infection_lead:'Πλήρης',infection_liaison:'Προβολή στα επιτρεπόμενα τμήματα',medical_reviewer:'Προβολή',department_user:'Προβολή στα επιτρεπόμενα τμήματα',laboratory:'Προβολή',demo:'Προβολή'},
+  {module:'Εργαστήριο',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Προβολή · Καταχώρηση · Επεξεργασία',medical_reviewer:'Προβολή · Καταχώρηση · Επεξεργασία',department_user:'Προβολή · Καταχώρηση στα επιτρεπόμενα τμήματα',laboratory:'Πλήρης λειτουργική',demo:'Προβολή · Καταχώρηση'},
+  {module:'Ασθενείς',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Προβολή · Καταχώρηση · Επεξεργασία',medical_reviewer:'Προβολή · Καταχώρηση · Επεξεργασία',department_user:'Προβολή · Καταχώρηση στα επιτρεπόμενα τμήματα',laboratory:'Προβολή',demo:'Προβολή · Καταχώρηση'},
+  {module:'Προσωπικό',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Προβολή · Επεξεργασία στα επιτρεπόμενα τμήματα',medical_reviewer:'Προβολή',department_user:'Με πρόσθετη αρμοδιότητα',laboratory:'Προβολή',demo:'Προβολή'},
+  {module:'Νερό',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Προβολή · Καταχώρηση · Επεξεργασία',medical_reviewer:'Προβολή',department_user:'Προβολή · Καταχώρηση στα επιτρεπόμενα τμήματα',laboratory:'Προβολή · Καταχώρηση · Επεξεργασία',demo:'Προβολή · Καταχώρηση'},
+  {module:'Επιφάνειες',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Προβολή · Καταχώρηση · Επεξεργασία',medical_reviewer:'Προβολή',department_user:'Προβολή · Καταχώρηση στα επιτρεπόμενα τμήματα',laboratory:'Προβολή · Καταχώρηση · Επεξεργασία',demo:'Προβολή · Καταχώρηση'},
+  {module:'Δηλούμενα Νοσήματα',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Πλήρης λειτουργική',medical_reviewer:'Προβολή',department_user:'Χωρίς πρόσβαση',laboratory:'Χωρίς πρόσβαση',demo:'Προβολή'},
+  {module:'Υγιεινή Χεριών',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Πλήρης λειτουργική',medical_reviewer:'Προβολή',department_user:'Με πρόσθετη αρμοδιότητα',laboratory:'Χωρίς πρόσβαση',demo:'Προβολή · Καταχώρηση'},
+  {module:'Εμβολιασμοί',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Προβολή · Επεξεργασία στα επιτρεπόμενα τμήματα',medical_reviewer:'Προβολή',department_user:'Χωρίς πρόσβαση',laboratory:'Χωρίς πρόσβαση',demo:'Προβολή'},
+  {module:'Προωθημένα Αντιβιοτικά',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Προβολή · Διαχείριση',medical_reviewer:'Πλήρης λειτουργική',department_user:'Προβολή',laboratory:'Προβολή',demo:'Προβολή'},
+  {module:'Αντισηπτικά / Απόβλητα',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Προβολή · Καταχώρηση',medical_reviewer:'Προβολή',department_user:'Καταχώρηση στο επιτρεπόμενο τμήμα',laboratory:'Χωρίς πρόσβαση',demo:'Προβολή · Καταχώρηση'},
+  {module:'Κέντρο Ποιότητας',admin:'Πλήρης',infection_lead:'Προβολή · Καταχώρηση · Επεξεργασία',infection_liaison:'Προβολή',medical_reviewer:'Προβολή · Καταχώρηση',department_user:'Με πρόσθετη αρμοδιότητα',laboratory:'Χωρίς πρόσβαση',demo:'Προβολή'},
+  {module:'Επιτροπές',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Με πρόσθετη αρμοδιότητα',medical_reviewer:'Με πρόσθετη αρμοδιότητα',department_user:'Με πρόσθετη αρμοδιότητα',laboratory:'Με πρόσθετη αρμοδιότητα',demo:'Προβολή'},
+  {module:'Εκπαίδευση',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Προβολή · Διαχείριση',medical_reviewer:'Προβολή',department_user:'Προβολή στο επιτρεπόμενο τμήμα',laboratory:'Προβολή',demo:'Προβολή'},
+  {module:'Έγγραφα',admin:'Πλήρης',infection_lead:'Πλήρης λειτουργική',infection_liaison:'Προβολή στα επιτρεπόμενα τμήματα',medical_reviewer:'Προβολή',department_user:'Προβολή στα επιτρεπόμενα τμήματα',laboratory:'Προβολή',demo:'Προβολή'},
+  {module:'LIRA AI',admin:'Πλήρης',infection_lead:'Με πρόσθετη αρμοδιότητα',infection_liaison:'Με πρόσθετη αρμοδιότητα',medical_reviewer:'Με πρόσθετη αρμοδιότητα',department_user:'Με πρόσθετη αρμοδιότητα',laboratory:'Με πρόσθετη αρμοδιότητα',demo:'Προβολή'},
+  {module:'Κέντρο Διαχείρισης',admin:'Πλήρης',infection_lead:'Χωρίς πρόσβαση',infection_liaison:'Χωρίς πρόσβαση',medical_reviewer:'Χωρίς πρόσβαση',department_user:'Χωρίς πρόσβαση',laboratory:'Χωρίς πρόσβαση',demo:'Χωρίς πρόσβαση'},
 ])
 
 
@@ -68,7 +115,10 @@ export function saveRoleConfig(rows=[]){
 }
 
 export function loadUserAccounts(){ return readJsonArray(KEY,[]) }
-export function roleLabel(role){ return ROLE_DEFINITIONS.find(x=>x.id===role)?.label||role||'—' }
+export function roleLabel(role, language='el'){
+  const definition=ROLE_DEFINITIONS.find(x=>x.id===role)
+  return (language==='en'?definition?.labelEn:definition?.label)||definition?.label||role||'—'
+}
 function persist(rows){
   writeJson(KEY,rows)
   const verified=readJsonArray(KEY,[])

@@ -9,17 +9,18 @@ import { FileText, FlaskConical, Printer, Save, ShieldCheck, Trash2 } from 'luci
 
 import { Badge, Button, IconButton, WorkspaceBody, WorkspaceHeader, WorkspaceShell, WorkspaceTabs } from '../../components/core'
 import {
-  deleteLaboratoryRecord,
+  deleteLaboratoryRecordAsync,
   LABORATORY_SOURCE_EVENTS,
   loadAllLaboratoryRecords,
-  upsertLaboratoryRecord,
+  loadAllLaboratoryRecordsAsync,
+  upsertLaboratoryRecordAsync,
 } from '../../services/laboratoryService'
 import {
   loadPatientRegistry,
   PATIENT_CONFIG_EVENT,
   PATIENT_REGISTRY_EVENT,
-  upsertPatient,
 } from '../../services/patientService'
+import { loadClinicalPatients, saveClinicalPatient } from '../../services/backend/clinicalDirectoryService'
 import {
   EMPLOYEES_EVENT,
   employeeFullName,
@@ -126,6 +127,7 @@ export default function LaboratoryWorkspacePage() {
   })
   const [tab, setTab] = useState('sample')
   const [patients, setPatients] = useState(loadPatientRegistry)
+  const [laboratoryRecords,setLaboratoryRecords]=useState(loadAllLaboratoryRecords)
   const [patientMode, setPatientMode] = useState('existing')
   const [selectedPatientId, setSelectedPatientId] = useState('')
   const [newPatient, setNewPatient] = useState(emptyNewPatient)
@@ -134,12 +136,22 @@ export default function LaboratoryWorkspacePage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
   const [newEmployee, setNewEmployee] = useState(emptyNewEmployee)
 
-  useAppEvents([PATIENT_REGISTRY_EVENT, PATIENT_CONFIG_EVENT, APP_EVENTS.MASTER_DATA_UPDATED], () => {
-    setPatients(loadPatientRegistry())
-  }, { includeStorage: true })
+  async function refreshWorkspaceSources(){
+    const [patientRows,employeeRows,labRows]=await Promise.all([
+      loadClinicalPatients(),
+      loadDirectoryEmployees(),
+      loadAllLaboratoryRecordsAsync(),
+    ])
+    setPatients(patientRows)
+    setEmployees(employeeRows)
+    setLaboratoryRecords(labRows)
+    return {patientRows,employeeRows,labRows}
+  }
 
-  useAppEvents([EMPLOYEES_EVENT, APP_EVENTS.MASTER_DATA_UPDATED], () => {
-    setEmployees(loadAllEmployees())
+  useEffect(()=>{refreshWorkspaceSources().catch(()=>{})},[])
+
+  useAppEvents([PATIENT_REGISTRY_EVENT, PATIENT_CONFIG_EVENT, EMPLOYEES_EVENT, APP_EVENTS.MASTER_DATA_UPDATED, ...LABORATORY_SOURCE_EVENTS], () => {
+    refreshWorkspaceSources().catch(()=>{})
   }, { includeStorage: true })
 
   useEffect(() => {
@@ -176,12 +188,12 @@ export default function LaboratoryWorkspacePage() {
 
     const source = decodeURIComponent(params.sourceType || '')
     const id = decodeURIComponent(params.recordId || '')
-    const found = loadAllLaboratoryRecords().find((item) => item.id === id && (!source || item.sourceType === source))
+    const found = laboratoryRecords.find((item) => item.id === id && (!source || item.sourceType === source))
     if (!found) return
     setRecord(found)
     const normalized = normalizeForForm(found)
     if (found.sourceType === 'Ασθενής') {
-      const availablePatients = loadPatientRegistry()
+      const availablePatients = patients
       const matched = matchPatient(found, availablePatients)
       if (matched) {
         normalized.patientId = matched.id
@@ -198,7 +210,7 @@ export default function LaboratoryWorkspacePage() {
       }
       setPatientMode('existing')
     } else if (found.sourceType === 'Προσωπικό') {
-      const availableEmployees = loadAllEmployees()
+      const availableEmployees = employees
       const matched = matchEmployee(found, availableEmployees)
       if (matched) {
         normalized.employeeId = matched.id
@@ -214,16 +226,13 @@ export default function LaboratoryWorkspacePage() {
       setEmployeeMode('existing')
     }
     setForm(normalized)
-  }, [isNew, params.sourceType, params.recordId, location.state])
+  }, [isNew, params.sourceType, params.recordId, location.state, laboratoryRecords, patients, employees])
 
-  useAppEvents(LABORATORY_SOURCE_EVENTS, () => {
-    if (isNew || !record) return
-    const found = loadAllLaboratoryRecords().find((item) => item.id === record.id && item.sourceType === record.sourceType)
-    if (found) {
-      setRecord(found)
-      setForm(normalizeForForm(found))
-    }
-  })
+  useEffect(()=>{
+    if(isNew||!record)return
+    const found=laboratoryRecords.find((item)=>item.id===record.id&&item.sourceType===record.sourceType)
+    if(found){setRecord(found);setForm(normalizeForForm(found))}
+  },[laboratoryRecords,isNew,record?.id,record?.sourceType])
 
   const selectedPatient = useMemo(
     () => patients.find((item) => String(item.id) === String(selectedPatientId)),
@@ -237,14 +246,14 @@ export default function LaboratoryWorkspacePage() {
 
   const patientSampleOptions = useMemo(() => {
     if (form.sourceType !== 'Ασθενής' || !form.patientCode) return []
-    return loadAllLaboratoryRecords()
+    return laboratoryRecords
       .filter((item) => item.sourceType === 'Ασθενής' && String(item.patientCode || '') === String(form.patientCode || '') && String(item.id || '') !== String(record?.id || ''))
       .sort((a, b) => String(b.collectionDate || '').localeCompare(String(a.collectionDate || '')))
       .map((item) => ({
         value: item.id,
         label: `${laboratoryDisplayValue(item.sampleType, language) || L('Δείγμα', 'Sample')} · ${item.collectionDate || L('χωρίς ημερομηνία', 'no date')} · ${laboratoryDisplayValue(item.status || 'Εκκρεμεί', language)}`,
       }))
-  }, [form.sourceType, form.patientCode, record?.id, language])
+  }, [form.sourceType, form.patientCode, record?.id, language, laboratoryRecords])
 
   function choosePatient(patientId) {
     setSelectedPatientId(patientId)
@@ -266,27 +275,41 @@ export default function LaboratoryWorkspacePage() {
     }))
   }
 
-  function persistNewPatient() {
+  async function persistNewPatient() {
     if (!newPatient.firstName.trim() || !newPatient.lastName.trim()) {
       notifyAction(L('Συμπληρώστε τουλάχιστον όνομα και επώνυμο ασθενούς.', 'Enter at least patient first and last name.'))
       return null
     }
-    const saved = upsertPatient({
+    const requestedCode = String(newPatient.patientCode || '').trim()
+    const requestedAmka = String(newPatient.amka || '').trim()
+    const duplicate = patients.find((item) =>
+      (requestedCode && String(item.patientCode || '').trim() === requestedCode) ||
+      (requestedAmka && String(item.amka || '').trim() === requestedAmka)
+    )
+    if (duplicate) {
+      const sameCode = requestedCode && String(duplicate.patientCode || '').trim() === requestedCode
+      notifyAction(L(
+        `Υπάρχει ήδη ασθενής ${duplicate.fullName || ''} με τον ίδιο ${sameCode ? 'κωδικό ασθενούς' : 'ΑΜΚΑ'}. Επιλέξτε την υπάρχουσα εγγραφή.`,
+        `A patient ${duplicate.fullName || ''} already exists with the same ${sameCode ? 'patient code' : 'AMKA'}. Select the existing record.`
+      ))
+      return null
+    }
+    const saved = await saveClinicalPatient({
       ...newPatient,
       id: `patient-${Date.now()}`,
       patientCode: newPatient.patientCode.trim() || createPatientCode(patients),
       fullName: `${newPatient.firstName.trim()} ${newPatient.lastName.trim()}`,
       status: 'Νοσηλεύεται',
     })
-    setPatients(loadPatientRegistry())
+    setPatients(await loadClinicalPatients())
     setSelectedPatientId(saved.id)
     setPatientMode('existing')
     setNewPatient(emptyNewPatient)
     return saved
   }
 
-  function createAndLinkPatient() {
-    const saved = persistNewPatient()
+  async function createAndLinkPatient() {
+    const saved = await persistNewPatient()
     if (!saved) return
     setForm((current) => ({
       ...current,
@@ -322,26 +345,26 @@ export default function LaboratoryWorkspacePage() {
     }))
   }
 
-  function persistNewEmployee() {
+  async function persistNewEmployee() {
     if (!newEmployee.firstName.trim() || !newEmployee.lastName.trim()) {
       notifyAction(L('Συμπληρώστε τουλάχιστον όνομα και επώνυμο εργαζομένου.', 'Enter at least staff first and last name.'))
       return null
     }
-    const saved = upsertEmployee({
+    const saved = await saveDirectoryEmployee({
       ...newEmployee,
       id: `EMP-${Date.now()}`,
       employeeCode: newEmployee.employeeCode.trim() || createEmployeeCode(employees),
       status: newEmployee.status || 'Ενεργό',
     })
-    setEmployees(loadAllEmployees())
+    setEmployees(await loadDirectoryEmployees())
     setSelectedEmployeeId(saved.id)
     setEmployeeMode('existing')
     setNewEmployee(emptyNewEmployee)
     return saved
   }
 
-  function createAndLinkEmployee() {
-    const saved = persistNewEmployee()
+  async function createAndLinkEmployee() {
+    const saved = await persistNewEmployee()
     if (!saved) return
     const name = employeeFullName(saved)
     setForm((current) => ({
@@ -356,11 +379,11 @@ export default function LaboratoryWorkspacePage() {
     }))
   }
 
-  function save() {
+  async function save() {
     let payload = { ...form }
 
     if (payload.sourceType === 'Ασθενής' && !payload.patientId && patientMode === 'new') {
-      const savedPatient = persistNewPatient()
+      const savedPatient = await persistNewPatient()
       if (!savedPatient) return
       payload = {
         ...payload,
@@ -381,7 +404,7 @@ export default function LaboratoryWorkspacePage() {
     }
 
     if (payload.sourceType === 'Προσωπικό' && !payload.employeeId && employeeMode === 'new') {
-      const savedEmployee = persistNewEmployee()
+      const savedEmployee = await persistNewEmployee()
       if (!savedEmployee) return
       const name = employeeFullName(savedEmployee)
       payload = {
@@ -423,7 +446,7 @@ export default function LaboratoryWorkspacePage() {
     }
     let saved
     try {
-      saved = upsertLaboratoryRecord(withCanonicalLaboratoryStatus({
+      saved = await upsertLaboratoryRecordAsync(withCanonicalLaboratoryStatus({
         ...payload,
         id: record?.id || `${sourcePrefix(payload.sourceType)}-${Date.now()}`,
       }))
@@ -436,10 +459,10 @@ export default function LaboratoryWorkspacePage() {
     navigate(routeFor.laboratoryRecordWorkspace(encodeURIComponent(payload.sourceType), encodeURIComponent(saved.id)), { replace: true, state: location.state })
   }
 
-  function remove() {
+  async function remove() {
     if (!record) return
     if (!confirmAction(L('Να διαγραφεί η εργαστηριακή εγγραφή;', 'Delete this laboratory record?'))) return
-    deleteLaboratoryRecord(record)
+    await deleteLaboratoryRecordAsync(record)
     returnToOrigin()
   }
 

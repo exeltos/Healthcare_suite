@@ -8,7 +8,7 @@
 .studio-groups{display:flex;flex-direction:column;gap:26px}.studio-group{display:flex;flex-direction:column;gap:12px}.studio-group__header{padding-bottom:8px;border-bottom:1px solid var(--border)}.studio-group__header h2{margin:0;color:var(--text);font-size:13px;letter-spacing:.06em;text-transform:uppercase}.studio-group__header p{margin:4px 0 0;color:var(--muted);font-size:.82rem}.studio-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
 .studio-card{background:#fff;border:var(--surface-border);border-radius:var(--radius-lg);padding:20px;display:grid;grid-template-columns:auto 1fr auto;gap:15px;align-items:center;box-shadow:var(--surface-shadow)}
 .studio-card__icon{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:#e8f5f5;color:#087984}
-.studio-card__content>span{font-size:10px;font-weight:850;letter-spacing:.075em;text-transform:uppercase;color:#0b7a84}
+.studio-card__content>span{font-size:10px;font-weight:800;letter-spacing:.075em;text-transform:uppercase;color:#0b7a84}
 .studio-card h3{margin:4px 0;color:#173943;font-size:17px}
 .studio-card p{margin:0;color:#758a91;line-height:1.45;font-size:.88rem}
 .studio-card button{white-space:nowrap}.studio-card__actions{display:flex;flex-direction:column;gap:7px;align-items:stretch}.studio-admin-note{margin:2px 0 0;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--background);color:var(--muted);font-size:.78rem;line-height:1.5}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../../core/events'
 import { BookOpen, PencilLine } from 'lucide-react'
-import { activeMasterItems, MASTER_DATA_EVENT, upsertMasterItem } from '../../../services/masterDataService'
+import { activeMasterItems, MASTER_DATA_EVENT, upsertMasterItemAsync } from '../../../services/masterDataService'
 import './LibraryField.css'
 import { useI18n } from '../../../i18n'
 
@@ -33,12 +33,12 @@ export default function LibraryField({
 
   const hasHeader = (!hideLabel && label) || (allowManual && !disabled && !hideLabel)
 
-  const saveManual = () => {
+  const saveManual = async () => {
     if (!saveManualToLibrary || disabled) return
     const name = String(value || '').trim()
     if (!name) return
     const exists = items.some((item) => String(item.name || '').trim().toLocaleLowerCase('el-GR') === name.toLocaleLowerCase('el-GR'))
-    if (!exists) upsertMasterItem(libraryKey, { name, category: category || undefined })
+    if (!exists) await upsertMasterItemAsync(libraryKey, { name, category: category || undefined })
   }
 
   return (

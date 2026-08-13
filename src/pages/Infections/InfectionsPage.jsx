@@ -19,7 +19,8 @@ import {
 
 import './InfectionsPage.css'
 import HybridPatientSelector from '../../components/core/HybridPatientSelector/HybridPatientSelector'
-import { deleteInfection, getInfectionStats, INFECTIONS_EVENT, loadInfections, saveInfection } from '../../services/infectionsService'
+import { getInfectionStats, INFECTIONS_EVENT, loadInfections } from '../../services/infectionsService'
+import { deleteClinicalInfection, loadClinicalInfections, saveClinicalInfection } from '../../services/backend/clinicalDirectoryService'
 import { activeMasterItems, loadMasterDataWithFallback } from '../../services/masterDataService'
 
 import { Button, PageHeader, StatCard } from '../../components/core'
@@ -107,6 +108,7 @@ export default function InfectionsPage() {
   const [searchParams] = useSearchParams()
   const [masterData, setMasterData] = useState(loadMasterData)
   const [records, setRecords] = useState(loadInfections)
+  const [clinicalLoading,setClinicalLoading]=useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') === 'active' ? 'Ενεργή' : (searchParams.get('status') || 'Όλα'))
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -121,9 +123,12 @@ export default function InfectionsPage() {
     setMasterData(loadMasterData())
   }, { includeStorage: true })
 
-  useAppEvents(INFECTIONS_EVENT, () => {
-    setRecords(loadInfections())
-  }, { includeStorage: true })
+  async function refreshInfections(){
+    try{setRecords(await loadClinicalInfections())}
+    finally{setClinicalLoading(false)}
+  }
+  useEffect(()=>{refreshInfections()},[])
+  useAppEvents(INFECTIONS_EVENT, () => {refreshInfections()}, { includeStorage: true })
 
   const departments = useMemo(
     () => activeItems(masterData, 'departments'),
@@ -203,7 +208,7 @@ export default function InfectionsPage() {
     setFormData(emptyInfection)
   }
 
-  function saveRecord(event) {
+  async function saveRecord(event) {
     event.preventDefault()
 
     if (
@@ -218,19 +223,22 @@ export default function InfectionsPage() {
       return
     }
 
-    saveInfection(formData, selectedRecord)
-    setRecords(loadInfections())
+    const attachmentInfo=formData.attachment
+      ? {name:formData.attachment.name,size:formData.attachment.size,type:formData.attachment.type}
+      : selectedRecord?.attachmentInfo||null
+    await saveClinicalInfection({...selectedRecord,...formData,id:selectedRecord?.id||formData.id,attachment:undefined,attachmentInfo})
+    setRecords(await loadClinicalInfections())
 
     closeDrawer()
   }
 
-  function deleteRecord(recordId) {
+  async function deleteRecord(recordId) {
     if (!confirmAction('Να διαγραφεί η λοίμωξη;')) {
       return
     }
 
-    const nextRecords = deleteInfection(recordId)
-    setRecords(nextRecords)
+    await deleteClinicalInfection(recordId)
+    setRecords(await loadClinicalInfections())
     closeDrawer()
   }
 

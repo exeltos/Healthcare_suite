@@ -83,12 +83,13 @@ export function employeeFullName(record = {}) {
 
 export function normalizeEmployee(record = {}, index = 0) {
   const legacyName = splitLegacyName(record.fullName || record.name || record.employeeName || '')
-  const { occupationalVisits, ...clean } = record
+  const { occupationalVisits: rawOccupationalVisits, ...clean } = record
   const firstName = clean.firstName || legacyName.firstName || ''
   const lastName = clean.lastName || legacyName.lastName || ''
   return {
     status: 'Ενεργό',
     vaccinations: [],
+    occupationalVisits: [],
     fatherName: '',
     firstName,
     lastName,
@@ -101,6 +102,7 @@ export function normalizeEmployee(record = {}, index = 0) {
     professionalCategory: canonicalProfessionalCategory(clean.professionalCategory || clean.role || clean.position || ''),
     department: canonicalDepartmentName(clean.department || ''),
     vaccinations: Array.isArray(clean.vaccinations) ? clean.vaccinations : [],
+    occupationalVisits: Array.isArray(rawOccupationalVisits) ? rawOccupationalVisits : [],
   }
 }
 

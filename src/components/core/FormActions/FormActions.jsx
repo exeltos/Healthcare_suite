@@ -1,4 +1,5 @@
 import Button from '../Button/Button'
+import { useI18n } from '../../../i18n'
 import './FormActions.css'
 
 export default function FormActions({
@@ -6,11 +7,11 @@ export default function FormActions({
   onSaveAndNew,
   onBack,
   showBack = false,
-  cancelLabel = 'Ακύρωση',
-  backLabel = '← Πίσω',
-  saveLabel = 'Αποθήκευση',
+  cancelLabel,
+  backLabel,
+  saveLabel,
   primaryLabel,
-  saveAndNewLabel = 'Αποθήκευση & νέα',
+  saveAndNewLabel,
   onPrimary,
   primaryType = 'submit',
   saving = false,
@@ -22,7 +23,13 @@ export default function FormActions({
   destructive,
   className = '',
 }) {
-  const resolvedPrimaryLabel = primaryLabel || saveLabel
+  const { language } = useI18n()
+  const L = (el, en) => language === 'en' ? en : el
+  const resolvedCancelLabel = cancelLabel || L('Ακύρωση', 'Cancel')
+  const resolvedBackLabel = backLabel || L('← Πίσω', '← Back')
+  const resolvedSaveLabel = saveLabel || L('Αποθήκευση', 'Save')
+  const resolvedSaveAndNewLabel = saveAndNewLabel || L('Αποθήκευση & νέα', 'Save & new')
+  const resolvedPrimaryLabel = primaryLabel || resolvedSaveLabel
   const resolvedDisabled = disabled || primaryDisabled || saving
 
   return (
@@ -32,19 +39,19 @@ export default function FormActions({
         {extraActions}
         {onCancel && (
           <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
-            {cancelLabel}
+            {resolvedCancelLabel}
           </Button>
         )}
       </div>
       <div className="core-form-actions__primary">
         {showBack && (
           <Button type="button" variant="ghost" onClick={onBack} disabled={saving}>
-            {backLabel}
+            {resolvedBackLabel}
           </Button>
         )}
         {onSaveAndNew && (
           <Button type="button" variant="secondary" onClick={onSaveAndNew} disabled={resolvedDisabled}>
-            {saveAndNewLabel}
+            {resolvedSaveAndNewLabel}
           </Button>
         )}
         <Button
@@ -53,7 +60,7 @@ export default function FormActions({
           onClick={onPrimary}
           disabled={resolvedDisabled}
           loading={saving}
-          loadingLabel="Αποθήκευση…"
+          loadingLabel={L('Αποθήκευση…', 'Saving…')}
           data-feedback-action="save"
         >
           {resolvedPrimaryLabel}

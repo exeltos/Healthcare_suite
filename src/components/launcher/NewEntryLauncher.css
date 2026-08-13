@@ -280,7 +280,7 @@
   border: 1px solid var(--border);
   border-radius: 9px;
   background: #ffffff;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .hybrid-launcher-footer button.primary,
@@ -295,7 +295,7 @@
   border-radius: 9px;
   color: #176d4a;
   background: #e7f6ef;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 
@@ -394,7 +394,7 @@
   border: 0;
   color: #b43b48;
   background: transparent;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .environment-result {
@@ -630,7 +630,7 @@
   border: 0;
   color: #b43b48;
   background: transparent;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .who-empty {

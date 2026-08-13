@@ -25,8 +25,10 @@ import {
   loadAntisepticConsumption,
   upsertAntisepticConsumption,
 } from '../../services/preventionService'
+import { deletePreventionRecord, loadPreventionRecords, savePreventionRecord } from '../../services/backend/preventionBackendService'
 import '../Records/RecordsUnified.css'
 import { masterNames } from '../../services/masterDataService'
+import { useI18n } from '../../i18n'
 
 const EMPTY_RECORD = { date:'', department:'', product:'', openingStock:'', received:'', closingStock:'', consumption:'', patientDays:'', responsible:'', notes:'' }
 
@@ -44,7 +46,10 @@ const exportColumns=[
 ]
 
 export default function AntisepticConsumptionPage(){
+  const { language } = useI18n()
+  const L = (el,en) => language === 'en' ? en : el
   const [records, refreshRecords, setRecords] = useServiceCollection(loadAntisepticConsumption, ANTISEPTIC_CONSUMPTION_EVENT)
+  useEffect(()=>{loadPreventionRecords('antiseptic').then(setRecords).catch(()=>{})},[])
   const [search,setSearch]=useState('')
   const [department,setDepartment]=useState('')
   const [sort,setSort]=useState({key:'department',direction:'asc'})
@@ -67,10 +72,10 @@ export default function AntisepticConsumptionPage(){
   function openRecord(record){ setSelectedId(record.id); setFormData({...EMPTY_RECORD,...record}); setDrawerOpen(true) }
   function close(){ setDrawerOpen(false); setSelectedId(null); setFormData(EMPTY_RECORD) }
   function setField(name,value){ setFormData(current=>{ const next={...current,[name]:value}; if(['openingStock','received','closingStock'].includes(name)) next.consumption=String(Math.max(0,number(next.openingStock)+number(next.received)-number(next.closingStock))); return next }) }
-  function save(event){ event.preventDefault(); if(!formData.date||!formData.department||!formData.product){notifyAction('Συμπληρώστε ημερομηνία, τμήμα και προϊόν.');return} upsertAntisepticConsumption({...formData,id:selectedId||`ANT-${Date.now()}`,consumption:String(calculatedConsumption(formData)),indicator:indicatorForRecord(formData),updatedAt:new Date().toISOString()}); refreshRecords(); close() }
-  function remove(){ if(!selectedId||!confirmAction('Να διαγραφεί η μέτρηση;'))return; deleteAntisepticConsumption(selectedId); refreshRecords(); close() }
+  async function save(event){ event.preventDefault(); if(!formData.date||!formData.department||!formData.product){notifyAction(L('Συμπληρώστε ημερομηνία, τμήμα και προϊόν.','Enter date, department and product.'));return} await savePreventionRecord('antiseptic',{...formData,id:selectedId||`ANT-${Date.now()}`,consumption:String(calculatedConsumption(formData)),indicator:indicatorForRecord(formData),updatedAt:new Date().toISOString()}); setRecords(await loadPreventionRecords('antiseptic')); close() }
+  async function remove(){ if(!selectedId||!confirmAction(L('Να διαγραφεί η μέτρηση;','Delete this measurement?')))return; await deletePreventionRecord('antiseptic',selectedId); setRecords(await loadPreventionRecords('antiseptic')); close() }
   function exportSelected(){ downloadCsv({filename:`antiseptika-${new Date().toISOString().slice(0,10)}.csv`,columns:exportColumns,rows:selectedRecords}) }
-  function printSelected(){ printRows({title:'Κατανάλωση Αντισηπτικών',columns:exportColumns,rows:selectedRecords}) }
+  function printSelected(){ printRows({title:L('Κατανάλωση Αντισηπτικών','Antiseptic Consumption'),columns:exportColumns,rows:selectedRecords}) }
 
   const columns=[
     {key:'date',label:'Ημερομηνία',width:'130px',render:(row)=>row.date||'—'},
@@ -81,37 +86,37 @@ export default function AntisepticConsumptionPage(){
     {key:'indicator',label:'Δείκτης',width:'135px',render:(row)=>`${formatNumber(indicatorForRecord(row),2)} L / 1.000`},
   ]
 
-  return <PageChrome className="records-unified-page" header={<PageHeader title="Αντισηπτικά" description="Παρακολούθηση αποθεμάτων, κατανάλωσης και δείκτη ανά τμήμα." actions={<Button icon={<Plus size={17}/>} onClick={openNew}>Νέα μέτρηση</Button>}/> }>
+  return <PageChrome className="records-unified-page" header={<PageHeader title={L('Αντισηπτικά','Antiseptics')} description={L('Παρακολούθηση αποθεμάτων, κατανάλωσης και δείκτη ανά τμήμα.','Monitor stocks, consumption and indicators by department.')} actions={<Button icon={<Plus size={17}/>} onClick={openNew}>{L('Νέα μέτρηση','New measurement')}</Button>}/> }>
     <ListWorkspace
-      stats={<EntitySummary columns={4} ariaLabel="Σύνολα αντισηπτικών"><StatCard compact icon={BarChart3} label="Μετρήσεις" value={metrics.records}/><StatCard compact icon={Droplets} label="Συνολική κατανάλωση" value={`${formatNumber(metrics.totalConsumption/1000,2)} L`}/><StatCard compact icon={PackagePlus} label="Ημέρες νοσηλείας" value={formatNumber(metrics.totalPatientDays,0)}/><StatCard compact icon={Gauge} label="Δείκτης" value={`${formatNumber(metrics.indicator,2)} L / 1.000`}/></EntitySummary>}
-      searchValue={search} onSearchChange={setSearch} searchPlaceholder="Αναζήτηση τμήματος, προϊόντος ή υπευθύνου…"
+      stats={<EntitySummary columns={4} ariaLabel={L('Σύνολα αντισηπτικών','Antiseptic totals')}><StatCard compact icon={BarChart3} label={L('Μετρήσεις','Measurements')} value={metrics.records}/><StatCard compact icon={Droplets} label={L('Συνολική κατανάλωση','Total consumption')} value={`${formatNumber(metrics.totalConsumption/1000,2)} L`}/><StatCard compact icon={PackagePlus} label={L('Ημέρες νοσηλείας','Patient days')} value={formatNumber(metrics.totalPatientDays,0)}/><StatCard compact icon={Gauge} label={L('Δείκτης','Indicator')} value={`${formatNumber(metrics.indicator,2)} L / 1.000`}/></EntitySummary>}
+      searchValue={search} onSearchChange={setSearch} searchPlaceholder={L('Αναζήτηση τμήματος, προϊόντος ή υπευθύνου…','Search department, product or responsible person…')}
       activeFilterCount={[search,department].filter(Boolean).length} onClearFilters={()=>{setSearch('');setDepartment('')}}
-      filters={<select value={department} onChange={e=>setDepartment(e.target.value)} aria-label="Τμήμα"><option value="">Όλα τα τμήματα</option>{departments.map(item=><option key={item}>{item}</option>)}</select>}
-      selectedCount={selectedRecords.length} selectedLabel="μετρήσεις" onClearSelection={()=>setSelectedKeys([])}
-      bulkActions={<><Button variant="secondary" size="sm" icon={<Printer size={16}/>} onClick={printSelected}>Εκτύπωση / PDF</Button><Button variant="secondary" size="sm" icon={<Download size={16}/>} onClick={exportSelected}>Εξαγωγή CSV</Button></>}
-      columns={columns} rows={filtered} getRowKey={row=>row.id} onRowClick={openRecord} selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys} sort={sort} onSortChange={setSort} ariaLabel="Κατανάλωση αντισηπτικών" footer={<span>{filtered.length} εγγραφές</span>} emptyTitle="Δεν υπάρχουν μετρήσεις"
+      filters={<select value={department} onChange={e=>setDepartment(e.target.value)} aria-label={L('Τμήμα','Department')}><option value="">{L('Όλα τα τμήματα','All departments')}</option>{departments.map(item=><option key={item}>{item}</option>)}</select>}
+      selectedCount={selectedRecords.length} selectedLabel={L('μετρήσεις','measurements')} onClearSelection={()=>setSelectedKeys([])}
+      bulkActions={<><Button variant="secondary" size="sm" icon={<Printer size={16}/>} onClick={printSelected}>{L('Εκτύπωση / PDF','Print / PDF')}</Button><Button variant="secondary" size="sm" icon={<Download size={16}/>} onClick={exportSelected}>{L('Εξαγωγή CSV','Export CSV')}</Button></>}
+      columns={columns} rows={filtered} getRowKey={row=>row.id} onRowClick={openRecord} selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys} sort={sort} onSortChange={setSort} ariaLabel={L('Κατανάλωση αντισηπτικών','Antiseptic consumption')} footer={<span>{filtered.length} {L('εγγραφές','records')}</span>} emptyTitle={L('Δεν υπάρχουν μετρήσεις','No measurements')}
     />
 
-    <Drawer open={drawerOpen} onClose={close} title={selectedId?'Επεξεργασία μέτρησης':'Νέα μέτρηση αντισηπτικών'} description="Η κατανάλωση και ο δείκτης υπολογίζονται αυτόματα." width={1080} position="center" footer={<FormActions form="antiseptic-record-form" onCancel={close} extraActions={selectedId?<Button variant="danger" icon={<Trash2 size={16}/>} onClick={remove}>Διαγραφή</Button>:null}/> }>
+    <Drawer open={drawerOpen} onClose={close} title={selectedId?L('Επεξεργασία μέτρησης','Edit measurement'):L('Νέα μέτρηση αντισηπτικών','New antiseptic measurement')} description={L('Η κατανάλωση και ο δείκτης υπολογίζονται αυτόματα.','Consumption and indicator are calculated automatically.')} width={1080} position="center" footer={<FormActions form="antiseptic-record-form" onCancel={close} extraActions={selectedId?<Button variant="danger" icon={<Trash2 size={16}/>} onClick={remove}>{L('Διαγραφή','Delete')}</Button>:null}/> }>
       <form id="antiseptic-record-form" className="records-unified-form" onSubmit={save}>
-        <FormSection title="Βασικά στοιχεία">
+        <FormSection title={L('Βασικά στοιχεία','Basic details')}>
           <FormGrid columns={2}>
-            <FormField label="Ημερομηνία" required><input type="date" value={greekToIso(formData.date)} onChange={e=>setField('date',isoToGreek(e.target.value))}/></FormField>
-            <FormField label="Τμήμα" required><LibraryField hideLabel libraryKey="departments" value={formData.department} onChange={value=>setField('department',value)} placeholder="Επιλέξτε ή γράψτε τμήμα"/></FormField>
-            <FormField label="Προϊόν αντισηπτικού" required><LibraryField hideLabel allowManual libraryKey="antiseptic-products" value={formData.product} onChange={value=>setField('product',value)} placeholder="Επιλέξτε ή γράψτε προϊόν"/></FormField>
-            <FormField label="Υπεύθυνος καταχώρησης"><input value={formData.responsible} onChange={e=>setField('responsible',e.target.value)}/></FormField>
+            <FormField label={L('Ημερομηνία','Date')} required><input type="date" value={greekToIso(formData.date)} onChange={e=>setField('date',isoToGreek(e.target.value))}/></FormField>
+            <FormField label={L('Τμήμα','Department')} required><LibraryField hideLabel libraryKey="departments" value={formData.department} onChange={value=>setField('department',value)} placeholder={L('Επιλέξτε ή γράψτε τμήμα','Select or enter department')}/></FormField>
+            <FormField label={L('Προϊόν αντισηπτικού','Antiseptic product')} required><LibraryField hideLabel allowManual libraryKey="antiseptic-products" value={formData.product} onChange={value=>setField('product',value)} placeholder={L('Επιλέξτε ή γράψτε προϊόν','Select or enter product')}/></FormField>
+            <FormField label={L('Υπεύθυνος καταχώρησης','Recorded by')}><input value={formData.responsible} onChange={e=>setField('responsible',e.target.value)}/></FormField>
           </FormGrid>
         </FormSection>
-        <FormSection title="Αποθέματα & κατανάλωση" description="Κατανάλωση = αρχικό απόθεμα + παραλαβές − τελικό απόθεμα.">
+        <FormSection title={L('Αποθέματα & κατανάλωση','Stocks & consumption')} description={L('Κατανάλωση = αρχικό απόθεμα + παραλαβές − τελικό απόθεμα.','Consumption = opening stock + receipts − closing stock.')}>
           <FormGrid columns={4}>
-            <FormField label="Αρχικό απόθεμα (ml)"><input type="number" min="0" step="1" value={formData.openingStock} onChange={e=>setField('openingStock',e.target.value)}/></FormField>
-            <FormField label="Παραλαβές (ml)"><input type="number" min="0" step="1" value={formData.received} onChange={e=>setField('received',e.target.value)}/></FormField>
-            <FormField label="Τελικό απόθεμα (ml)"><input type="number" min="0" step="1" value={formData.closingStock} onChange={e=>setField('closingStock',e.target.value)}/></FormField>
-            <FormField label="Ημέρες νοσηλείας"><input type="number" min="0" step="1" value={formData.patientDays} onChange={e=>setField('patientDays',e.target.value)}/></FormField>
+            <FormField label={L('Αρχικό απόθεμα (ml)','Opening stock (ml)')}><input type="number" min="0" step="1" value={formData.openingStock} onChange={e=>setField('openingStock',e.target.value)}/></FormField>
+            <FormField label={L('Παραλαβές (ml)','Receipts (ml)')}><input type="number" min="0" step="1" value={formData.received} onChange={e=>setField('received',e.target.value)}/></FormField>
+            <FormField label={L('Τελικό απόθεμα (ml)','Closing stock (ml)')}><input type="number" min="0" step="1" value={formData.closingStock} onChange={e=>setField('closingStock',e.target.value)}/></FormField>
+            <FormField label={L('Ημέρες νοσηλείας','Patient days')}><input type="number" min="0" step="1" value={formData.patientDays} onChange={e=>setField('patientDays',e.target.value)}/></FormField>
           </FormGrid>
-          <div className="records-unified-calculation"><div><span>Υπολογισμένη κατανάλωση</span><strong>{formatNumber(calculatedConsumption(formData),0)} ml</strong></div><div><span>Δείκτης</span><strong>{formatNumber(indicatorForRecord(formData),2)} L / 1.000 ημέρες</strong></div></div>
+          <div className="records-unified-calculation"><div><span>{L('Υπολογισμένη κατανάλωση','Calculated consumption')}</span><strong>{formatNumber(calculatedConsumption(formData),0)} ml</strong></div><div><span>{L('Δείκτης','Indicator')}</span><strong>{formatNumber(indicatorForRecord(formData),2)} L / 1,000 {L('ημέρες','days')}</strong></div></div>
         </FormSection>
-        <FormSection title="Σημειώσεις"><FormField><textarea rows="5" value={formData.notes} onChange={e=>setField('notes',e.target.value)}/></FormField></FormSection>
+        <FormSection title={L('Σημειώσεις','Notes')}><FormField><textarea rows="5" value={formData.notes} onChange={e=>setField('notes',e.target.value)}/></FormField></FormSection>
       </form>
     </Drawer>
   </PageChrome>

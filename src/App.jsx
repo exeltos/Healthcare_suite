@@ -10,6 +10,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const PatientsPage = lazy(() => import('./pages/Patients/PatientsPage'))
 const PatientWorkflowPage = lazy(() => import('./pages/Patients/PatientWorkflowPage'))
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage'))
+const LiraPage = lazy(() => import('./pages/Lira/LiraPage'))
 const LaboratoryPage = lazy(() => import('./pages/Laboratory/LaboratoryPage'))
 const LaboratoryWorkspacePage = lazy(() => import('./pages/Laboratory/LaboratoryWorkspacePage'))
 const InfectionsPage = lazy(() => import('./pages/Infections/InfectionsPage'))
@@ -72,9 +73,9 @@ export default function App() {
 
         <Route path={APP_ROUTES.SURVEILLANCE} element={<SurveillanceControlsPage />} />
         <Route path={APP_ROUTES.SURVEILLANCE_PATIENTS} element={<Navigate to={APP_ROUTES.PATIENTS} replace />} />
-        <Route path={APP_ROUTES.SURVEILLANCE_STAFF_SAMPLES} element={<Navigate to={`${APP_ROUTES.LABORATORY}/staff`} replace />} />
-        <Route path={APP_ROUTES.SURVEILLANCE_ENVIRONMENT} element={<Navigate to={APP_ROUTES.SURVEILLANCE} replace />} />
-        <Route path={APP_ROUTES.WATER} element={<Navigate to={APP_ROUTES.SURVEILLANCE} replace />} />
+        <Route path={APP_ROUTES.SURVEILLANCE_STAFF_SAMPLES} element={<Navigate to={APP_ROUTES.LABORATORY_STAFF} replace />} />
+        <Route path={APP_ROUTES.SURVEILLANCE_ENVIRONMENT} element={<Navigate to={APP_ROUTES.LABORATORY_ENVIRONMENT} replace />} />
+        <Route path={APP_ROUTES.WATER} element={<Navigate to={APP_ROUTES.LABORATORY_WATER} replace />} />
 
         <Route
           path={APP_ROUTES.INFECTIONS}
@@ -156,7 +157,7 @@ export default function App() {
 
         <Route
           path={APP_ROUTES.LIRA}
-          element={<PlaceholderPage title="LIRA AI" />}
+          element={<LiraPage />}
         />
 
         <Route path={APP_ROUTES.SETTINGS} element={<Navigate to={APP_ROUTES.STUDIO_SETTINGS} replace />} />

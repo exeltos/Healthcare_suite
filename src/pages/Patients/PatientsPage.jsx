@@ -1,3 +1,4 @@
+import { routeFor } from '../../config/routes'
 import { APP_EVENTS } from '../../core/events'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
@@ -8,8 +9,8 @@ import {
   loadPatientRegistry,
   PATIENT_CONFIG_EVENT,
   PATIENT_REGISTRY_EVENT,
-  upsertPatient,
 } from '../../services/patientService'
+import { loadClinicalPatients, loadClinicalPatientSamples, saveClinicalPatient } from '../../services/backend/clinicalDirectoryService'
 import NewPatientDrawer from './NewPatientDrawer'
 import {
   Badge,
@@ -49,6 +50,7 @@ export default function PatientsPage() {
   ]
   const [patients, setPatients] = useState(loadPatientRegistry)
   const [patientSamples, setPatientSamples] = useState(loadPatientSamples)
+  const [clinicalLoading,setClinicalLoading]=useState(true)
   const [search, setSearch] = useState('')
   const [department, setDepartment] = useState('')
   const [status, setStatus] = useState('')
@@ -57,13 +59,24 @@ export default function PatientsPage() {
   const [selectedKeys, setSelectedKeys] = useState([])
   const [newPatientOpen, setNewPatientOpen] = useState(false)
 
+  async function refreshClinicalList(){
+    try{
+      const [patientRows,sampleRows]=await Promise.all([loadClinicalPatients(),loadClinicalPatientSamples()])
+      setPatients(patientRows)
+      setPatientSamples(sampleRows)
+    } finally {
+      setClinicalLoading(false)
+    }
+  }
+
+  useEffect(()=>{refreshClinicalList()},[])
+
   useAppEvents([
     PATIENT_REGISTRY_EVENT,
     PATIENT_CONFIG_EVENT,
     APP_EVENTS.MASTER_DATA_UPDATED,
-  ], () => setPatients(loadPatientRegistry()), { includeStorage: true })
-
-  useAppEvents([PATIENT_SAMPLES_EVENT], () => setPatientSamples(loadPatientSamples()), { includeStorage: true })
+    PATIENT_SAMPLES_EVENT,
+  ], () => { refreshClinicalList() }, { includeStorage: true })
 
   const departments = masterNames('departments')
 
@@ -112,9 +125,10 @@ export default function PatientsPage() {
     setRisk('')
   }
 
-  function savePatient(updatedPatient) {
-    upsertPatient(updatedPatient)
-    setPatients(loadPatientRegistry())
+  async function savePatient(updatedPatient) {
+    await saveClinicalPatient(updatedPatient)
+    setPatients(await loadClinicalPatients())
+    setPatientSamples(await loadClinicalPatientSamples())
     setNewPatientOpen(false)
   }
 
@@ -226,13 +240,14 @@ export default function PatientsPage() {
         columns={columns}
         rows={filteredPatients}
         getRowKey={(patient) => patient.id}
-        onRowClick={(patient) => navigate(`/patients/${patient.id}/workflow`)}
+        onRowClick={(patient) => navigate(routeFor.patientWorkflow(patient.id))}
         selectedKeys={selectedKeys}
         onSelectionChange={setSelectedKeys}
         sort={sort}
         onSortChange={setSort}
         ariaLabel={t('patients.registryAria', "Μητρώο ασθενών")}
-        footer={<span>{filteredPatients.length} {t('patients.records', "εγγραφές")}{selectedKeys.length ? ` · ${selectedKeys.length} ${t('patients.selected', "επιλεγμένες")}` : ''}</span>}
+        footer={<span>{clinicalLoading?t('common.loading',"Φόρτωση…"):`${filteredPatients.length} ${t('patients.records', "εγγραφές")}${selectedKeys.length ? ` · ${selectedKeys.length} ${t('patients.selected', "επιλεγμένες")}` : ''}`}</span>}
+        emptyTitle={clinicalLoading?t('common.loading',"Φόρτωση…"):t('patients.noRecords',"Δεν υπάρχουν ασθενείς")}
       />
 
 

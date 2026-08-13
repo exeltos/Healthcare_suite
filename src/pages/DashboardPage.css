@@ -38,7 +38,7 @@
   border: 0;
   border-radius: 9px;
   color: #fff;
-  background: var(--primary, #0b6b75);
+  background: var(--primary);
   font: inherit;
   font-size: 0.78rem;
   font-weight: 700;
@@ -73,7 +73,7 @@
   display: grid;
   place-items: center;
   border-radius: 9px;
-  color: var(--primary, #0b6b75);
+  color: var(--primary);
   background: rgba(11, 107, 117, 0.09);
 }
 
@@ -154,7 +154,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--primary, #0b6b75);
+  color: var(--primary);
   font-size: 0.68rem;
   font-weight: 700;
   text-decoration: none;
@@ -180,7 +180,7 @@
 }
 
 .dashboard-priority:hover {
-  border-color: var(--border, #dce4e6);
+  border-color: var(--border);
   background: #f5f8f9;
 }
 
@@ -268,7 +268,7 @@
   display: grid;
   place-items: center;
   border-radius: 10px;
-  color: var(--primary, #0b6b75);
+  color: var(--primary);
   background: rgba(11, 107, 117, 0.1);
 }
 
@@ -318,7 +318,7 @@
 }
 
 .dashboard-quick-action > svg:first-child {
-  color: var(--primary, #0b6b75);
+  color: var(--primary);
 }
 
 .dashboard-quick-action > svg:last-child {
@@ -348,7 +348,7 @@
   margin-top: 4px;
   border: 2px solid #fff;
   border-radius: 999px;
-  background: var(--primary, #0b6b75);
+  background: var(--primary);
   box-shadow: 0 0 0 2px rgba(11, 107, 117, 0.14);
 }
 

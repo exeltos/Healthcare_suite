@@ -4,7 +4,9 @@ import {
   loadPatientSamples,
   PATIENT_SAMPLES_EVENT,
 } from './patientSamplesService'
-import { savePatientSampleWithClinicalWorkflow } from './clinicalWorkflowService'
+import { deletePatientSampleWithClinicalWorkflowAsync, savePatientSampleWithClinicalWorkflow, savePatientSampleWithClinicalWorkflowAsync } from './clinicalWorkflowService'
+import { deleteClinicalPatientSample, loadClinicalPatientSamples } from './backend/clinicalDirectoryService'
+import { deleteClinicalSourceSample, loadClinicalSourceSamples, saveClinicalSourceSample } from './backend/clinicalSupportBackendService'
 import {
   deleteStaffSample,
   loadStaffSamples,
@@ -157,4 +159,34 @@ export function deleteLaboratoryRecord(record) {
   }
 
   return deletePatientSample(record.id)
+}
+
+
+export async function loadAllLaboratoryRecordsAsync() {
+  const [patientRows,sourceRows]=await Promise.all([loadClinicalPatientSamples(),loadClinicalSourceSamples()])
+  return [
+    ...patientRows.map(normalizePatient),
+    ...sourceRows.filter(r=>r.sourceType==='Προσωπικό').map(normalizeStaff),
+    ...sourceRows.filter(r=>r.sourceType==='Περιβάλλον').map(normalizeEnvironment),
+    ...sourceRows.filter(r=>r.sourceType==='Νερό').map(normalizeWater),
+  ]
+}
+
+export async function upsertLaboratoryRecordAsync(record) {
+  if (record.sourceType === 'Προσωπικό' || record.sourceType === 'Περιβάλλον' || record.sourceType === 'Νερό') {
+    return saveClinicalSourceSample(record)
+  }
+  return (await savePatientSampleWithClinicalWorkflowAsync({
+    ...record,
+    patientId: record.patientId || '',
+    patientName: record.patientName || record.subjectName,
+    patientCode: record.patientCode || record.subjectCode,
+  })).sample
+}
+
+export async function deleteLaboratoryRecordAsync(record) {
+  if (record.sourceType === 'Προσωπικό' || record.sourceType === 'Περιβάλλον' || record.sourceType === 'Νερό') {
+    return deleteClinicalSourceSample(record)
+  }
+  return deletePatientSampleWithClinicalWorkflowAsync(record)
 }

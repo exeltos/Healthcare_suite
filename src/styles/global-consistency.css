@@ -1,9 +1,9 @@
 /* Global UI consistency pass — single visual language across legacy and Core pages. */
 :root {
-  --font-family-ui: Inter, "Segoe UI", Arial, sans-serif;
-  --font-size-body: .875rem;
+  --font-family-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-size-body: .9rem;
   --font-size-page-title: clamp(1.45rem, 1.8vw, 1.85rem);
-  --font-size-section-title: 1rem;
+  --font-size-section-title: 1.05rem;
   --control-height: 40px;
   --control-height-sm: 34px;
   --page-padding-x: 26px;
@@ -42,7 +42,7 @@ body, button, input, select, textarea { font-family: var(--font-family-ui); }
 
 :where(.page-heading p,.quality-hero p,.organization-hero p,.prevention-hero p,.laboratory-hero p,.patients-hero p,.employees-hero p,.source-hero p,.water-hero p,.infection-hero p,.isolation-hero p,.patient-sample-hero p,.settings-hero p,.lds-page-header p) {
   margin: 6px 0 0 !important;
-  font-size: .84rem !important;
+  font-size: .86rem !important;
   line-height: 1.45 !important;
 }
 
@@ -87,7 +87,7 @@ body, button, input, select, textarea { font-family: var(--font-family-ui); }
   padding: 0 13px !important;
   border-radius: var(--radius-sm) !important;
   font-size: .82rem !important;
-  font-weight: 750 !important;
+  font-weight: 700 !important;
   letter-spacing: -.01em !important;
   box-shadow: none !important;
 }
@@ -155,7 +155,7 @@ body, button, input, select, textarea { font-family: var(--font-family-ui); }
 }
 
 /* Forms share one control language. */
-:where(.organization-modal,.quality-modal,.prevention-modal,.prevention-drawer,.core-drawer,.fd-modal,.settings-drawer) :where(label,small) { font-size: .78rem !important; }
+:where(.organization-modal,.quality-modal,.prevention-modal,.prevention-drawer,.core-drawer,.fd-modal,.settings-drawer) :where(label,small) { font-size: .8rem !important; }
 :where(.organization-modal,.quality-modal,.prevention-modal,.prevention-drawer,.core-drawer,.fd-modal,.settings-drawer) :where(input,select,textarea) {
   border: 1px solid var(--border-strong) !important;
   border-radius: var(--radius-sm) !important;

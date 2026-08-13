@@ -8,7 +8,7 @@
   padding: 16px 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: var(--surface, #ffffff);
+  background: var(--surface);
   box-shadow: var(--shadow-soft);
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
@@ -38,7 +38,7 @@
   min-width: 0;
   color: var(--muted);
   font-size: 0.76rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.3;
 }
 

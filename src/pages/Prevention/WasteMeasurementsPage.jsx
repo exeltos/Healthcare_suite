@@ -21,8 +21,10 @@ import {
 import { normalizeText, selectedRows, sortRows, uniqueSortedValues } from '../../core/utils/entityList'
 import { downloadCsv, printRows } from '../../core/utils/listExport'
 import { WASTE_MEASUREMENTS_EVENT, deleteWasteMeasurement, loadWasteMeasurements, upsertWasteMeasurement } from '../../services/preventionService'
+import { deletePreventionRecord, loadPreventionRecords, savePreventionRecord } from '../../services/backend/preventionBackendService'
 import '../Records/RecordsUnified.css'
 import { masterNames } from '../../services/masterDataService'
+import { useI18n } from '../../i18n'
 
 const EMPTY_RECORD={date:'',department:'',wasteType:'',weightKg:'',containers:'',patientDays:'',collectionCompany:'',documentNumber:'',responsible:'',notes:''}
 function number(value){const parsed=Number(String(value??'').replace(',','.'));return Number.isFinite(parsed)?parsed:0}
@@ -39,7 +41,10 @@ const exportColumns=[
 ]
 
 export default function WasteMeasurementsPage(){
+  const { language } = useI18n()
+  const L = (el,en) => language === 'en' ? en : el
   const [records, refreshRecords, setRecords] = useServiceCollection(loadWasteMeasurements, WASTE_MEASUREMENTS_EVENT)
+  useEffect(()=>{loadPreventionRecords('waste').then(setRecords).catch(()=>{})},[])
   const [search,setSearch]=useState('')
   const [departmentFilter,setDepartmentFilter]=useState('')
   const [typeFilter,setTypeFilter]=useState('')
@@ -62,11 +67,11 @@ export default function WasteMeasurementsPage(){
   function openRecord(record){setSelectedId(record.id);setFormData({...EMPTY_RECORD,...record});setDrawerOpen(true)}
   function close(){setDrawerOpen(false);setSelectedId(null);setFormData(EMPTY_RECORD)}
   function setField(name,value){setFormData(current=>({...current,[name]:value}))}
-  function save(event){event.preventDefault();if(!formData.date||!formData.department||!formData.wasteType||number(formData.weightKg)<=0){notifyAction('Συμπληρώστε ημερομηνία, τμήμα, κατηγορία και βάρος.');return}upsertWasteMeasurement({...formData,id:selectedId||`WASTE-${Date.now()}`,weightKg:String(number(formData.weightKg)),containers:formData.containers===''?'':String(number(formData.containers)),patientDays:formData.patientDays===''?'':String(number(formData.patientDays)),indicator:recordIndicator(formData),updatedAt:new Date().toISOString()});refreshRecords();close()}
-  function remove(){if(!selectedId||!confirmAction('Να διαγραφεί η μέτρηση αποβλήτων;'))return;deleteWasteMeasurement(selectedId);refreshRecords();close()}
+  async function save(event){event.preventDefault();if(!formData.date||!formData.department||!formData.wasteType||number(formData.weightKg)<=0){notifyAction(L('Συμπληρώστε ημερομηνία, τμήμα, κατηγορία και βάρος.','Enter date, department, category and weight.'));return}await savePreventionRecord('waste',{...formData,id:selectedId||`WASTE-${Date.now()}`,weightKg:String(number(formData.weightKg)),containers:formData.containers===''?'':String(number(formData.containers)),patientDays:formData.patientDays===''?'':String(number(formData.patientDays)),indicator:recordIndicator(formData),updatedAt:new Date().toISOString()});setRecords(await loadPreventionRecords('waste'));close()}
+  async function remove(){if(!selectedId||!confirmAction(L('Να διαγραφεί η μέτρηση αποβλήτων;','Delete this waste measurement?')))return;await deletePreventionRecord('waste',selectedId);setRecords(await loadPreventionRecords('waste'));close()}
   function clearFilters(){setSearch('');setDepartmentFilter('');setTypeFilter('');setDateFrom('');setDateTo('')}
   function exportSelected(){downloadCsv({filename:`apovlita-${new Date().toISOString().slice(0,10)}.csv`,columns:exportColumns,rows:selectedRecords})}
-  function printSelected(){printRows({title:'Μετρήσεις Αποβλήτων',columns:exportColumns,rows:selectedRecords})}
+  function printSelected(){printRows({title:L('Μετρήσεις Αποβλήτων','Waste Measurements'),columns:exportColumns,rows:selectedRecords})}
 
   const columns=[
     {key:'date',label:'Ημερομηνία',width:'130px',render:(row)=>row.date||'—'},
@@ -77,39 +82,39 @@ export default function WasteMeasurementsPage(){
     {key:'indicator',label:'Δείκτης',width:'135px',render:(row)=>`${formatNumber(recordIndicator(row),1)} kg / 1.000`},
   ]
 
-  return <PageChrome className="records-unified-page" header={<PageHeader title="Απόβλητα" description="Καταγραφή και παρακολούθηση αποβλήτων ανά τμήμα, κατηγορία και περίοδο." actions={<Button icon={<Plus size={17}/>} onClick={openNew}>Νέα μέτρηση</Button>}/> }>
+  return <PageChrome className="records-unified-page" header={<PageHeader title={L('Απόβλητα','Waste')} description={L('Καταγραφή και παρακολούθηση αποβλήτων ανά τμήμα, κατηγορία και περίοδο.','Record and monitor waste by department, category and period.')} actions={<Button icon={<Plus size={17}/>} onClick={openNew}>{L('Νέα μέτρηση','New measurement')}</Button>}/> }>
     <ListWorkspace
-      stats={<EntitySummary columns={4} ariaLabel="Σύνολα αποβλήτων"><StatCard compact icon={Weight} label="Συνολικό βάρος" value={`${formatNumber(metrics.totalWeight,1)} kg`}/><StatCard compact icon={Boxes} label="Περιέκτες" value={formatNumber(metrics.totalContainers,0)}/><StatCard compact icon={Gauge} label="Δείκτης" value={`${formatNumber(metrics.indicator,1)} kg / 1.000`}/><StatCard compact icon={Recycle} label="Επικίνδυνα" value={`${formatNumber(metrics.hazardousPercent,1)}%`} tone={metrics.hazardousPercent?'warning':'default'}/></EntitySummary>}
-      searchValue={search} onSearchChange={setSearch} searchPlaceholder="Αναζήτηση τμήματος, εταιρείας ή παραστατικού…"
+      stats={<EntitySummary columns={4} ariaLabel={L('Σύνολα αποβλήτων','Waste totals')}><StatCard compact icon={Weight} label={L('Συνολικό βάρος','Total weight')} value={`${formatNumber(metrics.totalWeight,1)} kg`}/><StatCard compact icon={Boxes} label={L('Περιέκτες','Containers')} value={formatNumber(metrics.totalContainers,0)}/><StatCard compact icon={Gauge} label={L('Δείκτης','Indicator')} value={`${formatNumber(metrics.indicator,1)} kg / 1.000`}/><StatCard compact icon={Recycle} label={L('Επικίνδυνα','Hazardous')} value={`${formatNumber(metrics.hazardousPercent,1)}%`} tone={metrics.hazardousPercent?'warning':'default'}/></EntitySummary>}
+      searchValue={search} onSearchChange={setSearch} searchPlaceholder={L('Αναζήτηση τμήματος, εταιρείας ή παραστατικού…','Search department, company or document…')}
       activeFilterCount={[search,departmentFilter,typeFilter,dateFrom,dateTo].filter(Boolean).length} onClearFilters={clearFilters}
-      filters={<><input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} aria-label="Από"/><input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} aria-label="Έως"/><select value={departmentFilter} onChange={e=>setDepartmentFilter(e.target.value)} aria-label="Τμήμα"><option value="">Όλα τα τμήματα</option>{departments.map(item=><option key={item}>{item}</option>)}</select><select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} aria-label="Κατηγορία"><option value="">Όλες οι κατηγορίες</option>{wasteTypes.map(item=><option key={item}>{item}</option>)}</select></>}
-      selectedCount={selectedRecords.length} selectedLabel="μετρήσεις" onClearSelection={()=>setSelectedKeys([])}
-      bulkActions={<><Button variant="secondary" size="sm" icon={<Printer size={16}/>} onClick={printSelected}>Εκτύπωση / PDF</Button><Button variant="secondary" size="sm" icon={<Download size={16}/>} onClick={exportSelected}>Εξαγωγή CSV</Button></>}
-      columns={columns} rows={filtered} getRowKey={row=>row.id} onRowClick={openRecord} selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys} sort={sort} onSortChange={setSort} ariaLabel="Μετρήσεις αποβλήτων" footer={<span>{filtered.length} εγγραφές</span>} emptyTitle="Δεν υπάρχουν μετρήσεις"
+      filters={<><input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} aria-label={L('Από','From')}/><input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} aria-label={L('Έως','To')}/><select value={departmentFilter} onChange={e=>setDepartmentFilter(e.target.value)} aria-label={L('Τμήμα','Department')}><option value="">{L('Όλα τα τμήματα','All departments')}</option>{departments.map(item=><option key={item}>{item}</option>)}</select><select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} aria-label={L('Κατηγορία','Category')}><option value="">{L('Όλες οι κατηγορίες','All categories')}</option>{wasteTypes.map(item=><option key={item}>{item}</option>)}</select></>}
+      selectedCount={selectedRecords.length} selectedLabel={L('μετρήσεις','measurements')} onClearSelection={()=>setSelectedKeys([])}
+      bulkActions={<><Button variant="secondary" size="sm" icon={<Printer size={16}/>} onClick={printSelected}>{L('Εκτύπωση / PDF','Print / PDF')}</Button><Button variant="secondary" size="sm" icon={<Download size={16}/>} onClick={exportSelected}>{L('Εξαγωγή CSV','Export CSV')}</Button></>}
+      columns={columns} rows={filtered} getRowKey={row=>row.id} onRowClick={openRecord} selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys} sort={sort} onSortChange={setSort} ariaLabel={L('Μετρήσεις αποβλήτων','Waste measurements')} footer={<span>{filtered.length} {L('εγγραφές','records')}</span>} emptyTitle={L('Δεν υπάρχουν μετρήσεις','No measurements')}
     />
 
-    <Drawer open={drawerOpen} onClose={close} title={selectedId?'Επεξεργασία μέτρησης':'Νέα μέτρηση αποβλήτων'} description="Καταγράψτε κατηγορία, βάρος και στοιχεία αποκομιδής." width={1120} position="center" footer={<FormActions form="waste-record-form" onCancel={close} extraActions={selectedId?<Button variant="danger" icon={<Trash2 size={16}/>} onClick={remove}>Διαγραφή</Button>:null}/> }>
+    <Drawer open={drawerOpen} onClose={close} title={selectedId?L('Επεξεργασία μέτρησης','Edit measurement'):L('Νέα μέτρηση αποβλήτων','New waste measurement')} description={L('Καταγράψτε κατηγορία, βάρος και στοιχεία αποκομιδής.','Record category, weight and collection details.')} width={1120} position="center" footer={<FormActions form="waste-record-form" onCancel={close} extraActions={selectedId?<Button variant="danger" icon={<Trash2 size={16}/>} onClick={remove}>{L('Διαγραφή','Delete')}</Button>:null}/> }>
       <form id="waste-record-form" className="records-unified-form" onSubmit={save}>
-        <FormSection title="Βασικά στοιχεία">
+        <FormSection title={L('Βασικά στοιχεία','Basic details')}>
           <FormGrid columns={2}>
-            <FormField label="Ημερομηνία" required><input type="date" value={greekToIso(formData.date)} onChange={e=>setField('date',isoToGreek(e.target.value))}/></FormField>
-            <FormField label="Τμήμα" required><LibraryField hideLabel libraryKey="departments" value={formData.department} onChange={value=>setField('department',value)} placeholder="Επιλέξτε ή γράψτε τμήμα"/></FormField>
-            <FormField label="Κατηγορία αποβλήτου" required><LibraryField hideLabel allowManual libraryKey="waste-types" value={formData.wasteType} onChange={value=>setField('wasteType',value)} placeholder="Επιλέξτε ή γράψτε κατηγορία"/></FormField>
-            <FormField label="Υπεύθυνος καταχώρησης"><input value={formData.responsible} onChange={e=>setField('responsible',e.target.value)}/></FormField>
+            <FormField label={L('Ημερομηνία','Date')} required><input type="date" value={greekToIso(formData.date)} onChange={e=>setField('date',isoToGreek(e.target.value))}/></FormField>
+            <FormField label={L('Τμήμα','Department')} required><LibraryField hideLabel libraryKey="departments" value={formData.department} onChange={value=>setField('department',value)} placeholder={L('Επιλέξτε ή γράψτε τμήμα','Select or enter department')}/></FormField>
+            <FormField label={L('Κατηγορία αποβλήτου','Waste category')} required><LibraryField hideLabel allowManual libraryKey="waste-types" value={formData.wasteType} onChange={value=>setField('wasteType',value)} placeholder={L('Επιλέξτε ή γράψτε κατηγορία','Select or enter category')}/></FormField>
+            <FormField label={L('Υπεύθυνος καταχώρησης','Recorded by')}><input value={formData.responsible} onChange={e=>setField('responsible',e.target.value)}/></FormField>
           </FormGrid>
         </FormSection>
-        <FormSection title="Μέτρηση">
+        <FormSection title={L('Μέτρηση','Measurement')}>
           <FormGrid columns={3}>
-            <FormField label="Βάρος (kg)" required><input type="number" min="0" step="0.01" value={formData.weightKg} onChange={e=>setField('weightKg',e.target.value)}/></FormField>
-            <FormField label="Αριθμός περιεκτών"><input type="number" min="0" step="1" value={formData.containers} onChange={e=>setField('containers',e.target.value)}/></FormField>
-            <FormField label="Ημέρες νοσηλείας"><input type="number" min="0" step="1" value={formData.patientDays} onChange={e=>setField('patientDays',e.target.value)}/></FormField>
+            <FormField label={L('Βάρος (kg)','Weight (kg)')} required><input type="number" min="0" step="0.01" value={formData.weightKg} onChange={e=>setField('weightKg',e.target.value)}/></FormField>
+            <FormField label={L('Αριθμός περιεκτών','Number of containers')}><input type="number" min="0" step="1" value={formData.containers} onChange={e=>setField('containers',e.target.value)}/></FormField>
+            <FormField label={L('Ημέρες νοσηλείας','Patient days')}><input type="number" min="0" step="1" value={formData.patientDays} onChange={e=>setField('patientDays',e.target.value)}/></FormField>
           </FormGrid>
-          <div className="records-unified-calculation"><div><span>Καταγεγραμμένο βάρος</span><strong>{formatNumber(number(formData.weightKg),1)} kg</strong></div><div><span>Δείκτης</span><strong>{formatNumber(recordIndicator(formData),1)} kg / 1.000 ημέρες</strong></div></div>
+          <div className="records-unified-calculation"><div><span>{L('Καταγεγραμμένο βάρος','Recorded weight')}</span><strong>{formatNumber(number(formData.weightKg),1)} kg</strong></div><div><span>{L('Δείκτης','Indicator')}</span><strong>{formatNumber(recordIndicator(formData),1)} kg / 1,000 {L('ημέρες','days')}</strong></div></div>
         </FormSection>
-        <FormSection title="Αποκομιδή & τεκμηρίωση">
-          <FormGrid columns={2}><FormField label="Εταιρεία αποκομιδής"><input value={formData.collectionCompany} onChange={e=>setField('collectionCompany',e.target.value)}/></FormField><FormField label="Αριθμός παραστατικού"><input value={formData.documentNumber} onChange={e=>setField('documentNumber',e.target.value)}/></FormField></FormGrid>
+        <FormSection title={L('Αποκομιδή & τεκμηρίωση','Collection & documentation')}>
+          <FormGrid columns={2}><FormField label={L('Εταιρεία αποκομιδής','Collection company')}><input value={formData.collectionCompany} onChange={e=>setField('collectionCompany',e.target.value)}/></FormField><FormField label={L('Αριθμός παραστατικού','Document number')}><input value={formData.documentNumber} onChange={e=>setField('documentNumber',e.target.value)}/></FormField></FormGrid>
         </FormSection>
-        <FormSection title="Σημειώσεις"><FormField><textarea rows="5" value={formData.notes} onChange={e=>setField('notes',e.target.value)}/></FormField></FormSection>
+        <FormSection title={L('Σημειώσεις','Notes')}><FormField><textarea rows="5" value={formData.notes} onChange={e=>setField('notes',e.target.value)}/></FormField></FormSection>
       </form>
     </Drawer>
   </PageChrome>

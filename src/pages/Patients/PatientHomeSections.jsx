@@ -10,14 +10,15 @@ import { EODY_DISEASES } from '../../services/notifiableDiseasesService'
 import { buildPatientSampleRows, formatDate, formatDateTime, getTherapies, normalizeDate, sampleMicroorganismLabel, sampleResistanceLabel, today } from './patientWorkflowUtils'
 import { ActionCard, EmptyState, Field, FileLibrary, IconButton, Input, PanelHeader, SectionHeader, Select, Tab } from './PatientWorkflowEditors'
 import { patientCount, patientDisplayValue } from './patientPresentation'
+import { readSessionValue, writeSessionValue } from '../../core/storage'
 
 export function PatientHome({ patient, editing, setEditing, setPatient, savePatient, activeCases, closedCases, cases, samples, isolations, attachments, timeline, notifiableDiseases, createCase, createSample, openCase, openCaseRecord, openLaboratorySample, upload, deleteAttachment, saveNotifiable, deleteNotifiable, initialTab = 'summary', highlightedSampleId = '' }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
   const patientViewKey = `limoxis:patient-view:${patient.id || patient.patientCode || 'unknown'}`
   const sampleHighlightKey = `${patientViewKey}:last-sample`
-  const readStored = (key, fallback = '') => { try { return sessionStorage.getItem(key) || fallback } catch { return fallback } }
-  const writeStored = (key, value) => { try { sessionStorage.setItem(key, String(value || '')) } catch { /* optional navigation memory */ } }
+  const readStored = (key, fallback = '') => readSessionValue(key, fallback)
+  const writeStored = (key, value) => writeSessionValue(key, String(value || ''))
   const [tab, setTab] = useState(() => initialTab !== 'summary' ? initialTab : readStored(patientViewKey, initialTab || 'summary'))
   const [lastOpenedSampleId, setLastOpenedSampleId] = useState(() => highlightedSampleId || readStored(sampleHighlightKey, ''))
   const [historyTab, setHistoryTab] = useState('timeline')

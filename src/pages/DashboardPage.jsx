@@ -58,10 +58,13 @@ export default function DashboardPage() {
   }, { includeStorage: true })
 
   const stats = useMemo(() => {
-    const admitted = patients.filter((patient) => patient.status === 'Νοσηλεύεται').length
-    const pendingSamples = samples.filter((sample) => laboratoryStatus(sample) === 'Εκκρεμεί').length
-    const positiveSamples = samples.filter((sample) => laboratoryStatus(sample) === 'Θετικό').length
-    const resistantSamples = samples.filter((sample) => resistantValues.has(sample.resistance)).length
+    const admittedPatients = patients.filter((patient) => patient.status === 'Νοσηλεύεται')
+    const admitted = admittedPatients.length
+    const admittedIds = new Set(admittedPatients.map((patient) => String(patient.id)))
+    const currentSamples = samples.filter((sample) => !sample.patientId || admittedIds.has(String(sample.patientId)))
+    const pendingSamples = currentSamples.filter((sample) => laboratoryStatus(sample) === 'Εκκρεμεί').length
+    const positiveSamples = currentSamples.filter((sample) => laboratoryStatus(sample) === 'Θετικό').length
+    const resistantSamples = currentSamples.filter((sample) => resistantValues.has(sample.resistance)).length
     const activeInfections = infections.filter((infection) => infection.status !== 'Ολοκληρωμένη').length
     const activeIsolations = isolations.filter((isolation) => isolation.status === 'Ενεργή').length
 

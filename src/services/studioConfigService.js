@@ -21,3 +21,6 @@ export function resetStudioRows(moduleKey) {
   removeStudioConfig(moduleKey)
   return seedRows(moduleKey)
 }
+
+export async function hydrateStudioRows(){const {hydrateStudioBackend}=await import('./backend/configurationBackendService');return hydrateStudioBackend()}
+export async function saveStudioRowsAsync(moduleKey,rows){const {saveStudioRowsBackend}=await import('./backend/configurationBackendService');return saveStudioRowsBackend(moduleKey,rows)}

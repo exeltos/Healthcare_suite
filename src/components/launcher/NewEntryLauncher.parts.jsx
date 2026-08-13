@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { whoMoments } from './NewEntryLauncher.config'
+import { useI18n } from '../../i18n'
 
 export function EnvironmentSummary({ samples }) {
   const total = samples.length
@@ -48,7 +49,20 @@ export function EnvironmentSummary({ samples }) {
   )
 }
 
-export function WhoSummary({ observations }) {
+export function WhoSummary({ observations, language: languageProp }) {
+  const { language: contextLanguage } = useI18n()
+  const language = languageProp || contextLanguage
+  const L = (el,en) => language === 'en' ? en : el
+  const momentLabel = (moment) => {
+    const en = {
+      moment1: '1. Before touching a patient',
+      moment2: '2. Before clean / aseptic procedure',
+      moment3: '3. After body fluid exposure risk',
+      moment4: '4. After touching a patient',
+      moment5: '5. After touching patient surroundings',
+    }
+    return language === 'en' ? (en[moment.id] || moment.label) : moment.label
+  }
   const opportunities = observations.length
   const professionals = new Set(
     observations
@@ -68,17 +82,17 @@ export function WhoSummary({ observations }) {
     <>
       <div className="who-summary-grid">
         <div>
-          <span>Επαγγελματίες</span>
+          <span>{L('Επαγγελματίες','Professionals')}</span>
           <strong>{professionals}</strong>
         </div>
 
         <div>
-          <span>Ευκαιρίες</span>
+          <span>{L('Ευκαιρίες','Opportunities')}</span>
           <strong>{opportunities}</strong>
         </div>
 
         <div>
-          <span>Ευκαιρίες / επαγγελματία</span>
+          <span>{L('Ευκαιρίες / επαγγελματία','Opportunities / professional')}</span>
           <strong>
             {professionals > 0
               ? Math.round((opportunities / professionals) * 10) / 10
@@ -97,12 +111,12 @@ export function WhoSummary({ observations }) {
         </div>
 
         <div>
-          <span>Παραλείψεις</span>
+          <span>{L('Παραλείψεις','Missed')}</span>
           <strong>{missed}</strong>
         </div>
 
         <div className="compliance">
-          <span>Συμμόρφωση WHO</span>
+          <span>{L('Συμμόρφωση WHO','WHO compliance')}</span>
           <strong>{compliance}%</strong>
         </div>
       </div>
@@ -133,7 +147,7 @@ export function WhoSummary({ observations }) {
             <div className="who-professional-row" key={professionalCode}>
               <strong>{professionalCode}</strong>
               <span>{category}</span>
-              <small>{items.length} ευκαιρίες</small>
+              <small>{items.length} {L('ευκαιρίες','opportunities')}</small>
               <b>{percentage}%</b>
             </div>
           )
@@ -141,7 +155,7 @@ export function WhoSummary({ observations }) {
 
         {professionals === 0 && (
           <div className="who-empty">
-            Δεν υπάρχουν ακόμη επαγγελματίες στην παρατήρηση.
+            {L('Δεν υπάρχουν ακόμη επαγγελματίες στην παρατήρηση.','No professionals have been added to the observation yet.')}
           </div>
         )}
       </div>
@@ -161,8 +175,8 @@ export function WhoSummary({ observations }) {
 
           return (
             <div className="who-moment-row" key={moment.id}>
-              <strong>{moment.label}</strong>
-              <small>{items.length} ευκαιρίες</small>
+              <strong>{momentLabel(moment)}</strong>
+              <small>{items.length} {L('ευκαιρίες','opportunities')}</small>
               <span>{percentage}%</span>
             </div>
           )
@@ -172,10 +186,10 @@ export function WhoSummary({ observations }) {
   )
 }
 
-export function actionLabel(action) {
-  if (action === 'HR') return 'HR · Αλκοολούχο αντισηπτικό'
-  if (action === 'HW') return 'HW · Σαπούνι και νερό'
-  return 'Καμία ενέργεια'
+export function actionLabel(action, language='el') {
+  if (action === 'HR') return language === 'en' ? 'HR · Alcohol-based handrub' : 'HR · Αλκοολούχο αντισηπτικό'
+  if (action === 'HW') return language === 'en' ? 'HW · Soap and water' : 'HW · Σαπούνι και νερό'
+  return language === 'en' ? 'No action' : 'Καμία ενέργεια'
 }
 
 
@@ -187,6 +201,8 @@ export function SmartSelect({
   placeholder = 'Αναζήτηση...',
   allowCustom = false,
 }) {
+  const { language } = useI18n()
+  const L = (el,en) => language === 'en' ? en : el
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(value || '')
 
@@ -258,7 +274,7 @@ export function SmartSelect({
           <button
             className="smart-select-clear"
             type="button"
-            aria-label="Καθαρισμός"
+            aria-label={L('Καθαρισμός','Clear')}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => {
               setQuery('')
@@ -289,8 +305,8 @@ export function SmartSelect({
           {filteredOptions.length === 0 && (
             <div className="smart-select-empty">
               {allowCustom
-                ? 'Δεν βρέθηκε εγγραφή. Θα αποθηκευτεί η τιμή που γράψατε.'
-                : 'Δεν βρέθηκε διαθέσιμη επιλογή.'}
+                ? L('Δεν βρέθηκε εγγραφή. Θα αποθηκευτεί η τιμή που γράψατε.','No matching record found. The entered value will be saved.')
+                : L('Δεν βρέθηκε διαθέσιμη επιλογή.','No available option found.')}
             </div>
           )}
         </div>
