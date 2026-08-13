@@ -1,3 +1,4 @@
+import { removeStoredValue } from '../core/storage'
 import { savePatientRegistry } from '../services/patientService'
 import { saveEmployees } from '../services/employeesService'
 import { savePatientSamples } from '../services/patientSamplesService'
@@ -12,6 +13,18 @@ import { saveIncidents, saveCapa, saveAuditExecutions } from '../services/qualit
 import { replaceTrainingCollection, replaceCommitteesCollection, replaceDocumentsCollection } from '../services/organizationService'
 
 export function clearProductionLocalOperationalCache(){
+  // Purge legacy/demo compatibility keys before Production hydration.
+  removeStoredValue('limoxisDemoDatasetSummary')
+  removeStoredValue('employees')
+  removeStoredValue('staff')
+  removeStoredValue('employeesList')
+  removeStoredValue('employee-library')
+  removeStoredValue('limoxisStaffSamples')
+  removeStoredValue('limoxisEnvironmentalSamples')
+  removeStoredValue('limoxisWaterRecords')
+  removeStoredValue('limoxisTraining')
+  removeStoredValue('limoxisCommittees')
+  removeStoredValue('limoxisDocuments')
   savePatientRegistry([])
   saveEmployees([])
   savePatientSamples([])

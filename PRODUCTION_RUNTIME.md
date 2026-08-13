@@ -381,3 +381,14 @@ All static release audits pass with zero blockers. Final release approval requir
 Operational sample/default records are now Demo-only. Production mode does not seed default employees, patient samples, notifiable-disease cases, quality incidents/CAPA, surveillance-control programs, mock patients or mock patient cases. Successful Production authentication and session restoration clear stale browser-local operational caches before Supabase hydration.
 
 Reference dictionaries and clinical configuration defaults remain code-level configuration where appropriate; they are not operational patient/staff/audit records.
+
+## v0.12.0-rc.5 — Production/Demo isolation hardening
+
+A Supabase-configured deployment is forced into Production mode even if
+`VITE_APP_MODE` is omitted or stale in Netlify. This prevents local Demo
+fallback records from appearing in a production-looking deployment.
+
+Production authentication and session restoration also purge known legacy
+browser-local operational keys. Empty Supabase operational tables therefore
+render as empty operational lists. Reference/configuration dictionaries remain
+available by design.
