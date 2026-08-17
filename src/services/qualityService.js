@@ -8,6 +8,8 @@ export const saveIncidents=(rows=[])=>{const next=qualityRepository.replaceIncid
 export const loadCapa=()=>qualityRepository.findCapa([])
 export const saveCapa=(rows=[])=>{const next=qualityRepository.replaceCapa(rows);emitAppEvent(QUALITY_EVENT,next);return next}
 export const loadAuditExecutions=()=>qualityRepository.findAudits()
+export const loadRisks=()=>qualityRepository.findRisks()
+export const saveRisks=(rows=[])=>{const next=qualityRepository.replaceRisks(rows);emitAppEvent(QUALITY_EVENT,next);return next}
 export function saveAuditExecutions(rows=[]){const next=qualityRepository.replaceAudits(rows);emitAppEvent(AUDITS_EVENT,next);return next}
 export function upsertAuditExecution(record={}){const now=new Date().toISOString();const normalized={...record,id:record.id||`AUD-${Date.now().toString().slice(-7)}`,createdAt:record.createdAt||now,updatedAt:now};const rows=loadAuditExecutions();const exists=rows.some((item)=>item.id===normalized.id);saveAuditExecutions(exists?rows.map((item)=>item.id===normalized.id?normalized:item):[normalized,...rows]);return normalized}
 export const deleteAuditExecution=(id)=>saveAuditExecutions(loadAuditExecutions().filter((item)=>item.id!==id))

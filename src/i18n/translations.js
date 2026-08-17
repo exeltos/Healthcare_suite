@@ -48,7 +48,7 @@ export const translations = {
     nav: {
       dashboard: 'Κεντρική εικόνα', patients: 'Ασθενείς', employees: 'Προσωπικό', laboratory: 'Εργαστήριο', surveillance: 'Επιτήρηση', overview: 'Επισκόπηση', water: 'Νερό', surfaces: 'Επιφάνειες', indicators: 'Δείκτες', records: 'Καταγραφές',
       notifiableDiseases: 'Δηλούμενα Νοσήματα', antiseptics: 'Αντισηπτικά', waste: 'Απόβλητα', prevention: 'Πρόληψη', vaccinations: 'Εμβολιασμοί', handHygiene: 'Υγιεινή Χεριών',
-      promotedAntibiotics: 'Προωθημένα Αντιβιοτικά', quality: 'Κέντρο Ποιότητας', committees: 'Επιτροπές', training: 'Εκπαίδευση', documents: 'Έγγραφα', lira: 'LIRA AI', studio: 'Κέντρο Διαχείρισης',
+      promotedAntibiotics: 'Προωθημένα Αντιβιοτικά', antimicrobialSurveillance: 'Αντιμικροβιακή Επιτήρηση', quality: 'Κέντρο Ποιότητας', committees: 'Επιτροπές', training: 'Εκπαίδευση', documents: 'Έγγραφα', lira: 'LIRA AI', studio: 'Κέντρο Διαχείρισης',
     },
   },
   en: {
@@ -97,7 +97,7 @@ export const translations = {
     nav: {
       dashboard: 'Overview', patients: 'Patients', employees: 'Staff', laboratory: 'Laboratory', surveillance: 'Surveillance', overview: 'Overview', water: 'Water', surfaces: 'Surfaces', indicators: 'Indicators', records: 'Records',
       notifiableDiseases: 'Notifiable Diseases', antiseptics: 'Antiseptics', waste: 'Waste', prevention: 'Prevention', vaccinations: 'Vaccinations', handHygiene: 'Hand Hygiene',
-      promotedAntibiotics: 'Restricted Antibiotics', quality: 'Quality Hub', committees: 'Committees', training: 'Training', documents: 'Documents', lira: 'LIRA AI', studio: 'Administration Center',
+      promotedAntibiotics: 'Restricted Antibiotics', antimicrobialSurveillance: 'Antimicrobial Surveillance', quality: 'Quality Hub', committees: 'Committees', training: 'Training', documents: 'Documents', lira: 'LIRA AI', studio: 'Administration Center',
     },
   },
 }

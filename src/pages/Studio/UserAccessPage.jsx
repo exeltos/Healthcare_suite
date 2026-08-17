@@ -1,6 +1,6 @@
 import { APP_ROUTES } from '../../config/routes'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { KeyRound, Plus, ShieldCheck, Trash2, UserCheck } from 'lucide-react'
+import { KeyRound, Plus, ShieldCheck, UserCheck, UserX } from 'lucide-react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { BackLink, Badge, Button, Drawer, FormActions, FormField, FormGrid, FormSection, PageChrome, PageHeader, SearchInput } from '../../components/core'
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
@@ -176,7 +176,19 @@ export default function UserAccessPage(){
     }catch(err){setError(localizeAccountError(err?.message,language)||L('Δεν ήταν δυνατή η επαναφορά κωδικού.','Password reset could not be requested.'))}
   }
   async function remove(){
-    if(!editing||!confirmAction(L('Να διαγραφεί ο λογαριασμός πρόσβασης;','Delete this access account?')))return
+    if(!editing)return
+    if(IS_PRODUCTION){
+      if(!confirmAction(L('Να απενεργοποιηθεί ο λογαριασμός πρόσβασης; Το ιστορικό θα διατηρηθεί.','Disable this access account? History will be preserved.')))return
+      try{
+        const updated=await saveDirectoryUserAccount({...editing,status:'disabled'})
+        setRows(await loadDirectoryUserAccounts())
+        setEditing(updated)
+        setForm({...empty,...updated,capabilities:[...(updated.capabilities||[])],scopeDepartments:[...(updated.scopeDepartments||[])]})
+        notifyAction(L('Ο λογαριασμός απενεργοποιήθηκε.','Account disabled.'))
+      }catch(err){setError(localizeAccountError(err?.message,language)||L('Δεν ήταν δυνατή η απενεργοποίηση του λογαριασμού.','The account could not be disabled.'))}
+      return
+    }
+    if(!confirmAction(L('Να διαγραφεί ο λογαριασμός πρόσβασης;','Delete this access account?')))return
     try{
       await deleteDirectoryUserAccount(editing.id)
       setRows(await loadDirectoryUserAccounts())
@@ -235,7 +247,7 @@ export default function UserAccessPage(){
 
         {feedback&&<div className="ua-success">{feedback}</div>}
         {error&&<div className="ua-error">{error}</div>}
-        {editing&&<div className="ua-secondary-actions">{!IS_PRODUCTION&&<Button type="button" variant="secondary" icon={<UserCheck size={16}/>} onClick={invite}>{L('Αποστολή πρόσκλησης','Send invitation')}</Button>}<Button type="button" variant="secondary" icon={<KeyRound size={16}/>} onClick={reset}>{L('Επαναφορά κωδικού','Reset password')}</Button><Button type="button" variant="danger" icon={<Trash2 size={16}/>} onClick={remove}>{L('Διαγραφή λογαριασμού','Delete account')}</Button></div>}
+        {editing&&<div className="ua-secondary-actions">{!IS_PRODUCTION&&<Button type="button" variant="secondary" icon={<UserCheck size={16}/>} onClick={invite}>{L('Αποστολή πρόσκλησης','Send invitation')}</Button>}<Button type="button" variant="secondary" icon={<KeyRound size={16}/>} onClick={reset}>{L('Επαναφορά κωδικού','Reset password')}</Button><Button type="button" variant={IS_PRODUCTION?'secondary':'danger'} icon={<UserX size={16}/>} onClick={remove}>{IS_PRODUCTION?L('Απενεργοποίηση λογαριασμού','Disable account'):L('Διαγραφή λογαριασμού','Delete account')}</Button></div>}
       </form>
     </Drawer>
   </PageChrome>

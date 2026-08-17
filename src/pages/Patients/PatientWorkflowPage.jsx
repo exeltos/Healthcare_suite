@@ -4,7 +4,7 @@ import { APP_EVENTS, useAppEvents } from '../../core/events'
 import {
   Activity, ArrowLeft, CalendarDays, CheckCircle2, ChevronRight, ClipboardList,
   Edit3, Eye, FileText, FlaskConical, History, LogIn, LogOut, Paperclip,
-  Pill, Plus, Printer, RefreshCcw, Save, ShieldAlert, Trash2, X,
+  Pill, Plus, Printer, RefreshCcw, Save, ShieldAlert, X,
 } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useI18n } from '../../i18n'
@@ -47,6 +47,11 @@ const emptySample = {
   status: 'Εκκρεμεί', resultDate: '', microorganisms: [], microorganismResults: [], microorganism: '', resistance: '', resultNotes: '', antibiogram: [], collectionTime: '',
 }
 const emptyIsolation = { isolationType: '', pathogen: '', startDate: '', endDate: '', status: 'Ενεργή', notes: '' }
+const emptyPatient = {
+  firstName: '', lastName: '', fatherName: '', fullName: '', gender: '', age: '', patientCode: '', amka: '',
+  status: 'Νοσηλεύεται', department: '', room: '', admissionDate: '', admissionTime: '', dischargeDate: '', dischargeTime: '',
+  daysInHospital: 0, primaryDiagnosis: '', positiveCulture: false, mdr: false, isolation: false,
+}
 
 function isClosedSurveillanceCase(record) {
   return Boolean(record) && (
@@ -60,11 +65,12 @@ export default function PatientWorkflowPage() {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
   const { patientId } = useParams()
+  const isNewPatient = String(patientId) === 'new'
   const navigate = useNavigate()
   const location = useLocation()
-  const [patient,setPatient]=useState(()=>loadPatientRegistry().find((item)=>String(item.id)===String(patientId))||null)
-  const [patientForm, setPatientForm] = useState({})
-  const [editingPatient, setEditingPatient] = useState(false)
+  const [patient,setPatient]=useState(()=>isNewPatient ? { ...emptyPatient } : (loadPatientRegistry().find((item)=>String(item.id)===String(patientId))||null))
+  const [patientForm, setPatientForm] = useState(()=>isNewPatient ? { ...emptyPatient } : {})
+  const [editingPatient, setEditingPatient] = useState(isNewPatient)
   const [screen, setScreen] = useState('home')
   const [workspaceTab, setWorkspaceTab] = useState('assessment')
   const [cases, setCases] = useState([])
@@ -81,6 +87,13 @@ export default function PatientWorkflowPage() {
   const fileRef = useRef(null)
 
   useEffect(() => {
+    if (isNewPatient) {
+      setPatient({ ...emptyPatient })
+      setPatientForm({ ...emptyPatient })
+      setCases([]); setSamples([]); setInfections([]); setIsolations([]); setAttachments([]); setNotifiableDiseases([])
+      setScreen('home'); setActiveCase(null); setEditingPatient(true)
+      return undefined
+    }
     let active=true
     hydrateClinicalPatient(patientId)
       .then(async hydrated=>{
@@ -109,7 +122,7 @@ export default function PatientWorkflowPage() {
       })
       .catch(()=>{})
     return()=>{active=false}
-  }, [patientId])
+  }, [patientId, isNewPatient])
 
   useAppEvents([PROMOTED_ANTIBIOTICS_EVENT, APP_EVENTS.SURVEILLANCE_CASES_UPDATED, APP_EVENTS.PATIENT_SAMPLES_UPDATED], () => {
     if (patient) refreshAll(activeCase?.id)
@@ -128,7 +141,7 @@ export default function PatientWorkflowPage() {
     refreshAll()
   }
 
-  if (!patient) return <div className="pw-page-shell"><div className="pw-missing">{L('Ο ασθενής δεν βρέθηκε.', 'Patient not found.')}<Button onClick={() => navigate(APP_ROUTES.PATIENTS)}>{L('Επιστροφή', 'Back')}</Button></div></div>
+  if (!patient && !isNewPatient) return <div className="pw-page-shell"><div className="pw-missing">{L('Ο ασθενής δεν βρέθηκε.', 'Patient not found.')}<Button onClick={() => navigate(APP_ROUTES.PATIENTS)}>{L('Επιστροφή', 'Back')}</Button></div></div>
 
   const patientKey = String(patient.id || patient.patientCode)
   const activeCases = cases.filter((item) => item.status !== 'Κλειστό')
@@ -156,10 +169,17 @@ export default function PatientWorkflowPage() {
   }
 
   async function savePatient() {
-    const saved=await saveClinicalPatient(patientForm)
+    if (!String(patientForm.firstName || '').trim() || !String(patientForm.lastName || '').trim() || !String(patientForm.patientCode || '').trim()) {
+      notifyAction(L('Συμπληρώστε όνομα, επώνυμο και κωδικό ασθενούς.', 'Enter first name, last name and patient code.'))
+      return
+    }
+    const saved=await saveClinicalPatient({ ...patientForm, fullName: [patientForm.firstName, patientForm.lastName].filter(Boolean).join(' ') })
     setPatient(saved)
     setPatientForm(saved)
     setEditingPatient(false)
+    if (isNewPatient) {
+      navigate(routeFor.patientWorkflow(saved.id), { replace: true, state: { patientTab: 'summary' } })
+    }
   }
   async function removePatient() {
     if (!confirmAction('Να διαγραφεί ο ασθενής και όλες οι συνδεδεμένες καταγραφές του;')) return
@@ -364,19 +384,19 @@ export default function PatientWorkflowPage() {
 
   return <WorkspaceShell className="pw-page-shell" shellClassName="pw-page">
     <WorkspaceHeader
-      backLabel="Επιστροφή στους ασθενείς"
-      onBack={() => navigate(APP_ROUTES.PATIENTS, { state: { returnFromDetail: true, listScope: APP_ROUTES.PATIENTS, highlightRowKey: patient.id } })}
+      backLabel={screen === 'home' ? L('Επιστροφή στους ασθενείς', 'Back to patients') : L('Ένα βήμα πίσω', 'Back one step')}
+      onBack={screen === 'home' ? () => navigate(APP_ROUTES.PATIENTS, isNewPatient ? undefined : { state: { returnFromDetail: true, listScope: APP_ROUTES.PATIENTS, highlightRowKey: patient.id } }) : returnToPatientHome}
       avatar={String(patientForm.fullName || 'Α').split(' ').slice(0, 2).map((x) => x[0]).join('')}
-      eyebrow={L("ΦΑΚΕΛΟΣ ΑΣΘΕΝΟΥΣ", "PATIENT RECORD")}
-      title={patientForm.fullName || 'Ασθενής'}
+      eyebrow={isNewPatient ? L("ΝΕΟΣ ΑΣΘΕΝΗΣ", "NEW PATIENT") : L("ΦΑΚΕΛΟΣ ΑΣΘΕΝΟΥΣ", "PATIENT RECORD")}
+      title={patientForm.fullName || (isNewPatient ? L('Νέος ασθενής', 'New patient') : L('Ασθενής', 'Patient'))}
       badges={<>{signals.positive && <Badge tone="danger">{L("Θετικό", "Positive")}</Badge>}{signals.resistance && <Badge tone="danger">{signals.resistance}</Badge>}{signals.isolation && <Badge tone="warning">{L("Απομόνωση", "Isolation")}</Badge>}{signals.pending && <Badge tone="neutral">{L("Εκκρεμές", "Pending")}</Badge>}{!signals.positive && !signals.isolation && !signals.pending && <Badge tone="success">{L("Χωρίς ενεργή ένδειξη", "No active flag")}</Badge>}</>}
       meta={`${patientForm.patientCode || L('Χωρίς κωδικό', 'No code')} · ${patientForm.room || L('Χωρίς κλίνη', 'No bed')}${patientForm.admissionDate ? ` · ${L('Εισαγωγή', 'Admission')} ${formatDate(patientForm.admissionDate)}` : ''}`}
-      actions={<>{screen !== 'home' && <Button variant="secondary" size="sm" icon={<ArrowLeft size={15} />} onClick={returnToPatientHome}>{L('Σύνοψη', 'Summary')}</Button>}<CoreIconButton label={L("Εκτύπωση καρτέλας ασθενούς", "Print patient record")} onClick={() => window.print()}><Printer size={17} /></CoreIconButton><CoreIconButton label={L("Διαγραφή ασθενούς", "Delete patient")} variant="danger" onClick={removePatient}><Trash2 size={17} /></CoreIconButton></>}
+      actions={isNewPatient ? null : <CoreIconButton label={L("Εκτύπωση καρτέλας ασθενούς", "Print patient record")} onClick={() => window.print()}><Printer size={17} /></CoreIconButton>}
     />
     <input ref={fileRef} type="file" hidden onChange={uploadFile} />
     <main className="pw-page-body">
       {screen === 'home' && <PatientHome
-        patient={patientForm} editing={editingPatient} setEditing={setEditingPatient} setPatient={setPatientForm} savePatient={savePatient}
+        patient={patientForm} isNew={isNewPatient} editing={editingPatient} setEditing={setEditingPatient} setPatient={setPatientForm} savePatient={savePatient}
         activeCases={activeCases} closedCases={closedCases} cases={cases} samples={samples} isolations={isolations} attachments={attachments} timeline={timeline} notifiableDiseases={notifiableDiseases}
         createCase={createCase} createSample={() => navigate(routeFor.laboratoryNewWorkspace(), { state: { prefillPatient: { id: patient.id, fullName: patient.fullName, patientCode: patient.patientCode, department: patient.department, room: patient.room, admissionDate: patient.admissionDate }, returnContext: { path: routeFor.patientWorkflow(patient.id), label: L('Πίσω στα δείγματα ασθενούς', 'Back to patient samples'), patientTab: 'samples' } } })} openCase={openCase} openCaseRecord={openCaseRecord}
         initialTab={location.state?.patientTab || 'summary'} highlightedSampleId={location.state?.highlightedSampleId || ''}

@@ -16,5 +16,5 @@ export const pageAudit = [
   ['Πρόληψη & Συμμόρφωση','Dashboard / Registry','Κοινό header, KPIs, actions'],
   ['Ποιότητα & Βελτίωση','Center / Registry','Κοινό header, tabs, forms'],
   ['Οργάνωση','Dashboard / Registry','Κοινό header, forms, drawer'],
-  ['Limoxis Studio','Studio','Κοινό header, back link, tool cards'],
+  ['Κέντρο Διαχείρισης','Management Center','Κοινό header, back link, tool cards'],
 ]

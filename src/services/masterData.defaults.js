@@ -1,3 +1,4 @@
+import { EODY_DISEASES } from './notifiableDiseasesService'
 import { ANTIBIOTIC_OPTIONS, BASIC_MICROORGANISMS, DEVICE_OPTIONS, INFECTION_SITE_OPTIONS, ISOLATION_TYPE_OPTIONS, RISK_FACTOR_OPTIONS, SAMPLE_CATEGORY_OPTIONS, SAMPLE_REPEAT_PURPOSE_OPTIONS, SAMPLE_TYPE_OPTIONS, SURVEILLANCE_REASON_OPTIONS, SYMPTOM_OPTIONS } from '../core/constants/clinicalOptions'
 
 const activeRows = (prefix, values, extra = () => ({})) => values
@@ -79,6 +80,7 @@ export const DEFAULT_MASTER_DATA = {
     { id: 'waste-3', name: 'ΑΕΑ – Άλλα Επικίνδυνα Απόβλητα', category: 'Επικίνδυνα', status: 'Ενεργό' },
     { id: 'waste-4', name: 'Αιχμηρά αντικείμενα', category: 'Επικίνδυνα', status: 'Ενεργό' },
   ],
+  'notifiable-diseases': EODY_DISEASES.map((item,index)=>({id:`disease-${index+1}`,name:item.name,deadline:item.deadline,status:'Ενεργό'})),
   'antiseptic-products': [{ id: 'ant-prod-1', name: 'Αλκοολούχο αντισηπτικό χεριών 500 ml', volumeMl: '500', status: 'Ενεργό' }],
   'control-types': [
     { id: 'ctrl-type-1', name: 'Legionella', category: 'Νερό', status: 'Ενεργό' },

@@ -1,4 +1,24 @@
 export const studioModules = {
+  retention: {
+    title: 'Data Retention',
+    description: 'Κεντρικές πολιτικές διατήρησης και αρχειοθέτησης δεδομένων.',
+    singular: 'πολιτική διατήρησης',
+    fields: [
+      { key:'name', label:'Κατηγορία', type:'text', required:true },
+      { key:'years', label:'Ελάχιστη διατήρηση (έτη)', type:'text', required:true },
+      { key:'archiveMode', label:'Μετά τη λήξη', type:'select', options:['Διατήρηση σε αρχείο','Επανεξέταση πριν διαγραφή'] },
+      { key:'owner', label:'Υπεύθυνος πολιτικής', type:'text' },
+      { key:'legalBasis', label:'Νομική / οργανωτική βάση', type:'textarea' },
+      { key:'active', label:'Ενεργό', type:'checkbox' },
+    ],
+    seeds:[
+      {id:'RET-CLIN',name:'Κλινικές εγγραφές',years:'20',archiveMode:'Διατήρηση σε αρχείο',owner:'DPO / Ιατρική Υπηρεσία',legalBasis:'Να επιβεβαιωθεί από την πολιτική του οργανισμού και την ισχύουσα νομοθεσία.',active:true},
+      {id:'RET-QUAL',name:'Ποιότητα / CAPA / Audits',years:'10',archiveMode:'Διατήρηση σε αρχείο',owner:'Υπεύθυνος Ποιότητας',legalBasis:'Οργανωτική πολιτική διατήρησης.',active:true},
+      {id:'RET-DOC',name:'Ελεγχόμενα έγγραφα',years:'10',archiveMode:'Διατήρηση σε αρχείο',owner:'Υπεύθυνος Ποιότητας',legalBasis:'Ιστορικό εκδόσεων και αποδεικτικά εφαρμογής.',active:true},
+      {id:'RET-TRAIN',name:'Εκπαίδευση / Competency',years:'10',archiveMode:'Διατήρηση σε αρχείο',owner:'Εκπαίδευση / HR',legalBasis:'Αποδεικτικά εκπαίδευσης και επάρκειας.',active:true},
+      {id:'RET-AUDIT',name:'System Audit Trail',years:'10',archiveMode:'Διατήρηση σε αρχείο',owner:'IT / DPO',legalBasis:'Security και accountability evidence.',active:true},
+    ],
+  },
   workflows: {
     title: 'Smart Workflows',
     description: 'Αυτοματισμοί που συνδέουν γεγονότα της εφαρμογής με εργασίες, εγκρίσεις και επόμενες ενέργειες.',

@@ -12,14 +12,14 @@ export const navigation = [{
       {id:'employees',moduleKey:MODULES.EMPLOYEES,labelKey:'nav.employees',path:APP_ROUTES.EMPLOYEES,icon:UserCog},
       {id:'water',moduleKey:MODULES.WATER,labelKey:'nav.water',path:APP_ROUTES.LABORATORY_WATER,icon:Waves},
       {id:'surfaces',moduleKey:MODULES.SURFACES,labelKey:'nav.surfaces',path:APP_ROUTES.LABORATORY_ENVIRONMENT,icon:ScanLine},
-      {id:'notifiable-diseases',moduleKey:MODULES.NOTIFIABLE,labelKey:'nav.notifiableDiseases',path:APP_ROUTES.NOTIFIABLE_DISEASES,icon:FileText},
+      {id:'antimicrobial-surveillance',moduleKey:MODULES.PROMOTED_ANTIBIOTICS,labelKey:'nav.antimicrobialSurveillance',path:APP_ROUTES.ANTIMICROBIAL_CONSUMPTION,icon:Pill},
     ]},
     {id:'prevention',labelKey:'nav.prevention',icon:ShieldCheck,children:[
       {id:'hand-hygiene',moduleKey:MODULES.HAND_HYGIENE,labelKey:'nav.handHygiene',path:APP_ROUTES.HAND_HYGIENE,icon:Hand},
       {id:'vaccinations',moduleKey:MODULES.VACCINATIONS,labelKey:'nav.vaccinations',path:APP_ROUTES.VACCINATIONS,icon:Syringe},
-      {id:'promoted-antibiotics',moduleKey:MODULES.PROMOTED_ANTIBIOTICS,labelKey:'nav.promotedAntibiotics',path:APP_ROUTES.PROMOTED_ANTIBIOTICS,icon:Pill},
     ]},
     {id:'records',labelKey:'nav.records',icon:ClipboardList,children:[
+      {id:'notifiable-diseases',moduleKey:MODULES.NOTIFIABLE,labelKey:'nav.notifiableDiseases',path:APP_ROUTES.NOTIFIABLE_DISEASES,icon:FileText},
       {id:'antiseptics',moduleKey:MODULES.ANTISEPTICS_WASTE,labelKey:'nav.antiseptics',path:APP_ROUTES.ANTISEPTIC_CONSUMPTION,icon:Pill},
       {id:'waste',moduleKey:MODULES.ANTISEPTICS_WASTE,labelKey:'nav.waste',path:APP_ROUTES.WASTE,icon:Recycle},
     ]},

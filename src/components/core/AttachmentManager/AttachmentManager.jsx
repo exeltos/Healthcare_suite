@@ -35,7 +35,7 @@ function readFile(file, onProgress, errorLabel = 'Αποτυχία ανάγνω�
   })
 }
 
-export default function AttachmentManager({ value = [], onChange, hint }) {
+export default function AttachmentManager({ value = [], onChange, hint, readOnly = false }) {
   const { language } = useI18n()
   const L = (el,en) => language === 'en' ? en : el
   const resolvedHint = hint || L('PDF, Word, Excel, εικόνες ή άλλο υλικό','PDF, Word, Excel, images or other material')
@@ -46,7 +46,7 @@ export default function AttachmentManager({ value = [], onChange, hint }) {
 
   const addFiles = async (fileList) => {
     const files = Array.from(fileList || [])
-    if (!files.length || uploading) return
+    if (!files.length || uploading || readOnly) return
     setUploading(true)
     setProgress(2)
     try {
@@ -85,8 +85,8 @@ export default function AttachmentManager({ value = [], onChange, hint }) {
   }
 
   return <div className={`attachment-manager ${uploading ? 'is-uploading' : ''}`}>
-    <input ref={inputRef} type="file" multiple hidden disabled={uploading} onChange={async (event) => { await addFiles(event.target.files); event.target.value = '' }} />
-    <button
+    <input ref={inputRef} type="file" multiple hidden disabled={uploading || readOnly} onChange={async (event) => { await addFiles(event.target.files); event.target.value = '' }} />
+    {!readOnly && <button
       type="button"
       className={`attachment-manager__dropzone ${dragging ? 'is-dragging' : ''}`}
       disabled={uploading}
@@ -98,8 +98,8 @@ export default function AttachmentManager({ value = [], onChange, hint }) {
     >
       {uploading ? <LoaderCircle className="attachment-manager__spinner" size={18} /> : <Paperclip size={18} />}
       <span><strong>{uploading ? `${L('Ανέβασμα αρχείων…','Uploading files…')} ${progress}%` : L('Προσθήκη αρχείων','Add files')}</strong><small>{uploading ? L('Μην κλείσετε τη φόρμα μέχρι να ολοκληρωθεί.','Do not close the form until upload completes.') : resolvedHint}</small></span>
-    </button>
-    {uploading && <div className="attachment-manager__progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div>}
+    </button>}
+    {uploading && !readOnly && <div className="attachment-manager__progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div>}
 
     <div className="attachment-manager__list">
       {!value.length && <div className="attachment-manager__empty">{L('Δεν υπάρχουν συνημμένα.','No attachments.')}</div>}
@@ -108,7 +108,7 @@ export default function AttachmentManager({ value = [], onChange, hint }) {
         <div><strong>{file.name}</strong><small>{formatBytes(file.size)}</small></div>
         <div className="attachment-manager__actions">
           <button type="button" title={L('Προβολή','View')} disabled={!file.data || uploading} onClick={() => viewFile(file)}><Eye size={14} /></button>
-          <button type="button" className="danger" title={L('Διαγραφή','Delete')} data-feedback-action="delete" disabled={uploading} onClick={() => { if (!confirmAction(`${L('Να διαγραφεί το αρχείο','Delete file')} «${file.name}»;`)) return; onChange?.(value.filter((_, itemIndex) => itemIndex !== index)) }}><Trash2 size={14} /></button>
+          {!readOnly && <button type="button" className="danger" title={L('Διαγραφή','Delete')} data-feedback-action="delete" disabled={uploading} onClick={() => { if (!confirmAction(`${L('Να διαγραφεί το αρχείο','Delete file')} «${file.name}»;`)) return; onChange?.(value.filter((_, itemIndex) => itemIndex !== index)) }}><Trash2 size={14} /></button>}
         </div>
       </article>)}
     </div>

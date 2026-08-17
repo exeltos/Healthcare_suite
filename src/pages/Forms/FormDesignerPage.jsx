@@ -1,11 +1,11 @@
 import { APP_ROUTES } from '../../config/routes'
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
 import { useNavigate } from 'react-router-dom'
-import { ClipboardList, Copy, Plus, Save, Trash2, X } from 'lucide-react'
+import { Archive, ClipboardList, Copy, Plus, Save, Trash2, X } from 'lucide-react'
 import { FORM_TEMPLATES_EVENT, loadFormTemplates } from '../../services/formTemplatesService'
-import { deleteFormTemplateBackend, hydrateFormsBackend, saveFormTemplateBackend } from '../../services/backend/configurationBackendService'
+import { hydrateFormsBackend, saveFormTemplateBackend } from '../../services/backend/configurationBackendService'
 import { BackLink, Button, IconButton, PageChrome } from '../../components/core'
 import PageHeader from '../../components/core/PageHeader/PageHeader'
 import { normalizeText } from '../../core/utils/entityList'
@@ -25,16 +25,17 @@ export default function FormDesignerPage(){
  const [draft,setDraft]=useState(null)
  const [query,setQuery]=useState('')
  useAppEvents(FORM_TEMPLATES_EVENT,()=>setTemplates(loadFormTemplates()))
+ useEffect(()=>{let active=true;hydrateFormsBackend().then(data=>{if(active)setTemplates(data.templates||[])}).catch(()=>{});return()=>{active=false}},[])
  const filtered=useMemo(()=>templates.filter(item=>normalizeText(`${item.name} ${item.category} ${item.type}`).includes(normalizeText(query))),[templates,query])
 
- function save(){
+ async function save(){
    if(!draft?.name?.trim()){notifyAction(L('Συμπληρώστε όνομα φόρμας.','Enter a form name.'));return}
    const duplicate=templates.find(item=>item.id!==draft.id&&normalizeText(item.name)===normalizeText(draft.name))
    if(duplicate){notifyAction(L('Υπάρχει ήδη φόρμα με το ίδιο όνομα.','A form with the same name already exists.'));return}
    const questions=draft.questions.filter(q=>q.label.trim())
    if(!questions.length){notifyAction(L('Προσθέστε τουλάχιστον μία ερώτηση.','Add at least one question.'));return}
-   upsertFormTemplate({...draft,questions})
-   setTemplates(loadFormTemplates())
+   await saveFormTemplateBackend({...draft,questions})
+   setTemplates((await hydrateFormsBackend()).templates)
    notifyAction(draft.id?L('Η φόρμα ενημερώθηκε.','Form updated.'):L('Η φόρμα δημιουργήθηκε.','Form created.'))
    setDraft(null)
  }
@@ -51,7 +52,7 @@ export default function FormDesignerPage(){
    <section className="fd-grid">{filtered.map(template=><article className="fd-card fd-card--clickable" key={template.id} role="button" tabIndex={0} onClick={()=>setDraft(JSON.parse(JSON.stringify(template)))} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();setDraft(JSON.parse(JSON.stringify(template)))}}}>
      <div className="fd-card-icon"><ClipboardList size={22}/></div>
      <div className="fd-card-main"><div className="fd-card-meta"><span>{language==='en'?(TYPE_EN[template.type]||template.type):template.type}</span><span>{template.status==='active'?L('Ενεργή','Active'):L('Ανενεργή','Inactive')}</span></div><h3>{template.name}</h3><p>{template.description||L('Χωρίς περιγραφή','No description')}</p><footer><span>{template.questions.length} {L('ερωτήσεις','questions')}</span><span>{template.appliesTo?.map(x=>`${language==='en'?(MODULE_EN[x.module]||x.module):x.module}${x.context?` / ${x.context}`:''}`).join(', ')||L('Χωρίς σύνδεση','Not linked')}</span></footer></div>
-     <div className="fd-card-actions"><Button size="sm" variant="secondary" onClick={event=>{event.stopPropagation();setDraft(JSON.parse(JSON.stringify(template)))}}>{L('Επεξεργασία','Edit')}</Button><IconButton size="sm" label={L('Αντιγραφή','Duplicate')} onClick={event=>{event.stopPropagation();setDraft({...JSON.parse(JSON.stringify(template)),id:'',name:`${template.name} – ${L('Αντίγραφο','Copy')}`})}}><Copy size={16}/></IconButton><IconButton size="sm" variant="danger" label={L('Διαγραφή','Delete')} onClick={async event=>{event.stopPropagation();if(confirmAction(L('Να διαγραφεί η φόρμα;','Delete this form?'))){await deleteFormTemplateBackend(template.id);setTemplates((await hydrateFormsBackend()).templates);notifyAction(L('Η φόρμα διαγράφηκε.','Form deleted.'))}}}><Trash2 size={16}/></IconButton></div>
+     <div className="fd-card-actions"><Button size="sm" variant="secondary" onClick={event=>{event.stopPropagation();setDraft(JSON.parse(JSON.stringify(template)))}}>{L('Επεξεργασία','Edit')}</Button><IconButton size="sm" label={L('Αντιγραφή','Duplicate')} onClick={event=>{event.stopPropagation();setDraft({...JSON.parse(JSON.stringify(template)),id:'',name:`${template.name} – ${L('Αντίγραφο','Copy')}`})}}><Copy size={16}/></IconButton><IconButton size="sm" variant="secondary" label={template.status==='active'?L('Απενεργοποίηση','Deactivate'):L('Ενεργοποίηση','Activate')} onClick={async event=>{event.stopPropagation();const nextStatus=template.status==='active'?'inactive':'active';if(nextStatus==='inactive'&&!confirmAction(L('Να γίνει η φόρμα ανενεργή; Οι παλιές απαντήσεις θα παραμείνουν διαθέσιμες.','Deactivate this form? Existing responses will remain available.')))return;await saveFormTemplateBackend({...template,status:nextStatus});setTemplates((await hydrateFormsBackend()).templates);notifyAction(nextStatus==='active'?L('Η φόρμα ενεργοποιήθηκε.','Form activated.'):L('Η φόρμα απενεργοποιήθηκε.','Form deactivated.'))}}><Archive size={16}/></IconButton></div>
    </article>)}</section>
 
    {draft&&<div className="fd-modal-backdrop"><div className="fd-modal">

@@ -1,7 +1,7 @@
 import { APP_ROUTES, routeFor } from '../../config/routes'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Download, FlaskConical, Plus, Printer } from 'lucide-react'
 
 import {
@@ -24,11 +24,13 @@ import { normalizeText, selectedRows, sortRows } from '../../core/utils/entityLi
 import { LABORATORY_RESISTANT_MARKERS, laboratoryStatus } from '../../core/constants/laboratory'
 import { useI18n } from '../../i18n'
 import { laboratoryDisplayValue } from './laboratoryPresentation'
+import './LaboratoryPage.css'
 
 export default function LaboratoryPage() {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
   const navigate = useNavigate()
+  const location = useLocation()
   const params = useParams()
   const view = params.view || ''
   const [searchParams, setSearchParams] = useSearchParams()
@@ -207,7 +209,7 @@ export default function LaboratoryPage() {
           actions={<Button
             icon={<Plus size={17} />}
             onClick={() => navigate(APP_ROUTES.LABORATORY_NEW_WORKSPACE, {
-              state: { prefillSourceType: view === 'environment' ? 'Περιβάλλον' : view === 'water' ? 'Νερό' : '' },
+              state: { prefillSourceType: view === 'environment' ? 'Περιβάλλον' : view === 'water' ? 'Νερό' : view === 'staff' ? 'Προσωπικό' : '', returnContext: { path: view ? routeFor.laboratoryView(view) : APP_ROUTES.LABORATORY, label: L('Ένα βήμα πίσω', 'Back one step') } },
             })}
           >{newLabel}</Button>}
         />
@@ -260,9 +262,10 @@ export default function LaboratoryPage() {
         columns={columns}
         rows={filtered}
         getRowKey={(row) => `${row.sourceType}:${row.id}`}
-        onRowClick={(row) => navigate(routeFor.laboratoryRecordWorkspace(encodeURIComponent(row.sourceType), encodeURIComponent(row.id)))}
+        onRowClick={(row) => navigate(routeFor.laboratoryRecordWorkspace(encodeURIComponent(row.sourceType), encodeURIComponent(row.id)), { state: { returnContext: { path: view ? routeFor.laboratoryView(view) : APP_ROUTES.LABORATORY, label: L('Ένα βήμα πίσω', 'Back one step'), listScope: view ? routeFor.laboratoryView(view) : APP_ROUTES.LABORATORY, highlightRowKey: `${row.sourceType}:${row.id}` } } })}
         selectedKeys={selectedKeys}
         onSelectionChange={setSelectedKeys}
+        highlightedKey={location.state?.returnFromDetail ? (location.state?.highlightRowKey || '') : ''}
         sort={sort}
         onSortChange={setSort}
         ariaLabel={L('Εργαστηριακές εγγραφές', 'Laboratory records')}

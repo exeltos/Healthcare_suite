@@ -3,6 +3,8 @@ import { ArrowLeft, Download, Printer } from 'lucide-react'
 import { loadIndicatorsSnapshot } from '../../services/indicatorsService'
 import { loadIncidents } from '../../services/qualityService'
 import { loadEnvironmentalSamples, loadStaffSamples, loadWaterRecords } from '../../services/laboratorySourcesService'
+import { loadAntibioticDDD } from '../../services/indicatorSourceDataService'
+import { loadTraining } from '../../services/organizationService'
 import { laboratoryStatus } from '../../core/constants/laboratory'
 import './FullReportPanel.css'
 
@@ -68,15 +70,16 @@ export default function FullReportPanel({samples=[],infections=[],isolations=[],
   const periodName=months===3?(en?`Q${safeSegment+1}`:`${safeSegment+1}ο τρίμηνο`):months===6?(safeSegment===0?(en?'1st half':'1ο εξάμηνο'):(en?'2nd half':'2ο εξάμηνο')):(en?'Full year':'Έτος')
 
   const data=useMemo(()=>{
-    const sourceAll=[...loadEnvironmentalSamples(),...loadWaterRecords(),...loadStaffSamples()]
+    const sourceAll=[...loadEnvironmentalSamples(),...loadWaterRecords(),...loadStaffSamples()]; const trainingAll=loadTraining()
     const build=(range)=>{
-      const periodSamples=samples.filter(r=>inRange(r,range.start,range.end));const positive=periodSamples.filter(r=>laboratoryStatus(r)==='Θετικό'&&safeText(r.microorganism));const resistant=positive.filter(r=>RESISTANT.has(safeText(r.resistance))||hasCarbapenemResistance(r));const periodInfections=infections.filter(r=>inRange(r,range.start,range.end));const periodIsolations=isolations.filter(r=>inRange(r,range.start,range.end));const incidents=loadIncidents().filter(r=>inRange(r,range.start,range.end));const source=sourceAll.filter(r=>inRange(r,range.start,range.end)&&safeText(r.microorganism));const allMicro=[...positive,...source]
-      return{periodSamples,positive,resistant,periodInfections,periodIsolations,incidents,source,allMicro,indicators:loadIndicatorsSnapshot({from:range.from,to:range.to})}
+      const training=trainingAll.filter(r=>inRange(r,range.start,range.end)); const periodSamples=samples.filter(r=>inRange(r,range.start,range.end));const positive=periodSamples.filter(r=>laboratoryStatus(r)==='Θετικό'&&safeText(r.microorganism));const resistant=positive.filter(r=>RESISTANT.has(safeText(r.resistance))||hasCarbapenemResistance(r));const periodInfections=infections.filter(r=>inRange(r,range.start,range.end));const periodIsolations=isolations.filter(r=>inRange(r,range.start,range.end));const incidents=loadIncidents().filter(r=>inRange(r,range.start,range.end));const source=sourceAll.filter(r=>inRange(r,range.start,range.end)&&safeText(r.microorganism));const allMicro=[...positive,...source]
+      return{training,periodSamples,positive,resistant,periodInfections,periodIsolations,incidents,source,allMicro,indicators:loadIndicatorsSnapshot({from:range.from,to:range.to})}
     }
     const a=build(rangeA),b=build(rangeB)
     const regulatory=REGULATORY_GROUPS.map(group=>({id:group.id,label:en?group.en:group.label,a:a.positive.filter(r=>matchesRegulatory(r,group)).length,b:b.positive.filter(r=>matchesRegulatory(r,group)).length}))
+    const dddAll=loadAntibioticDDD(); const dddRows=(range)=>dddAll.filter(r=>inRange(r,range.start,range.end)); const dddMap=(rows)=>{const m={};rows.forEach(r=>{const k=r.antibiotic||'—';m[k]=(m[k]||0)+Number(r.ddd||0)});return m}; const dA=dddMap(dddRows(rangeA)),dB=dddMap(dddRows(rangeB)); const antimicrobialDDD=[...new Set([...Object.keys(dA),...Object.keys(dB)])].map(label=>({label,a:Math.round((dA[label]||0)*10)/10,b:Math.round((dB[label]||0)*10)/10})).sort((x,y)=>Math.max(y.a,y.b)-Math.max(x.a,x.b))
     const indicators=[...new Set([...a.indicators.map(x=>x.id||x.name),...b.indicators.map(x=>x.id||x.name)])].map(id=>{const A=a.indicators.find(x=>(x.id||x.name)===id),B=b.indicators.find(x=>(x.id||x.name)===id);return{id,label:A?.name||B?.name||id,unit:A?.unit||B?.unit||'',a:Number(A?.metric?.value??0),b:Number(B?.metric?.value??0),statusA:A?.status?.label||'',statusB:B?.status?.label||''}})
-    return{a,b,regulatory,indicators,
+    return{a,b,regulatory,indicators,antimicrobialDDD,
       microbes:pairRows(a.allMicro,b.allMicro,r=>r.microorganism||'Χωρίς μικροοργανισμό'),
       departments:pairRows(a.positive,b.positive,r=>r.department||'Χωρίς τμήμα'),
       samplePoints:pairRows(a.allMicro,b.allMicro,pointKey),
@@ -85,10 +88,12 @@ export default function FullReportPanel({samples=[],infections=[],isolations=[],
       incidentCategories:pairRows(a.incidents,b.incidents,r=>r.category||'Χωρίς κατηγορία'),
       incidentDepartments:pairRows(a.incidents,b.incidents,r=>r.department||'Χωρίς τμήμα'),
       incidentOutcomes:pairRows(a.incidents,b.incidents,r=>r.outcome||'Χωρίς έκβαση'),
+      trainingCategories:pairRows(a.training,b.training,r=>r.category||'Χωρίς κατηγορία'),
+      trainingDepartments:pairRows(a.training,b.training,r=>r.department||'Όλα τα τμήματα'),
     }
   },[samples,infections,isolations,rangeA.from,rangeA.to,rangeB.from,rangeB.to,en])
 
-  const tabs=[['overview',en?'Overview':'Σύνοψη'],['indicators',en?'Indicators':'Δείκτες'],['microbiology',en?'Microbiology':'Μικροβιολογία'],['infections',en?'Infections':'Λοιμώξεις'],['incidents',en?'Incidents':'Συμβάντα']]
+  const tabs=[['overview',en?'Overview':'Σύνοψη'],['indicators',en?'Indicators':'Δείκτες'],['antimicrobials',en?'Antimicrobials':'Αντιμικροβιακά'],['microbiology',en?'Microbiology':'Μικροβιολογία'],['infections',en?'Infections':'Λοιμώξεις'],['incidents',en?'Incidents':'Συμβάντα'],['training',en?'Training':'Εκπαίδευση']]
   function exportCsv(){
     const lines=[];const add=(r=[])=>lines.push(r.map(csvCell).join(';'));add([en?'Healthcare Suite — Data analysis':'Healthcare Suite — Ανάλυση δεδομένων']);add([en?'Period':'Περίοδος',periodName,yearA,yearB]);add()
     const section=(title,rows)=>{add([title]);add([en?'Category':'Κατηγορία',yearA,yearB]);rows.forEach(x=>add([x.label,x.a,x.b]));add()}
@@ -106,8 +111,10 @@ export default function FullReportPanel({samples=[],infections=[],isolations=[],
       <div className="analytics-year-legend"><span className="a"><i/>{yearA}</span><span className="b"><i/>{yearB}</span><b>{periodName}</b></div>
       {tab==='overview'&&<><div className="analytics-compare-grid"><CompareCard label={en?'Positive cultures':'Θετικές καλλιέργειες'} a={data.a.positive.length} b={data.b.positive.length} yearA={yearA} yearB={yearB}/><CompareCard label={en?'Resistant isolates':'Ανθεκτικές απομονώσεις'} a={data.a.resistant.length} b={data.b.resistant.length} yearA={yearA} yearB={yearB}/><CompareCard label={en?'Infections':'Λοιμώξεις'} a={data.a.periodInfections.length} b={data.b.periodInfections.length} yearA={yearA} yearB={yearB}/><CompareCard label={en?'Incidents':'Συμβάντα'} a={data.a.incidents.length} b={data.b.incidents.length} yearA={yearA} yearB={yearB}/></div><div className="full-report-grid"><ChartSection title={en?'Regulatory pathogens':'Παθογόνα επιτήρησης'}><PairBarList rows={data.regulatory} yearA={yearA} yearB={yearB}/></ChartSection><ChartSection title={en?'Positive cultures by department':'Θετικές καλλιέργειες ανά τμήμα'}><PairBarList rows={data.departments} yearA={yearA} yearB={yearB}/></ChartSection></div></>}
       {tab==='indicators'&&<section className="full-report-section full-report-section--wide"><div className="full-report-title"><h3>{en?'All configured indicators':'Όλοι οι καταχωρημένοι δείκτες'}</h3><span>{data.indicators.length}</span></div><div className="indicator-compare-grid">{data.indicators.map(x=><CompareCard key={x.id} label={`${x.label}${x.unit?` · ${x.unit}`:''}`} a={x.a} b={x.b} yearA={yearA} yearB={yearB}/>)}</div></section>}
+      {tab==='antimicrobials'&&<div className="full-report-grid"><ChartSection title={en?'DDD by antimicrobial':'DDD ανά αντιμικροβιακό'}><PairBarList rows={data.antimicrobialDDD} yearA={yearA} yearB={yearB}/></ChartSection><ChartSection title={en?'Antimicrobial consumption indicator':'Δείκτης κατανάλωσης αντιμικροβιακών'}><div className="indicator-compare-grid">{data.indicators.filter(x=>x.id==='antibiotic-consumption').map(x=><CompareCard key={x.id} label={`${x.label} · ${x.unit}`} a={x.a} b={x.b} yearA={yearA} yearB={yearB}/>)}</div></ChartSection></div>}
       {tab==='microbiology'&&<div className="full-report-grid"><ChartSection title={en?'Microorganisms':'Μικροοργανισμοί'}><PairBarList rows={data.microbes} yearA={yearA} yearB={yearB}/></ChartSection><ChartSection title={en?'Specimen / sampling point':'Είδος / σημείο δείγματος'}><PairBarList rows={data.samplePoints} yearA={yearA} yearB={yearB}/></ChartSection><ChartSection title={en?'Positive cultures by department':'Θετικές καλλιέργειες ανά τμήμα'}><PairBarList rows={data.departments} yearA={yearA} yearB={yearB}/></ChartSection><ChartSection title={en?'Regulatory pathogens':'Παθογόνα επιτήρησης'}><PairBarList rows={data.regulatory} yearA={yearA} yearB={yearB}/></ChartSection></div>}
       {tab==='infections'&&<div className="full-report-grid"><ChartSection title={en?'Infections by category / site':'Λοιμώξεις ανά κατηγορία / εστία'}><PairBarList rows={data.infectionSites} yearA={yearA} yearB={yearB}/></ChartSection><ChartSection title={en?'Infections by department':'Λοιμώξεις ανά τμήμα'}><PairBarList rows={data.infectionDepartments} yearA={yearA} yearB={yearB}/></ChartSection></div>}
+      {tab==='training'&&<div className="full-report-grid"><ChartSection title={en?'Training by category':'Εκπαιδεύσεις ανά κατηγορία'}><PairBarList rows={data.trainingCategories} yearA={yearA} yearB={yearB}/></ChartSection><ChartSection title={en?'Training by department':'Εκπαιδεύσεις ανά τμήμα'}><PairBarList rows={data.trainingDepartments} yearA={yearA} yearB={yearB}/></ChartSection><ChartSection title={en?'Mandatory training compliance':'Συμμόρφωση υποχρεωτικής εκπαίδευσης'}><div className="indicator-compare-grid">{data.indicators.filter(x=>x.id==='training-compliance').map(x=><CompareCard key={x.id} label={`${x.label} · ${x.unit}`} a={x.a} b={x.b} yearA={yearA} yearB={yearB}/>)}</div></ChartSection></div>}
       {tab==='incidents'&&<div className="full-report-grid"><ChartSection title={en?'Incidents by category':'Συμβάντα ανά κατηγορία'}><PairBarList rows={data.incidentCategories} yearA={yearA} yearB={yearB}/></ChartSection><ChartSection title={en?'Incidents by department':'Συμβάντα ανά τμήμα'}><PairBarList rows={data.incidentDepartments} yearA={yearA} yearB={yearB}/></ChartSection><ChartSection title={en?'Incidents by outcome':'Συμβάντα ανά έκβαση'}><PairBarList rows={data.incidentOutcomes} yearA={yearA} yearB={yearB}/></ChartSection></div>}
     </div>
   </section></div>

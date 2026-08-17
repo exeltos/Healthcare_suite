@@ -15,3 +15,18 @@
 .prevention-unified-page .core-drawer--center .core-drawer__body{scrollbar-gutter:stable;overscroll-behavior:contain}
 @media(max-width:1000px){.prevention-unified-page .core-entity-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.prevention-unified-page .core-entity-summary{grid-template-columns:1fr}.prevention-observation-list article{grid-template-columns:30px minmax(0,1fr)}.prevention-observation-list article>div:last-child{grid-column:2;justify-content:flex-start;text-align:left}}
+
+/* WHO session detail: preserve the rc.65 card design while keeping only the observation list scrollable. */
+.core-drawer__body:has(> .who-session-card){overflow:hidden;}
+.who-session-card{height:100%;min-height:0;grid-template-rows:auto auto minmax(0,1fr);}
+.who-session-card .who-session-details{min-height:0;}
+.who-session-card .who-session-observations{min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);overflow:hidden;}
+.who-session-card .who-session-observations .core-form-section__content{min-height:0;overflow:hidden;}
+.who-session-card .who-session-observations .prevention-observation-list{height:100%;min-height:0;overflow-y:auto;align-content:start;padding-right:4px;overscroll-behavior:contain;}
+@media(max-width:760px){
+  .core-drawer__body:has(> .who-session-card){overflow:auto;}
+  .who-session-card{height:auto;grid-template-rows:auto;}
+  .who-session-card .who-session-observations,.who-session-card .who-session-observations .core-form-section__content{overflow:visible;}
+  .who-session-card .who-session-observations .prevention-observation-list{height:auto;overflow:visible;padding-right:0;}
+}
+

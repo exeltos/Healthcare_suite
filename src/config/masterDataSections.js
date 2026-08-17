@@ -108,7 +108,11 @@ export const masterDataSections = [
     fields: [
       { id: 'name', label: 'Ονομασία', required: true },
       { id: 'category', label: 'Κατηγορία' },
-      { id: 'atc', label: 'ATC κωδικός' },
+      { id: 'atc', label: 'ATC5 κωδικός' },
+      { id: 'dddRoute', label: 'Οδός WHO DDD', type: 'select', options: ['PO','IV','IM','PR','Inhaled','Other'] },
+      { id: 'dddGrams', label: 'WHO DDD (g)', type: 'number' },
+      { id: 'aware', label: 'WHO AWaRe', type: 'select', options: ['Access','Watch','Reserve','Not classified'] },
+      { id: 'restricted', label: 'Προωθημένο / περιορισμένης χρήσης', type: 'checkbox' },
       {
         id: 'status',
         label: 'Κατάσταση',
@@ -122,6 +126,7 @@ export const masterDataSections = [
         name: 'Meropenem',
         category: 'Carbapenems',
         atc: 'J01DH02',
+        restricted: true,
         status: 'Ενεργό',
       },
       {
@@ -136,6 +141,7 @@ export const masterDataSections = [
         name: 'Colistin',
         category: 'Polymyxins',
         atc: 'J01XB01',
+        restricted: true,
         status: 'Ενεργό',
       },
       {
@@ -468,6 +474,15 @@ export const masterDataSections = [
     description: 'Αρνητικοποίηση, επιμονή, υποτροπή, επαναλοίμωξη και θεραπεία.',
     columns: ['name', 'status'],
     fields: [{ id: 'name', label: 'Ονομασία', required: true }, { id: 'status', label: 'Κατάσταση', type: 'select', options: ['Ενεργό', 'Ανενεργό'] }],
+    initialItems: [],
+  },
+{
+    id: 'notifiable-diseases',
+    label: 'Δηλούμενα Νοσήματα',
+    icon: '📄',
+    description: 'Κεντρική βιβλιοθήκη νοσημάτων και χρόνου υποχρεωτικής δήλωσης.',
+    columns: ['name', 'deadline', 'status'],
+    fields: [{ id: 'name', label: 'Νόσημα', required: true }, { id: 'deadline', label: 'Χρόνος δήλωσης', type: 'select', options: ['Αμέσως','24ωρο','Εβδομάδα'] }, { id: 'status', label: 'Κατάσταση', type: 'select', options: ['Ενεργό', 'Ανενεργό'] }],
     initialItems: [],
   },
 {

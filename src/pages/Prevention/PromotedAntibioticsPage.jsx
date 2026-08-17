@@ -1,5 +1,6 @@
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useServiceCollection } from '../../core/hooks'
 import { CheckCircle2, Clock3, Download, Pill, Plus, Printer, Trash2, Users } from 'lucide-react'
 import HybridMultiSelector from '../../components/core/HybridMultiSelector/HybridMultiSelector'
@@ -19,7 +20,7 @@ import {
   PageHeader,
   StatCard,
 } from '../../components/core'
-import { ANTIBIOTIC_OPTIONS, PROMOTED_APPROVAL_OPTIONS } from '../../core/constants/clinicalOptions'
+import { PROMOTED_APPROVAL_OPTIONS } from '../../core/constants/clinicalOptions'
 import { normalizeText, selectedRows, sortRows, uniqueSortedValues } from '../../core/utils/entityList'
 import { downloadCsv, printRows } from '../../core/utils/listExport'
 import { loadPatientRegistry } from '../../services/patientService'
@@ -28,8 +29,10 @@ import { deletePreventionRecord, loadPreventionRecords, savePreventionRecord } f
 import { updateTherapyApproval, getSurveillanceCase } from '../../services/surveillanceCasesService'
 import { saveClinicalSurveillanceCase } from '../../services/backend/clinicalDirectoryService'
 import './PreventionUnified.css'
-import { masterNames } from '../../services/masterDataService'
+import { activeMasterItems, masterNames } from '../../services/masterDataService'
 import { useI18n } from '../../i18n'
+import { APP_ROUTES } from '../../config/routes'
+import '../Surveillance/AntimicrobialSurveillance.css'
 import { preventionDisplayValue } from './preventionPresentation'
 
 const EMPTY = { date:'', department:'', antibiotic:'', indication:'', approval:'Εκκρεμεί', doctor:'', approvalDate:'', notes:'' }
@@ -44,6 +47,7 @@ const buildExportColumns = (L) => [
 export default function PromotedAntibioticsPage(){
   const { language } = useI18n()
   const L = (el,en) => language === 'en' ? en : el
+  const navigate = useNavigate()
   const exportColumns = buildExportColumns(L)
   const [records, refreshRecords, setRecords] = useServiceCollection(loadPromotedAntibiotics, PROMOTED_ANTIBIOTICS_EVENT)
   useEffect(()=>{loadPreventionRecords('promoted_antibiotic').then(setRecords).catch(()=>{})},[])
@@ -61,6 +65,13 @@ export default function PromotedAntibioticsPage(){
   
 
   const departments=masterNames('departments')
+  const restrictedAntibiotics = useMemo(() => activeMasterItems('antibiotics').filter((item) => item.restricted === true), [])
+  const restrictedAntibioticNames = useMemo(() => restrictedAntibiotics.map((item) => item.name), [restrictedAntibiotics])
+  const antibioticChoices = useMemo(() => {
+    const names = [...restrictedAntibioticNames]
+    if (editing?.antibiotic && !names.includes(editing.antibiotic)) names.unshift(editing.antibiotic)
+    return names
+  }, [restrictedAntibioticNames, editing?.antibiotic])
   const filtered=useMemo(()=>{ const query=normalizeText(search); return sortRows(records.filter(row=>(!department||row.department===department)&&(!approval||row.approval===approval)&&(!query||normalizeText([row.patientName,row.patientCode,row.department,row.antibiotic,row.doctor,row.indication].filter(Boolean).join(' ')).includes(query))),sort) },[records,search,department,approval,sort])
   const selectedRecords=useMemo(()=>selectedRows(filtered,selectedKeys),[filtered,selectedKeys])
   const metrics=useMemo(()=>({ total:filtered.length, pending:filtered.filter(x=>x.approval==='Εκκρεμεί').length, approved:filtered.filter(x=>x.approval==='Εγκρίθηκε').length, patients:new Set(filtered.map(x=>x.patientId||x.patientName).filter(Boolean)).size }),[filtered])
@@ -75,8 +86,9 @@ export default function PromotedAntibioticsPage(){
       notifyAction(L('Για εγκεκριμένο αίτημα απαιτούνται εγκρίνων ιατρός και ημερομηνία έγκρισης.','Approved requests require an approving physician and approval date.'))
       return
     }
+    const normalizedForm = form.approval === 'Εκκρεμεί' ? {...form, doctor:'', approvalDate:''} : form
     if(editing){
-      const updated=await savePreventionRecord('promoted_antibiotic',{...editing,...form})
+      const updated=await savePreventionRecord('promoted_antibiotic',{...editing,...normalizedForm})
       if(updated.sourceType==='patient-therapy'&&updated.caseId&&updated.sourceId){
         updateTherapyApproval(updated.caseId,updated.sourceId,{approval:updated.approval,approvalDoctor:updated.doctor,approvalDate:updated.approvalDate,approvalNotes:updated.notes})
         const linkedCase=getSurveillanceCase(updated.caseId)
@@ -85,7 +97,7 @@ export default function PromotedAntibioticsPage(){
       refreshRecords();close();return
     }
     if(!subjects.length||!form.date||!form.antibiotic)return
-    for(const subject of subjects){const source=subject.source||{};const values=subject.values||{};await savePreventionRecord('promoted_antibiotic',{...form,patientId:subject.manual?'':subject.id,patientName:subject.name,patientCode:source.patientCode||values.code||'',department:form.department||source.department||values.department||subject.meta||''})}
+    for(const subject of subjects){const source=subject.source||{};const values=subject.values||{};await savePreventionRecord('promoted_antibiotic',{...normalizedForm,patientId:subject.manual?'':subject.id,patientName:subject.name,patientCode:source.patientCode||values.code||'',department:form.department||source.department||values.department||subject.meta||''})}
     refreshRecords();close()
   }
   async function remove(){ if(!editing||!confirmAction(L('Να διαγραφεί η καταχώρηση;','Delete this record?')))return; await deletePreventionRecord('promoted_antibiotic',editing.id); setRecords(await loadPreventionRecords('promoted_antibiotic')); close() }
@@ -101,7 +113,8 @@ export default function PromotedAntibioticsPage(){
     {key:'doctor',label:L('Εγκρίνων ιατρός','Approving physician'),render:(row)=><EntityCell primary={row.doctor||'—'} secondary={row.approvalDate?displayDate(row.approvalDate,language):''}/>},
   ]
 
-  return <PageChrome className="prevention-unified-page" header={<PageHeader title={L("Προωθημένα Αντιβιοτικά","Restricted Antibiotics")} description={L("Αιτήματα και εγκρίσεις αντιβιοτικών περιορισμένης χρήσης.","Requests and approvals for restricted-use antimicrobials.")} actions={<Button icon={<Plus size={17}/>} onClick={openNew}>{L('Νέα καταχώρηση','New record')}</Button>}/> }>
+  return <PageChrome className="prevention-unified-page" header={<PageHeader title={L("Αντιμικροβιακή Επιτήρηση","Antimicrobial Surveillance")} description={L("Έγκριση περιορισμένης χρήσης και επιτήρηση κατανάλωσης με ATC/DDD.","Restricted-use approval and ATC/DDD consumption surveillance.")} actions={<Button icon={<Plus size={17}/>} onClick={openNew}>{L('Νέα καταχώρηση','New record')}</Button>}/> }>
+    <div className="antimicrobial-tabs"><Button type="button" className="active">{L('Προωθημένα Αντιβιοτικά','Restricted Antibiotics')}</Button><Button type="button" variant="secondary" onClick={()=>navigate(APP_ROUTES.ANTIMICROBIAL_CONSUMPTION)}>{L('Κατανάλωση Αντιμικροβιακών','Antimicrobial Consumption')}</Button></div>
     <ListWorkspace
       stats={<EntitySummary columns={4} ariaLabel={L("Σύνολα προωθημένων αντιβιοτικών","Restricted antibiotic totals")}><StatCard compact icon={Pill} label={L("Αιτήματα","Requests")} value={metrics.total}/><StatCard compact icon={Clock3} label={L("Εκκρεμή","Pending")} value={metrics.pending}/><StatCard compact icon={CheckCircle2} label={L("Εγκεκριμένα","Approved")} value={metrics.approved}/><StatCard compact icon={Users} label={L("Ασθενείς","Patients")} value={metrics.patients}/></EntitySummary>}
       searchValue={search} onSearchChange={setSearch} searchPlaceholder={L("Αναζήτηση ασθενούς, αντιβιοτικού ή ιατρού…","Search patient, antimicrobial or physician…")}
@@ -119,10 +132,10 @@ export default function PromotedAntibioticsPage(){
         <FormSection title={L("Αίτημα","Request")}><FormGrid columns={2}>
           <FormField label={L("Ημερομηνία","Date")} required><input required type="date" value={form.date} onChange={e=>setField('date',e.target.value)}/></FormField>
           <FormField label={L("Τμήμα","Department")}><LibraryField hideLabel libraryKey="departments" value={form.department} onChange={value=>setField('department',value)} placeholder={L("Επιλέξτε ή γράψτε τμήμα","Select or enter department")}/></FormField>
-          <FormField label={L("Αντιβιοτικό","Antimicrobial")} required><select required disabled={Boolean(editing?.sourceType==='patient-therapy')} value={form.antibiotic} onChange={e=>setField('antibiotic',e.target.value)}><option value="">{L('Επιλογή','Select')}</option>{ANTIBIOTIC_OPTIONS.map(item=><option key={item} value={item}>{item}</option>)}</select></FormField>
+          <FormField label={L("Αντιβιοτικό","Antimicrobial")} required><select required disabled={Boolean(editing?.sourceType==='patient-therapy')} value={form.antibiotic} onChange={e=>setField('antibiotic',e.target.value)}><option value="">{L('Επιλογή','Select')}</option>{antibioticChoices.map(item=><option key={item} value={item}>{item}</option>)}</select></FormField>
           <FormField label={L("Κατάσταση έγκρισης","Approval status")}><select value={form.approval} onChange={e=>setField('approval',e.target.value)}>{PROMOTED_APPROVAL_OPTIONS.map(item=><option key={item} value={item}>{preventionDisplayValue(item,language)}</option>)}</select></FormField>
         </FormGrid></FormSection>
-        <FormSection title={L("Έγκριση","Approval")}><FormGrid columns={2}><FormField label={L("Εγκρίνων ιατρός","Approving physician")}><input value={form.doctor} onChange={e=>setField('doctor',e.target.value)}/></FormField><FormField label={L("Ημερομηνία έγκρισης","Approval date")}><input type="date" value={form.approvalDate||''} onChange={e=>setField('approvalDate',e.target.value)}/></FormField></FormGrid></FormSection>
+        {form.approval !== 'Εκκρεμεί' && <FormSection title={form.approval === 'Εγκρίθηκε' ? L("Έγκριση","Approval") : L("Απόφαση","Decision")}><FormGrid columns={2}><FormField label={form.approval === 'Εγκρίθηκε' ? L("Εγκρίνων ιατρός","Approving physician") : L("Ιατρός απόφασης","Decision physician")} required={form.approval === 'Εγκρίθηκε'}><input required={form.approval === 'Εγκρίθηκε'} value={form.doctor} onChange={e=>setField('doctor',e.target.value)}/></FormField><FormField label={form.approval === 'Εγκρίθηκε' ? L("Ημερομηνία έγκρισης","Approval date") : L("Ημερομηνία απόφασης","Decision date")} required={form.approval === 'Εγκρίθηκε'}><input required={form.approval === 'Εγκρίθηκε'} type="date" value={form.approvalDate||''} onChange={e=>setField('approvalDate',e.target.value)}/></FormField></FormGrid></FormSection>}
         <FormSection title={L("Κλινική τεκμηρίωση","Clinical documentation")}><FormGrid columns={1}><FormField label={L("Ένδειξη","Indication")}><textarea rows="4" value={form.indication} onChange={e=>setField('indication',e.target.value)}/></FormField><FormField label={L("Σημειώσεις έγκρισης","Approval notes")}><textarea rows="4" value={form.notes} onChange={e=>setField('notes',e.target.value)}/></FormField></FormGrid></FormSection>
       </form>
     </Drawer>

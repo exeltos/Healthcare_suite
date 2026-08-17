@@ -1,7 +1,7 @@
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
-import { CalendarClock, Download, Plus, Printer, Trash2, UserRound, Users } from 'lucide-react'
+import { AlertTriangle, Archive, CalendarClock, Download, Plus, Printer, Trash2, UserRound, Users } from 'lucide-react'
 import {
   Badge, Button, Drawer, EntityCell, EntitySummary, FormActions, FormField, FormGrid, FormSection,
   ListWorkspace, PageChrome, PageHeader, StatCard,
@@ -18,7 +18,7 @@ import { committeeDisplayValue } from './committeePresentation'
 import './OrganizationUnified.css'
 
 const EMPTY={name:'',type:'Επιτροπή',chair:'',secretary:'',lastMeeting:'',nextMeeting:'',status:'Ενεργή',frequency:'Μηνιαία',members:[],meetings:[],attachments:[],purpose:'',notes:''}
-const EMPTY_MEETING={date:'',title:'',presentIds:[],minutes:'',decisions:'',actions:[],attachments:[]}
+const EMPTY_MEETING={date:'',title:'',presentIds:[],minutes:'',decisions:'',actions:[],attachments:[],status:'Πρόχειρη',finalizedAt:'',finalizedBy:'',quorumOverrideReason:''}
 const FREQUENCIES=['Μηνιαία','Διμηνιαία','Τριμηνιαία','Εξαμηνιαία','Ετήσια','Έκτακτη']
 const TYPES=['Επιτροπή','Ομάδα εργασίας','Συμβούλιο']
 const MEMBER_ROLES=['Μέλος','Πρόεδρος','Γραμματέας','Συντονιστής']
@@ -62,12 +62,16 @@ export default function CommitteesPage(){
   },[rows,search,type,status,sort])
 
   const selected=useMemo(()=>selectedRows(filtered,selectedKeys),[filtered,selectedKeys])
-  const metrics=useMemo(()=>({
-    total:filtered.length,
-    active:filtered.filter(r=>r.status==='Ενεργή').length,
-    members:filtered.reduce((n,r)=>n+(r.members||[]).length,0),
-    upcoming:filtered.filter(r=>r.nextMeeting&&r.nextMeeting>=new Date().toISOString().slice(0,10)).length,
-  }),[filtered])
+  const metrics=useMemo(()=>{
+    const today=new Date().toISOString().slice(0,10)
+    const actions=filtered.flatMap(r=>(r.meetings||[]).flatMap(mt=>mt.actions||[]))
+    return {
+      total:filtered.length,
+      active:filtered.filter(r=>r.status==='Ενεργή').length,
+      upcoming:filtered.filter(r=>r.nextMeeting&&r.nextMeeting>=today).length,
+      overdue:actions.filter(a=>a.status!=='Ολοκληρωμένη'&&a.dueDate&&a.dueDate<today).length,
+    }
+  },[filtered])
 
   const exportColumns=[
     {label:L('Επιτροπή','Committee'),value:r=>r.name||''},
@@ -145,15 +149,15 @@ export default function CommitteesPage(){
     }
   }
 
-  async function remove(){
-    if(!editing||!confirmAction(L('Να διαγραφεί η επιτροπή;','Delete this committee?')))return
+  async function archiveCommittee(){
+    if(!editing||!confirmAction(L('Να τεθεί η επιτροπή ως ανενεργή; Το ιστορικό συνεδριάσεων και αποφάσεων θα διατηρηθεί.','Set this committee as inactive? Meeting and decision history will be retained.')))return
     try {
-      await deleteOperationalCommittee(editing.id)
+      await saveOperationalCommittee({...form,status:'Ανενεργή'})
       setRows(await loadOperationalCommittees())
       close()
     } catch (error) {
-      console.error('Committee delete failed', error)
-      notifyAction(L('Η διαγραφή της επιτροπής απέτυχε.','Committee could not be deleted.'))
+      console.error('Committee archive failed', error)
+      notifyAction(L('Η αρχειοθέτηση της επιτροπής απέτυχε.','Committee could not be archived.'))
     }
   }
 
@@ -193,14 +197,12 @@ export default function CommitteesPage(){
 
   function updateMember(id,patch){
     setForm(c=>{
-      const members=c.members.map(x=>x.id===id?{...x,...patch}:x)
-      const updated=members.find(x=>x.id===id)
-      const next={...c,members}
-      if(patch.role==='Πρόεδρος') next.chair=updated?.fullName||c.chair
-      if(patch.role==='Γραμματέας') next.secretary=updated?.fullName||c.secretary
-      if(c.chair===updated?.fullName&&patch.role&&patch.role!=='Πρόεδρος') next.chair=''
-      if(c.secretary===updated?.fullName&&patch.role&&patch.role!=='Γραμματέας') next.secretary=''
-      return next
+      let members=c.members.map(x=>x.id===id?{...x,...patch}:x)
+      if(patch.role==='Πρόεδρος') members=members.map(x=>x.id!==id&&x.role==='Πρόεδρος'?{...x,role:'Μέλος'}:x)
+      if(patch.role==='Γραμματέας') members=members.map(x=>x.id!==id&&x.role==='Γραμματέας'?{...x,role:'Μέλος'}:x)
+      const chair=members.find(x=>x.role==='Πρόεδρος')?.fullName||''
+      const secretary=members.find(x=>x.role==='Γραμματέας')?.fullName||''
+      return {...c,members,chair,secretary}
     })
   }
 
@@ -225,11 +227,23 @@ export default function CommitteesPage(){
       notifyAction(L('Συμπληρώστε ημερομηνία συνεδρίασης.','Enter meeting date.'))
       return
     }
+    const required=Math.max(1,Math.ceil((form.members||[]).length/2))
+    if((form.members||[]).length && (meeting.presentIds||[]).length<required && !String(meeting.quorumOverrideReason||'').trim()){
+      notifyAction(L('Δεν υπάρχει απαρτία. Αν η συνεδρίαση πρέπει να καταχωρηθεί κατ’ εξαίρεση, συμπληρώστε σύντομη αιτιολόγηση.','Quorum is not met. If the meeting must be recorded exceptionally, add a brief reason.'))
+      return
+    }
+    if(!String(meeting.minutes||'').trim()){
+      notifyAction(L('Συμπληρώστε σύντομα πρακτικά της συνεδρίασης.','Add brief meeting minutes.'))
+      return
+    }
     const item={
       ...meeting,
       id:`meeting-${Date.now()}`,
       title:meeting.title||`${L('Συνεδρίαση','Meeting')} ${displayDate(meeting.date,language)}`,
       actions:(meeting.actions||[]).filter(a=>String(a.title||'').trim()),
+      status:'Οριστικοποιημένη',
+      finalizedAt:new Date().toISOString(),
+      finalizedBy:L('Τρέχων χρήστης','Current user'),
     }
     setForm(c=>({
       ...c,
@@ -249,8 +263,8 @@ export default function CommitteesPage(){
       stats={<EntitySummary columns={4}>
         <StatCard compact icon={Users} label={L('Επιτροπές','Committees')} value={metrics.total}/>
         <StatCard compact icon={UserRound} label={L('Ενεργές','Active')} value={metrics.active}/>
-        <StatCard compact icon={Users} label={L('Μέλη','Members')} value={metrics.members}/>
         <StatCard compact icon={CalendarClock} label={L('Προγραμματισμένες','Scheduled')} value={metrics.upcoming}/>
+        <StatCard compact icon={AlertTriangle} label={L('Εκπρόθεσμες ενέργειες','Overdue actions')} value={metrics.overdue}/>
       </EntitySummary>}
       searchValue={search}
       onSearchChange={setSearch}
@@ -295,15 +309,15 @@ export default function CommitteesPage(){
       description={L('Στοιχεία, μέλη, συνεδριάσεις και αρχεία στην ίδια scrollable καρτέλα.','Details, members, meetings and files in the same scrollable record.')}
       width={1180}
       position="center"
-      footer={<FormActions form="committee-form" onCancel={close} extraActions={editing?<Button variant="danger" icon={<Trash2 size={16}/>} onClick={remove}>{L('Διαγραφή','Delete')}</Button>:null}/>}
+      footer={<FormActions form="committee-form" onCancel={close} extraActions={editing&&form.status!=='Ανενεργή'?<Button variant="secondary" icon={<Archive size={16}/>} onClick={archiveCommittee}>{L('Αρχειοθέτηση','Archive')}</Button>:null}/>}
     >
       <form id="committee-form" className="organization-unified-form" onSubmit={save}>
         <FormSection title={L('Βασικά στοιχεία','Basic details')}>
           <FormGrid columns={2}>
             <FormField label={L('Ονομασία','Name')} required><input required value={form.name} onChange={e=>setField('name',e.target.value)}/></FormField>
             <FormField label={L('Τύπος','Type')}><select value={form.type} onChange={e=>setField('type',e.target.value)}>{TYPES.map(x=><option key={x} value={x}>{committeeDisplayValue(x,language)}</option>)}</select></FormField>
-            <FormField label={L('Πρόεδρος / Υπεύθυνος','Chair / Responsible')}><input value={form.chair} onChange={e=>setField('chair',e.target.value)}/></FormField>
-            <FormField label={L('Γραμματέας','Secretary')}><input value={form.secretary} onChange={e=>setField('secretary',e.target.value)}/></FormField>
+            <FormField label={L('Πρόεδρος / Υπεύθυνος','Chair / Responsible')}><input value={form.chair||''} readOnly placeholder={L('Ορίζεται από τα μέλη','Set from members')}/></FormField>
+            <FormField label={L('Γραμματέας','Secretary')}><input value={form.secretary||''} readOnly placeholder={L('Ορίζεται από τα μέλη','Set from members')}/></FormField>
             <FormField label={L('Κατάσταση','Status')}><select value={form.status} onChange={e=>setField('status',e.target.value)}><option value="Ενεργή">{committeeDisplayValue('Ενεργή',language)}</option><option value="Ανενεργή">{committeeDisplayValue('Ανενεργή',language)}</option></select></FormField>
             <FormField label={L('Συχνότητα','Frequency')}><select value={form.frequency} onChange={e=>setField('frequency',e.target.value)}>{FREQUENCIES.map(x=><option key={x} value={x}>{committeeDisplayValue(x,language)}</option>)}</select></FormField>
             <FormField label={L('Τελευταία συνεδρίαση','Last meeting')}><input type="date" value={form.lastMeeting||''} onChange={e=>{setField('lastMeeting',e.target.value);if(form.frequency!=='Έκτακτη')setField('nextMeeting',addInterval(e.target.value,form.frequency))}}/></FormField>
@@ -368,7 +382,7 @@ export default function CommitteesPage(){
           >
             {(meeting.actions||[]).map(action=><div className="org-stack-row" key={action.id}>
               <input aria-label={L('Ενέργεια','Action')} placeholder={L('Ενέργεια','Action')} value={action.title||''} onChange={e=>updateAction(action.id,{title:e.target.value})}/>
-              <input aria-label={L('Υπεύθυνος','Owner')} placeholder={L('Υπεύθυνος','Owner')} value={action.owner||''} onChange={e=>updateAction(action.id,{owner:e.target.value})}/>
+              <select aria-label={L('Υπεύθυνος','Owner')} value={action.owner||''} onChange={e=>updateAction(action.id,{owner:e.target.value})}><option value="">{L('Επιλέξτε υπεύθυνο','Select owner')}</option>{form.members.map(m=><option key={m.id} value={m.fullName}>{m.fullName}</option>)}</select>
               <input aria-label={L('Προθεσμία','Due date')} type="date" value={action.dueDate||''} onChange={e=>updateAction(action.id,{dueDate:e.target.value})}/>
               <select aria-label={L('Κατάσταση ενέργειας','Action status')} value={action.status||'Ανοικτή'} onChange={e=>updateAction(action.id,{status:e.target.value})}>
                 {ACTION_STATUSES.map(x=><option key={x} value={x}>{committeeDisplayValue(x,language)}</option>)}
@@ -390,7 +404,7 @@ export default function CommitteesPage(){
                 </small>
                 {mt.decisions&&<p>{mt.decisions}</p>}
               </div>
-              <Button type="button" variant="ghost" size="sm" icon={<Trash2 size={14}/>} onClick={()=>setForm(c=>({...c,meetings:c.meetings.filter(x=>x.id!==mt.id)}))}>{L('Αφαίρεση','Remove')}</Button>
+              <Badge tone="success">{L('Οριστικοποιημένη','Finalized')}</Badge>
             </div>):<div className="org-empty">{L('Δεν υπάρχουν συνεδριάσεις.','No meetings recorded.')}</div>}
           </div>
         </FormSection>

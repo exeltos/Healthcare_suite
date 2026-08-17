@@ -280,6 +280,39 @@ function QuickAction({ icon: Icon, label, path }) {
 
 function EmptyState({ text }) { return <div className="dashboard-empty">{text}</div> }
 
+
+function AnalyticsLineChart({ seriesA, seriesB, yearA, yearB, max }) {
+  const width = 1040
+  const height = 300
+  const left = 44
+  const right = 28
+  const top = 42
+  const bottom = 52
+  const plotWidth = width - left - right
+  const plotHeight = height - top - bottom
+  const xFor = (index) => left + (seriesA.length <= 1 ? plotWidth / 2 : (index * plotWidth) / (seriesA.length - 1))
+  const yFor = (value) => top + plotHeight - (Number(value || 0) / Math.max(1, max)) * plotHeight
+  const pointsA = seriesA.map((item, index) => `${xFor(index)},${yFor(item.value)}`).join(' ')
+  const pointsB = seriesB.map((item, index) => `${xFor(index)},${yFor(item.value)}`).join(' ')
+  const gridValues = [0, .25, .5, .75, 1].map(ratio => Math.round(max * ratio))
+
+  return <div className="analytics-line-chart-wrap">
+    <svg className="analytics-line-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${yearA} vs ${yearB}`}>
+      {gridValues.map((value, index) => {
+        const y = top + plotHeight - (index * plotHeight / 4)
+        return <g key={`grid-${index}`}><line x1={left} x2={width-right} y1={y} y2={y} className="analytics-grid-line"/><text x={left-10} y={y+4} textAnchor="end" className="analytics-axis-value">{value}</text></g>
+      })}
+      <polyline points={pointsA} className="analytics-line series-a"/>
+      <polyline points={pointsB} className="analytics-line series-b"/>
+      {seriesA.map((item,index)=>{const x=xFor(index),yA=yFor(item.value),other=seriesB[index]||{value:0},yB=yFor(other.value);return <g key={`point-${item.month}`}>
+        <circle cx={x} cy={yA} r="4.5" className="analytics-point series-a"/><text x={x} y={Math.max(16,yA-10)} textAnchor="middle" className="analytics-point-value series-a">{item.value}</text>
+        <circle cx={x} cy={yB} r="4.5" className="analytics-point series-b"/><text x={x} y={Math.min(height-24,yB+18)} textAnchor="middle" className="analytics-point-value series-b">{other.value}</text>
+        <text x={x} y={height-18} textAnchor="middle" className="analytics-axis-label">{item.label}</text>
+      </g>})}
+    </svg>
+  </div>
+}
+
 function parseDate(value) {
   if (!value) return new Date(0)
   if (/^\d{4}-\d{2}-\d{2}/.test(value)) return new Date(value)
@@ -376,8 +409,13 @@ function AnalyticsPanel({samples,infections,isolations,months,setMonths,metric,s
       <div className="analytics-export-wrap"><button type="button" className="analytics-export-button" onClick={()=>setExportOpen(v=>!v)}><Download size={15}/>{en?'Export':'Εξαγωγή'}</button>{exportOpen&&<div className="analytics-export-menu"><button type="button" onClick={exportCsv}><Download size={14}/>CSV</button><button type="button" onClick={printReport}><Printer size={14}/>{en?'Print / PDF':'Εκτύπωση / PDF'}</button></div>}</div>
     </div>
     <div className="analytics-legend"><span className="series-a"><i/>{yearA}</span><span className="series-b"><i/>{yearB}</span><b>{periodName}</b></div>
-    <div className="analytics-summary analytics-summary--compare"><div className="summary-a"><small>{yearA}</small><strong>{totalA}</strong></div><div className="summary-b"><small>{yearB}</small><strong>{totalB}</strong></div><div><small>{en?'Difference A vs B':'Μεταβολή Α έναντι Β'}</small><strong className={change>0?'is-up':change<0?'is-down':''}>{change===null?'—':`${change>0?'+':''}${change}%`}</strong></div></div>
-    <div className="analytics-chart analytics-chart--compare">{seriesA.map((item,index)=>{const other=seriesB[index]||{value:0};return <div className="analytics-bar-group" key={`${item.month}-${yearA}-${yearB}`}><div className="analytics-pair"><div className="analytics-bar-wrap"><span>{item.value}</span><div className="analytics-bar series-a" style={{height:`${Math.max(4,item.value/max*100)}%`}}/></div><div className="analytics-bar-wrap"><span>{other.value}</span><div className="analytics-bar series-b" style={{height:`${Math.max(4,other.value/max*100)}%`}}/></div></div><small>{item.label}</small></div>})}</div>
+    <div className="analytics-summary analytics-summary--compare"><div className="summary-a"><small>{en?'Total':'Σύνολο'} · {yearA}</small><strong>{totalA}</strong></div><div className="summary-b"><small>{en?'Total':'Σύνολο'} · {yearB}</small><strong>{totalB}</strong></div><div className="summary-change"><small>{en?'Difference A vs B':'Μεταβολή Α έναντι Β'}</small><strong className={change>0?'is-up':change<0?'is-down':''}>{change===null?'—':`${change>0?'+':''}${change}%`}</strong></div></div>
+    <section className="analytics-visual-card" aria-label={en?'Comparative chart':'Συγκριτικό γράφημα'}>
+      <div className="analytics-visual-card__head"><div><strong>{metricName}</strong><span>{months===12?(en?'Monthly trend across the full year':'Μηνιαία τάση στο σύνολο του έτους'):(en?'Monthly comparison for the selected period':'Μηνιαία σύγκριση για την επιλεγμένη περίοδο')}</span></div><span className="analytics-chart-type">{months===12?(en?'Trend':'Τάση'):(en?'Comparison':'Σύγκριση')}</span></div>
+      {months===12
+        ? <AnalyticsLineChart seriesA={seriesA} seriesB={seriesB} yearA={yearA} yearB={yearB} max={max} />
+        : <div className="analytics-chart analytics-chart--compare">{seriesA.map((item,index)=>{const other=seriesB[index]||{value:0};return <div className="analytics-bar-group" key={`${item.month}-${yearA}-${yearB}`}><div className="analytics-pair"><div className="analytics-bar-wrap"><span className="analytics-value-label">{item.value}</span><div className="analytics-bar series-a" style={{height:`${item.value===0?2:Math.max(8,item.value/max*100)}%`}}/></div><div className="analytics-bar-wrap"><span className="analytics-value-label">{other.value}</span><div className="analytics-bar series-b" style={{height:`${other.value===0?2:Math.max(8,other.value/max*100)}%`}}/></div></div><small>{item.label}</small></div>})}</div>}
+    </section>
     <div className="analytics-insight"><strong>{en?'Comparison summary':'Σύνοψη σύγκρισης'}</strong><p>{change===null?(en?'The comparison year has no recorded values for this period, so a percentage change is not shown.':'Το έτος σύγκρισης δεν έχει καταχωρημένες τιμές για αυτή την περίοδο, επομένως δεν εμφανίζεται ποσοστιαία μεταβολή.'):(change>0?(en?`${yearA} is ${Math.abs(change)}% higher than ${yearB} for the selected period.`:`Το ${yearA} είναι κατά ${Math.abs(change)}% υψηλότερο από το ${yearB} για την επιλεγμένη περίοδο.`):(change<0?(en?`${yearA} is ${Math.abs(change)}% lower than ${yearB} for the selected period.`:`Το ${yearA} είναι κατά ${Math.abs(change)}% χαμηλότερο από το ${yearB} για την επιλεγμένη περίοδο.`):(en?'Both years have the same total for the selected period.':'Τα δύο έτη έχουν το ίδιο σύνολο για την επιλεγμένη περίοδο.')))}</p><small>{en?'Descriptive analytics only; values depend on recorded data.':'Περιγραφική ανάλυση μόνο· οι τιμές εξαρτώνται από τα καταχωρημένα δεδομένα.'}</small></div>
   </section></div>
 }

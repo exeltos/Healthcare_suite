@@ -25,12 +25,18 @@ export default function Sidebar({ collapsed, mobileOpen, onNavigate, user }) {
       })).filter(section=>section.items.length)
 
   useEffect(() => {
-    let active = null
+    let activeGroup = null
+    const returnPath = location.state?.returnContext?.path || ''
+    const navigationPath = returnPath || location.pathname
     visibleNavigation.forEach((section) => section.items.forEach((item) => {
-      if (item.children?.length && containsPath(item, location.pathname)) active = item.id
+      if (item.children?.length && containsPath(item, navigationPath)) activeGroup = item.id
     }))
-    setOpenGroup((current) => active || (current && !visibleNavigation.some((section) => section.items.some((item) => item.id === current && containsPath(item, location.pathname))) ? null : current))
-  }, [location.pathname])
+    // Keep the major section expanded through descendant/detail workspaces.
+    // Laboratory records opened from Water/Surfaces carry their source route in
+    // returnContext, so Surveillance remains visibly open until another major
+    // category is selected.
+    setOpenGroup(activeGroup)
+  }, [location.pathname, location.state?.returnContext?.path])
 
   function toggleGroup(id) { setOpenGroup((current) => current === id ? null : id) }
   function closeGroupsAndNavigate(item, depth) {
@@ -46,7 +52,7 @@ export default function Sidebar({ collapsed, mobileOpen, onNavigate, user }) {
     const expanded = openGroup === item.id
     const active = containsPath(item, location.pathname)
 
-    if (!hasChildren) return <NavLink key={item.id} to={item.path} end={item.id==='laboratory'||item.id==='dashboard'} onClick={() => closeGroupsAndNavigate(item, depth)} title={collapsed ? label : undefined} className={({isActive}) => `${depth ? 'sidebar-submenu-link' : 'nav-link'} ${isActive ? 'active' : ''} ${item.emphasis ? 'emphasis' : ''}`}><span className={depth ? '' : 'nav-icon'}><Icon size={depth ? 16 : 19} strokeWidth={2.1}/></span>{!collapsed && <span className={depth ? '' : 'nav-label'}>{label}</span>}</NavLink>
+    if (!hasChildren) return <NavLink key={item.id} to={item.path} end={item.id==='laboratory'||item.id==='dashboard'} onClick={() => closeGroupsAndNavigate(item, depth)} title={collapsed ? label : undefined} className={({isActive}) => `${depth ? 'sidebar-submenu-link' : 'nav-link'} ${(isActive || active) ? 'active' : ''} ${item.emphasis ? 'emphasis' : ''}`}><span className={depth ? '' : 'nav-icon'}><Icon size={depth ? 16 : 19} strokeWidth={2.1}/></span>{!collapsed && <span className={depth ? '' : 'nav-label'}>{label}</span>}</NavLink>
 
     if (collapsed) return <button key={item.id} type="button" className={`nav-link sidebar-group-button ${active ? 'active' : ''}`} title={label} onClick={() => { const first=item.children?.[0]; if(first?.path){navigate(first.path);onNavigate?.()} }}><span className="nav-icon"><Icon size={19} strokeWidth={2.1}/></span></button>
 

@@ -2,10 +2,10 @@ import { APP_ROUTES } from '../../config/routes'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, Plus, SearchCheck, ShieldAlert, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, Plus, SearchCheck, ShieldAlert, Sparkles, Target } from 'lucide-react'
 import { Button, Card, EntitySummary, PageChrome, PageHeader, PageSection, StatCard } from '../../components/core'
-import { QUALITY_EVENT, loadCapa, loadIncidents, AUDITS_EVENT, loadAuditExecutions } from '../../services/qualityService'
-import { loadQualityAudits, loadQualityCapa, loadQualityIncidents } from '../../services/backend/qualityBackendService'
+import { QUALITY_EVENT, loadCapa, loadIncidents, AUDITS_EVENT, loadAuditExecutions, loadRisks } from '../../services/qualityService'
+import { loadQualityAudits, loadQualityCapa, loadQualityIncidents, loadQualityRisks } from '../../services/backend/qualityBackendService'
 import { hydrateIndicatorBackend } from '../../services/backend/indicatorBackendService'
 import { INDICATORS_EVENT, loadIndicatorsSnapshot } from '../../services/indicatorsService'
 import { useI18n } from '../../i18n'
@@ -17,8 +17,8 @@ export default function QualityCenterPage(){
   const navigate=useNavigate()
   const [version,setVersion]=useState(0)
   useAppEvents([QUALITY_EVENT, INDICATORS_EVENT, AUDITS_EVENT], () => setVersion(v => v + 1), { includeStorage: true })
-  useEffect(()=>{Promise.all([loadQualityIncidents(),loadQualityCapa(),loadQualityAudits(),hydrateIndicatorBackend()]).then(()=>setVersion(v=>v+1)).catch(()=>{})},[])
-  const data=useMemo(()=>({incidents:loadIncidents(),capa:loadCapa(),indicators:loadIndicatorsSnapshot(),audits:loadAuditExecutions()}),[version])
+  useEffect(()=>{Promise.all([loadQualityIncidents(),loadQualityCapa(),loadQualityAudits(),loadQualityRisks(),hydrateIndicatorBackend()]).then(()=>setVersion(v=>v+1)).catch(()=>{})},[])
+  const data=useMemo(()=>({incidents:loadIncidents(),capa:loadCapa(),indicators:loadIndicatorsSnapshot(),audits:loadAuditExecutions(),risks:loadRisks()}),[version])
   const today=new Date().toISOString().slice(0,10)
   const openIncidents=data.incidents.filter(x=>x.status!=='Κλειστό').length
   const severe=data.incidents.filter(x=>['Σοβαρή βλάβη','Θάνατος'].includes(x.outcome)).length
@@ -27,6 +27,7 @@ export default function QualityCenterPage(){
   const verification=data.capa.filter(x=>x.status==='Σε επαλήθευση'||(x.effectivenessStatus==='Εκκρεμεί'&&Number(x.progress)>=100)).length
   const findings=data.audits.reduce((sum,row)=>sum+(row.findings||[]).filter(f=>f.status!=='Κλειστό').length,0)
   const indicatorsOut=data.indicators.filter(x=>['danger','warning'].includes(x.status?.tone)).length
+  const highRisks=data.risks.filter(x=>Number(x.riskScore)>=10&&!['Κλειστός','Ακυρωμένος'].includes(x.status)).length
 
   return <PageChrome className="quality-unified-page" header={<PageHeader
     title={L('Κέντρο Ποιότητας','Quality Center')}
@@ -49,9 +50,10 @@ export default function QualityCenterPage(){
     </PageSection>
 
     <div className="quality-workflow-grid">
-      <Card className="quality-workflow-card"><div className="quality-workflow-card__head"><AlertTriangle size={20}/><h3>{L('Συμβάντα','Incidents')}</h3></div><p>{L('Αναφορά, βαθμός βλάβης, άμεση αντιμετώπιση, contributing factors και root cause. Από το ίδιο συμβάν δημιουργείται Audit ή CAPA χωρίς επανάληψη στοιχείων.','Report, harm level, immediate response, contributing factors and root cause. Create an Audit or CAPA from the same incident without duplicating data.')}</p><Button variant="secondary" icon={<ArrowRight size={16}/>} onClick={()=>navigate(APP_ROUTES.QUALITY_INCIDENTS)}>{L('Άνοιγμα συμβάντων','Open incidents')}</Button></Card>
-      <Card className="quality-workflow-card"><div className="quality-workflow-card__head"><SearchCheck size={20}/><h3>Audit</h3></div><p>{L('Εκτέλεση από κοινά πρότυπα Form Designer, συμμόρφωση, τεκμηριωμένα ευρήματα και άμεση σύνδεση κάθε μη συμμόρφωσης με CAPA.','Execution from shared Form Designer templates, compliance, documented findings and direct linkage of each non-conformity to CAPA.')}</p><Button variant="secondary" icon={<ArrowRight size={16}/>} onClick={()=>navigate(APP_ROUTES.QUALITY_AUDITS)}>{L('Άνοιγμα Audit','Open Audit')}</Button></Card>
-      <Card className="quality-workflow-card"><div className="quality-workflow-card__head"><Sparkles size={20}/><h3>CAPA</h3></div><p>{L('Μία κοινή δεξαμενή ενεργειών για συμβάντα, audits, δείκτες, παράπονα και επιτροπές. Δεν επιτρέπεται κλείσιμο χωρίς επιβεβαίωση αποτελεσματικότητας.','One shared action pool for incidents, audits, indicators, complaints and committees. Closure is not allowed without effectiveness verification.')}</p><Button variant="secondary" icon={<ArrowRight size={16}/>} onClick={()=>navigate(APP_ROUTES.QUALITY_CAPA)}>{L('Άνοιγμα CAPA','Open CAPA')}</Button></Card>
+      <Card className="quality-workflow-card quality-workflow-card--action" role="button" tabIndex={0} onClick={()=>navigate(APP_ROUTES.QUALITY_INCIDENTS)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();navigate(APP_ROUTES.QUALITY_INCIDENTS)}}}><div className="quality-workflow-card__head"><AlertTriangle size={20}/><h3>{L('Συμβάντα','Incidents')}</h3><ArrowRight size={17}/></div><p>{L('Αναφορά, βαθμός βλάβης, άμεση αντιμετώπιση, contributing factors και root cause. Από το ίδιο συμβάν δημιουργείται Audit ή CAPA χωρίς επανάληψη στοιχείων.','Report, harm level, immediate response, contributing factors and root cause. Create an Audit or CAPA from the same incident without duplicating data.')}</p></Card>
+      <Card className="quality-workflow-card quality-workflow-card--action" role="button" tabIndex={0} onClick={()=>navigate(APP_ROUTES.QUALITY_AUDITS)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();navigate(APP_ROUTES.QUALITY_AUDITS)}}}><div className="quality-workflow-card__head"><SearchCheck size={20}/><h3>Audit</h3><ArrowRight size={17}/></div><p>{L('Εκτέλεση από κοινά πρότυπα Form Designer, συμμόρφωση, τεκμηριωμένα ευρήματα και άμεση σύνδεση κάθε μη συμμόρφωσης με CAPA.','Execution from shared Form Designer templates, compliance, documented findings and direct linkage of each non-conformity to CAPA.')}</p></Card>
+      <Card className="quality-workflow-card quality-workflow-card--action" role="button" tabIndex={0} onClick={()=>navigate(APP_ROUTES.QUALITY_CAPA)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();navigate(APP_ROUTES.QUALITY_CAPA)}}}><div className="quality-workflow-card__head"><Sparkles size={20}/><h3>CAPA</h3><ArrowRight size={17}/></div><p>{L('Μία κοινή δεξαμενή ενεργειών για συμβάντα, audits, δείκτες, παράπονα και επιτροπές. Δεν επιτρέπεται κλείσιμο χωρίς επιβεβαίωση αποτελεσματικότητας.','One shared action pool for incidents, audits, indicators, complaints and committees. Closure is not allowed without effectiveness verification.')}</p></Card>
+      <Card className="quality-workflow-card quality-workflow-card--action" role="button" tabIndex={0} onClick={()=>navigate(APP_ROUTES.QUALITY_RISKS)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();navigate(APP_ROUTES.QUALITY_RISKS)}}}><div className="quality-workflow-card__head"><Target size={20}/><h3>{L('Κίνδυνοι','Risks')}</h3><ArrowRight size={17}/></div><p>{L('Προληπτική καταγραφή κινδύνων πριν εξελιχθούν σε συμβάν. Η βαθμολογία υπολογίζεται αυτόματα και μπορεί να δημιουργηθεί CAPA με ένα βήμα.','Proactive risk recording before issues become incidents. Scoring is automatic and a CAPA can be created in one step.')}</p></Card>
     </div>
 
     <PageSection title={L('Τι χρειάζεται προσοχή','What needs attention')} description={L('Συγκεντρωτική εικόνα χωρίς να δημιουργούμε δεύτερο dashboard δεδομένων.','A consolidated view without creating a second data dashboard.')}>
@@ -59,6 +61,7 @@ export default function QualityCenterPage(){
         <Card className="quality-why-card"><strong>{severe} {L('σοβαρά συμβάντα','severe incidents')}</strong><span>{L('Απαιτούν προτεραιοποίηση διερεύνησης και άμεση αξιολόγηση ενεργειών.','Require prioritized investigation and immediate action review.')}</span></Card>
         <Card className="quality-why-card"><strong>{overdue} {L('εκπρόθεσμες CAPA','overdue CAPA')}</strong><span>{L('Έχουν περάσει την προθεσμία χωρίς ολοκλήρωση και επαλήθευση.','Past due without completion and verification.')}</span></Card>
         <Card className="quality-why-card"><strong>{verification} {L('ενέργειες σε verification','actions in verification')}</strong><span>{L('Η υλοποίηση έχει προχωρήσει, αλλά πρέπει να αποδειχθεί η αποτελεσματικότητα.','Implementation progressed, but effectiveness still needs evidence.')}</span></Card>
+        <Card className="quality-why-card"><strong>{highRisks} {L('υψηλοί κίνδυνοι','high risks')}</strong><span>{L('Χρειάζονται μέτρα μείωσης ή τεκμηριωμένη αποδοχή και επανέλεγχο.','Require mitigation or documented acceptance and review.')}</span></Card>
         <Card className="quality-why-card"><strong>{indicatorsOut} {L('δείκτες χρειάζονται προσοχή','indicators need attention')}</strong><span>{L('Από τον ίδιο τον δείκτη μπορεί να δημιουργηθεί CAPA όταν υπάρχει απόκλιση.','A CAPA can be created directly from an indicator when deviation occurs.')}</span></Card>
       </div>
     </PageSection>

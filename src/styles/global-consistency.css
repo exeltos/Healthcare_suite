@@ -12,7 +12,7 @@
   --modal-width-wide: 960px;
   --modal-height-stable: min(720px, calc(100vh - 56px));
   --form-canvas: #f3f8f9;
-  --form-surface: #ffffff;
+  --form-surface: var(--surface);
 }
 
 body, button, input, select, textarea { font-family: var(--font-family-ui); }

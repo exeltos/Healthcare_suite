@@ -76,13 +76,6 @@ const MODULES = [
     path: APP_ROUTES.VACCINATIONS,
   },
   {
-    id: 'promoted-antibiotics',
-    titleEl: 'Προωθημένα Αντιβιοτικά', titleEn: 'Restricted Antibiotics',
-    descriptionEl: 'Αιτήματα και εγκρίσεις αντιβιοτικών περιορισμένης χρήσης.', descriptionEn: 'Requests and approvals for restricted-use antimicrobials.',
-    icon: Pill,
-    path: APP_ROUTES.PROMOTED_ANTIBIOTICS,
-  },
-  {
     id: 'antiseptics',
     titleEl: 'Κατανάλωση Αντισηπτικών', titleEn: 'Antiseptic Consumption',
     descriptionEl: 'Κατανάλωση και δείκτες ανά τμήμα.', descriptionEn: 'Consumption and indicators by department.',
@@ -387,14 +380,6 @@ function buildRecentItems(data, language='el') {
       title: L('Εμβολιασμός Προσωπικού','Staff Vaccination'),
       subtitle: [item.employeeName, item.vaccine].filter(Boolean).join(' • '),
       icon: <Syringe size={18} />,
-    })),
-    ...data.promotedAntibiotics.map((item) => ({
-      ...item,
-      type: 'promoted-antibiotic',
-      path: APP_ROUTES.PROMOTED_ANTIBIOTICS,
-      title: L('Προωθημένο Αντιβιοτικό','Restricted Antibiotic'),
-      subtitle: [item.patientName, item.antibiotic].filter(Boolean).join(' • '),
-      icon: <Pill size={18} />,
     })),
     ...data.bundles.map((item) => ({
       ...item,

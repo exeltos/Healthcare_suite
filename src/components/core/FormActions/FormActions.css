@@ -60,3 +60,25 @@
     width: 100%;
   }
 }
+
+/* RC27 — Compact action footer: keep destructive/cancel/save controls comfortable but not oversized. */
+.core-form-actions .lds-button {
+  min-height: 38px;
+  height: 38px;
+  padding-inline: 14px;
+  border-radius: 10px;
+  font-size: .86rem;
+  gap: 7px;
+}
+.core-form-actions .lds-button svg {
+  width: 16px;
+  height: 16px;
+}
+.core-form-actions--sticky {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.entry-form-footer.core-form-actions {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}

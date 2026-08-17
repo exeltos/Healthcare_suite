@@ -165,8 +165,14 @@ export async function saveClinicalPatientSample(input={}){
     collection_time:timeOrNull(row.collectionTime),received_date:dateOrNull(row.receivedDate),
     result_date:dateOrNull(row.resultDate),status:String(row.status||'Εκκρεμεί'),
     microorganism:String(row.microorganism||''),resistance:String(row.resistance||''),
+    sample_acceptance:String(row.sampleAcceptance||'Αποδεκτό'),
+    rejection_reason:String(row.rejectionReason||''),
+    validated_at:row.validatedAt||null,
+    critical_result:Boolean(row.criticalResult),
+    critical_communicated_to:String(row.criticalCommunicatedTo||''),
+    critical_communicated_at:row.criticalCommunicatedAt||null,
     department_id:departmentId,
-    data:cleanData(row,['id','patientId','patientName','patientCode','department','clinicalCaseId','surveillanceCaseId','parentSampleId','rootSampleId','sampleType','category','sampleReason','collectionDate','collectionTime','receivedDate','resultDate','status','microorganism','resistance']),
+    data:cleanData(row,['id','patientId','patientName','patientCode','department','clinicalCaseId','surveillanceCaseId','parentSampleId','rootSampleId','sampleType','category','sampleReason','collectionDate','collectionTime','receivedDate','resultDate','status','microorganism','resistance','sampleAcceptance','rejectionReason','validatedAt','criticalResult','criticalCommunicatedTo','criticalCommunicatedAt']),
   }
   const { data,error }=await client.from('patient_samples').upsert(payload,{onConflict:'id'})
     .select('*,department:departments(id,name,code),patient:patients(id,patient_code,first_name,last_name,admission_date)').single()
@@ -277,6 +283,10 @@ function mapSampleFromDb(row={}){
     sampleType:row.sample_type||'',category:row.category||'',sampleReason:row.sample_reason||'',
     collectionDate:row.collection_date||'',collectionTime:trimTime(row.collection_time),receivedDate:row.received_date||'',
     resultDate:row.result_date||'',status:row.status||'',microorganism:row.microorganism||'',resistance:row.resistance||'',
+    sampleAcceptance:row.sample_acceptance||'Αποδεκτό',rejectionReason:row.rejection_reason||'',
+    validatedAt:row.validated_at||'',validatedBy:row.data?.validatedBy||'',
+    criticalResult:Boolean(row.critical_result),criticalCommunicatedTo:row.critical_communicated_to||'',
+    criticalCommunicatedAt:row.critical_communicated_at||'',criticalCommunicatedBy:row.data?.criticalCommunicatedBy||'',
     createdAt:row.created_at||null,updatedAt:row.updated_at||null}
 }
 function mapInfectionFromDb(row={}){

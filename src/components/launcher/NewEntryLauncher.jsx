@@ -27,8 +27,9 @@ import { persistNewEntry } from './NewEntryLauncher.persistence'
 import { EnvironmentEntryFlow, WhoEntryFlow } from './NewEntryLauncher.flows'
 import { useI18n } from '../../i18n'
 import './NewEntryLauncher.css'
+import { canPerformModuleAction, MODULES } from '../../services/accessControlService'
 
-export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) {
+export default function NewEntryLauncher({ user, open, onClose, initialTypeId = '' }) {
   const { language } = useI18n()
   const L = (el,en) => language === 'en' ? en : el
   const [step, setStep] = useState(1)
@@ -75,10 +76,24 @@ export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) 
     setPatientSourceConfig(loadPatientSourceConfig())
   }, { includeStorage: true })
 
-  const selectedType = useMemo(
-    () => entryTypes.find((item) => item.id === selectedTypeId) || null,
-    [selectedTypeId],
+  const entryModule = {
+    patient: MODULES.PATIENTS,
+    sample: MODULES.LABORATORY,
+    infection: MODULES.PATIENTS,
+    isolation: MODULES.PATIENTS,
+    'hand-hygiene': MODULES.HAND_HYGIENE,
+    environment: MODULES.SURFACES,
+    water: MODULES.WATER,
+    staff: MODULES.EMPLOYEES,
+  }
+  const visibleEntryTypes = useMemo(
+    () => entryTypes.filter((item) => !entryModule[item.id] || canPerformModuleAction(user, entryModule[item.id], 'create')),
+    [user],
   )
+  const selectedType = useMemo(() => {
+    const requestedId = selectedTypeId || initialTypeId
+    return entryTypes.find((item) => item.id === requestedId) || null
+  }, [selectedTypeId, initialTypeId])
 
   const selectedPatient = useMemo(
     () =>
@@ -137,6 +152,7 @@ export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) 
   }
 
   function chooseEntryType(typeId) {
+    if (!visibleEntryTypes.some((item) => item.id === typeId)) return
     setSelectedTypeId(typeId)
     setMode('')
     setSelectedPatientId('')
@@ -291,7 +307,7 @@ export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) 
   return (
     <div className="hybrid-launcher-backdrop" onMouseDown={resetAndClose}>
       <section
-        className="hybrid-launcher"
+        className={`hybrid-launcher ${initialTypeId === 'hand-hygiene' ? 'hybrid-launcher--who-direct' : ''}`.trim()}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <EntryFormHeader
@@ -305,15 +321,15 @@ export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) 
           onClose={resetAndClose}
         />
 
-        <EntryFormStepper
+        {!initialTypeId && <EntryFormStepper
           steps={progressSteps}
           activeStep={progressActiveStep}
-        />
+        />}
 
         <div className="hybrid-launcher-body">
-          {step === 1 && (
+          {step === 1 && !initialTypeId && (
             <div className="hybrid-type-grid">
-              {entryTypes.map((type) => (
+              {visibleEntryTypes.map((type) => (
                 <button
                   key={type.id}
                   type="button"
@@ -561,7 +577,7 @@ export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) 
             </div>
           )}
 
-          {step === 4 && selectedType?.id === 'hand-hygiene' && (
+          {(step === 4 || initialTypeId === 'hand-hygiene') && selectedType?.id === 'hand-hygiene' && (
             <WhoEntryFlow
               whoSession={whoSession}
               setWhoSession={setWhoSession}
@@ -711,7 +727,7 @@ export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) 
           />
         )}
 
-        {step === 4 && selectedType?.id === 'hand-hygiene' && (
+        {(step === 4 || initialTypeId === 'hand-hygiene') && selectedType?.id === 'hand-hygiene' && (
           <EntryFormFooter
             onCancel={resetAndClose}
             showBack={!initialTypeId}
@@ -719,7 +735,7 @@ export default function NewEntryLauncher({ open, onClose, initialTypeId = '' }) 
               setSavedMessage('')
               setStep(1)
             }}
-            primaryLabel={L('Αποθήκευση ελέγχου WHO','Save WHO observation')}
+            primaryLabel={L('Αποθήκευση συνεδρίας WHO','Save WHO session')}
             primaryType="submit"
             form="hand-hygiene-entry-form"
             primaryDisabled={whoObservations.length === 0}

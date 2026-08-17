@@ -32,6 +32,10 @@ export async function saveOperationalTraining(input={}){
     if(key&&seenAttendance.has(key))throw new Error('Training attendance contains the same employee more than once.')
     if(key)seenAttendance.add(key)
   }
+  if(row.status==='Ολοκληρωμένη' && row.competencyRequired){
+    const missing=attendance.filter(item=>['Παρών','Online'].includes(String(item.status||'')) && !String(item.competencyResult||'').trim())
+    if(missing.length)throw new Error('Completed competency training requires an assessment result for each completed attendee.')
+  }
   const payload={id:String(row.id),organization_id:org,department_id:dep,title:String(row.title||''),category:String(row.category||''),trainer:String(row.trainer||''),training_date:trainingDate,status:String(row.status||'Προγραμματισμένη'),duration_hours:Number(row.durationHours||0),valid_until:validUntil,attendance,attachments:Array.isArray(row.attachments)?row.attachments:[],notes:String(row.notes||''),data:rest(row,['id','department','title','category','trainer','date','status','durationHours','validUntil','attendance','attachments','notes','createdAt','updatedAt'])}
   const {data,error}=await c.from('training_records').upsert(payload,{onConflict:'id'}).select('*,department:departments(id,name)').single();if(error)throw error;return mapTraining(data)
 }
@@ -62,6 +66,13 @@ export async function saveOperationalCommittee(input={}){
   for(const mt of meetings){
     if((mt.presentIds||[]).some(id=>!allowedMemberIds.has(String(id))))throw new Error('Meeting attendance contains a person who is not a committee member.')
     if(new Set(mt.presentIds||[]).size!==(mt.presentIds||[]).length)throw new Error('Meeting attendance contains duplicate presence.')
+    const attendance=Array.isArray(mt.attendance)?mt.attendance:[]
+    const present=attendance.filter(item=>item.present).length
+    const required=Math.max(1,Math.ceil(attendance.length/2))
+    if(mt.status==='Οριστικοποιημένη'){
+      if(!String(mt.minutes||'').trim())throw new Error('Finalized committee meeting requires minutes.')
+      if(attendance.length&&present<required&&!String(mt.quorumOverrideReason||'').trim())throw new Error('Finalized committee meeting without quorum requires an exception reason.')
+    }
     for(const action of mt.actions||[]){if(action.dueDate&&mt.date&&action.dueDate<mt.date)throw new Error('Decision action due date cannot precede the meeting date.')}
   }
   if(row.lastMeeting&&row.nextMeeting&&row.nextMeeting<row.lastMeeting)throw new Error('Next committee meeting cannot precede the last meeting.')
@@ -86,6 +97,8 @@ export async function saveOperationalDocument(input={}){
   if(duplicateDocumentError)throw duplicateDocumentError
   if(duplicateDocument?.length)throw new Error('Document code already exists.')
   if(row.status==='Σε ισχύ'&&!(Array.isArray(row.attachments)&&row.attachments.length))throw new Error('An in-force document must have at least one attachment.')
+  if(row.status==='Σε ισχύ'&&(!String(row.approvedBy||'').trim()||!String(row.approvedAt||'').trim()||!String(row.effectiveDate||'').trim()))throw new Error('An in-force document requires approval metadata.')
+  if(row.status==='Προς έγκριση'&&!(Array.isArray(row.attachments)&&row.attachments.length))throw new Error('A document pending approval must have an attachment.')
   const versions=Array.isArray(row.versions)?row.versions:[]
   const versionKeys=versions.map(v=>String(v.version||'').trim()).filter(Boolean)
   if(new Set(versionKeys).size!==versionKeys.length)throw new Error('Document version history contains duplicate version numbers.')
@@ -94,7 +107,9 @@ export async function saveOperationalDocument(input={}){
 }
 export async function deleteOperationalDocument(id){
   if(!IS_PRODUCTION)return deleteDocument(id)
-  const c=requireSupabase();const {error}=await c.from('controlled_documents').delete().eq('id',String(id));if(error)throw error;return true
+  const c=requireSupabase();const {data:row,error:readError}=await c.from('controlled_documents').select('status').eq('id',String(id)).single();if(readError)throw readError
+  if(row?.status!=='Πρόχειρο')throw new Error('Only draft controlled documents can be deleted.')
+  const {error}=await c.from('controlled_documents').delete().eq('id',String(id));if(error)throw error;return true
 }
 
 function mapTraining(r){return {...r.data,id:r.id,title:r.title,category:r.category,department:one(r.department)?.name||'',trainer:r.trainer,date:r.training_date||'',status:r.status,durationHours:Number(r.duration_hours||0),validUntil:r.valid_until||'',attendance:Array.isArray(r.attendance)?r.attendance:[],attachments:Array.isArray(r.attachments)?r.attachments:[],notes:r.notes,createdAt:r.created_at,updatedAt:r.updated_at}}

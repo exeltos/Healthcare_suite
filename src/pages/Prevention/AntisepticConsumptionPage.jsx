@@ -28,6 +28,7 @@ import {
 import { deletePreventionRecord, loadPreventionRecords, savePreventionRecord } from '../../services/backend/preventionBackendService'
 import '../Records/RecordsUnified.css'
 import { masterNames } from '../../services/masterDataService'
+import { loadDailyCensus } from '../../services/indicatorSourceDataService'
 import { useI18n } from '../../i18n'
 
 const EMPTY_RECORD = { date:'', department:'', product:'', openingStock:'', received:'', closingStock:'', consumption:'', patientDays:'', responsible:'', notes:'' }
@@ -45,6 +46,7 @@ const exportColumns=[
   {label:'Κατανάλωση (ml)',value:(row)=>calculatedConsumption(row)},{label:'Ημέρες νοσηλείας',value:(row)=>row.patientDays||''},{label:'Δείκτης L/1.000',value:(row)=>indicatorForRecord(row).toFixed(2)},{label:'Υπεύθυνος',value:(row)=>row.responsible||''},
 ]
 
+function monthlyBedDays(dateValue,department){if(!dateValue||!department)return 0;const iso=String(dateValue).includes('/')?String(dateValue).split('/').reverse().join('-'):String(dateValue);const ym=iso.slice(0,7);return loadDailyCensus().filter(row=>String(row.date||'').slice(0,7)===ym&&row.department===department).reduce((sum,row)=>sum+Number(row.patientDays||row.totalPatients||0),0)}
 export default function AntisepticConsumptionPage(){
   const { language } = useI18n()
   const L = (el,en) => language === 'en' ? en : el
@@ -71,7 +73,7 @@ export default function AntisepticConsumptionPage(){
   function openNew(){ setSelectedId(null); setFormData({...EMPTY_RECORD,date:todayGreek()}); setDrawerOpen(true) }
   function openRecord(record){ setSelectedId(record.id); setFormData({...EMPTY_RECORD,...record}); setDrawerOpen(true) }
   function close(){ setDrawerOpen(false); setSelectedId(null); setFormData(EMPTY_RECORD) }
-  function setField(name,value){ setFormData(current=>{ const next={...current,[name]:value}; if(['openingStock','received','closingStock'].includes(name)) next.consumption=String(Math.max(0,number(next.openingStock)+number(next.received)-number(next.closingStock))); return next }) }
+  function setField(name,value){ setFormData(current=>{ const next={...current,[name]:value}; if(['openingStock','received','closingStock'].includes(name)) next.consumption=String(Math.max(0,number(next.openingStock)+number(next.received)-number(next.closingStock))); if((name==='date'||name==='department')&&!next.patientDays){const days=monthlyBedDays(next.date,next.department);if(days)next.patientDays=String(days)} return next }) }
   async function save(event){ event.preventDefault(); if(!formData.date||!formData.department||!formData.product){notifyAction(L('Συμπληρώστε ημερομηνία, τμήμα και προϊόν.','Enter date, department and product.'));return} await savePreventionRecord('antiseptic',{...formData,id:selectedId||`ANT-${Date.now()}`,consumption:String(calculatedConsumption(formData)),indicator:indicatorForRecord(formData),updatedAt:new Date().toISOString()}); setRecords(await loadPreventionRecords('antiseptic')); close() }
   async function remove(){ if(!selectedId||!confirmAction(L('Να διαγραφεί η μέτρηση;','Delete this measurement?')))return; await deletePreventionRecord('antiseptic',selectedId); setRecords(await loadPreventionRecords('antiseptic')); close() }
   function exportSelected(){ downloadCsv({filename:`antiseptika-${new Date().toISOString().slice(0,10)}.csv`,columns:exportColumns,rows:selectedRecords}) }

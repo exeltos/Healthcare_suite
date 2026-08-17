@@ -12,21 +12,23 @@ import { ActionCard, EmptyState, Field, FileLibrary, IconButton, Input, PanelHea
 import { patientCount, patientDisplayValue } from './patientPresentation'
 import { readSessionValue, writeSessionValue } from '../../core/storage'
 
-export function PatientHome({ patient, editing, setEditing, setPatient, savePatient, activeCases, closedCases, cases, samples, isolations, attachments, timeline, notifiableDiseases, createCase, createSample, openCase, openCaseRecord, openLaboratorySample, upload, deleteAttachment, saveNotifiable, deleteNotifiable, initialTab = 'summary', highlightedSampleId = '' }) {
+export function PatientHome({ patient, isNew = false, editing, setEditing, setPatient, savePatient, activeCases, closedCases, cases, samples, isolations, attachments, timeline, notifiableDiseases, createCase, createSample, openCase, openCaseRecord, openLaboratorySample, upload, deleteAttachment, saveNotifiable, deleteNotifiable, initialTab = 'summary', highlightedSampleId = '' }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
   const patientViewKey = `limoxis:patient-view:${patient.id || patient.patientCode || 'unknown'}`
+  const patientIdentity = String(patient.id || patient.patientCode || 'unknown')
   const sampleHighlightKey = `${patientViewKey}:last-sample`
   const readStored = (key, fallback = '') => readSessionValue(key, fallback)
   const writeStored = (key, value) => writeSessionValue(key, String(value || ''))
-  const [tab, setTab] = useState(() => initialTab !== 'summary' ? initialTab : readStored(patientViewKey, initialTab || 'summary'))
+  const [tab, setTab] = useState(() => initialTab || 'summary')
   const [lastOpenedSampleId, setLastOpenedSampleId] = useState(() => highlightedSampleId || readStored(sampleHighlightKey, ''))
   const [historyTab, setHistoryTab] = useState('timeline')
   const [diseaseFocusId, setDiseaseFocusId] = useState('')
+  // Opening a patient record normally always starts from its first section.
+  // Explicit deep-links (history/timeline/workflow) may still request another tab.
   useEffect(() => {
-    if (initialTab && initialTab !== 'summary') setTab(initialTab)
-  }, [initialTab])
-  useEffect(() => { writeStored(patientViewKey, tab) }, [patientViewKey, tab])
+    setTab(initialTab || 'summary')
+  }, [patientIdentity, initialTab])
   useEffect(() => {
     if (!highlightedSampleId) return
     setLastOpenedSampleId(highlightedSampleId)
@@ -44,23 +46,32 @@ export function PatientHome({ patient, editing, setEditing, setPatient, savePati
     if (!item) return
     if (item.type === 'notifiable') { setTab('diseases'); setDiseaseFocusId(item.id); return }
     if (item.type === 'admission' || item.type === 'discharge') { setTab('summary'); return }
-    if (item.clinicalCaseId) openCaseRecord({ caseId: item.clinicalCaseId, tab: item.targetTab || 'assessment', recordType: item.recordType || '', recordId: item.recordId || item.id })
+    if (item.type === 'sample' && !item.clinicalCaseId) {
+      const sample = samples.find((row) => String(row.id) === String(item.recordId || item.id))
+      if (sample) openLaboratorySample?.(sample)
+      return
+    }
+    if (item.clinicalCaseId) {
+      openCaseRecord({ caseId: item.clinicalCaseId, tab: item.targetTab || 'assessment', recordType: item.recordType || '', recordId: item.recordId || item.id })
+    }
   }
-  const patientTabs = [
+  const patientTabs = (isNew ? [
+    { id: 'summary', label: L('Στοιχεία ασθενούς', 'Patient details'), icon: <ClipboardList size={16} /> },
+  ] : [
     { id: 'summary', label: L('Σύνοψη', 'Summary'), icon: <ClipboardList size={16} /> },
     { id: 'surveillance', label: L('Επιτηρήσεις', 'Surveillance'), icon: <Activity size={16} />, count: cases.length },
     { id: 'samples', label: L('Δείγματα & Εργαστήριο', 'Samples & Laboratory'), icon: <FlaskConical size={16} />, count: samples.length },
     { id: 'care', label: L('Αγωγή & Μέτρα', 'Therapy & Precautions'), icon: <Pill size={16} />, count: therapies.length + isolations.length },
     { id: 'diseases', label: L('ΕΟΔΥ / Δηλούμενα', 'EODY / Notifiable'), icon: <ShieldAlert size={16} />, count: notifiableDiseases.length },
     { id: 'history', label: L('Ιστορικό & Αρχεία', 'History & Files'), icon: <History size={16} />, count: attachments.length },
-  ]
+  ])
   return <div className="pw-home">
     <div className="pw-patient-tabs"><Tabs ariaLabel={L("Φάκελος ασθενούς", "Patient record")} value={tab} onChange={setTab} items={patientTabs} variant="clinical" /></div>
 
     <section className="pw-patient-tab-body">
       {tab === 'summary' && <>
         <section className="pw-registry-strip">
-          <div className="pw-registry-title"><div><small>{L("ΜΗΤΡΩΟ", "REGISTRY")}</small><h3>{L("Στοιχεία ασθενούς", "Patient details")}</h3></div><div>{editing ? <><IconButton label={L("Ακύρωση", "Cancel")} icon={<X size={16} />} onClick={() => setEditing(false)} /><Button size="sm" icon={<Save size={15} />} onClick={savePatient}>{L("Αποθήκευση", "Save")}</Button></> : <IconButton label={L("Επεξεργασία", "Edit")} icon={<Edit3 size={16} />} onClick={() => setEditing(true)} />}</div></div>
+          <div className="pw-registry-title"><div><small>{L("ΜΗΤΡΩΟ", "REGISTRY")}</small><h3>{isNew ? L("Νέα εγγραφή ασθενούς", "New patient record") : L("Στοιχεία ασθενούς", "Patient details")}</h3></div><div>{editing ? <>{!isNew && <IconButton label={L("Ακύρωση", "Cancel")} icon={<X size={16} />} onClick={() => setEditing(false)} />}<Button size="sm" icon={<Save size={15} />} onClick={savePatient}>{L("Αποθήκευση", "Save")}</Button></> : <IconButton label={L("Επεξεργασία", "Edit")} icon={<Edit3 size={16} />} onClick={() => setEditing(true)} />}</div></div>
           <div className="pw-registry-grid pw-registry-grid--identity">
             <Field label={L("Όνομα", "First name")}><Input disabled={!editing} value={patient.firstName} onChange={(v) => setPatient((x) => ({ ...x, firstName: v, fullName: [v, x.lastName].filter(Boolean).join(' ') }))} /></Field>
             <Field label={L("Επώνυμο", "Last name")}><Input disabled={!editing} value={patient.lastName} onChange={(v) => setPatient((x) => ({ ...x, lastName: v, fullName: [x.firstName, v].filter(Boolean).join(' ') }))} /></Field>
@@ -68,26 +79,31 @@ export function PatientHome({ patient, editing, setEditing, setPatient, savePati
             <Field label={L("Φύλο", "Sex")}><Select disabled={!editing} value={patient.gender} onChange={(v) => setPatient((x) => ({ ...x, gender: v }))}><option value="">{L("Επιλογή", "Select")}</option><option value="Άνδρας">{L("Άνδρας", "Male")}</option><option value="Γυναίκα">{L("Γυναίκα", "Female")}</option><option value="Άλλο / μη δηλωμένο">{L("Άλλο / μη δηλωμένο", "Other / not specified")}</option></Select></Field>
             <Field label={L("Ηλικία", "Age")}><Input disabled={!editing} type="number" min="0" max="130" value={patient.age} onChange={(v) => setPatient((x) => ({ ...x, age: v }))} /></Field>
             <Field label={L("ΑΜΚΑ", "National ID (AMKA)")}><Input disabled={!editing} value={patient.amka} onChange={(v) => setPatient((x) => ({ ...x, amka: v }))} /></Field>
+            <Field label={L("Κωδικός ασθενούς", "Patient code")}><Input disabled={!editing} value={patient.patientCode || ""} onChange={(v) => setPatient((x) => ({ ...x, patientCode: v }))} /></Field>
+            <Field label={L("Κατάσταση", "Status")}><Select disabled={!editing} value={patient.status || "Νοσηλεύεται"} onChange={(v) => setPatient((x) => ({ ...x, status: v }))}><option value="Νοσηλεύεται">{L("Νοσηλεύεται", "Inpatient")}</option><option value="Εξιτήριο">{L("Εξιτήριο", "Discharged")}</option></Select></Field>
             <LibraryField disabled={!editing} label={L("Τμήμα", "Department")} libraryKey="departments" value={patient.department||''} onChange={(value)=>setPatient((x)=>({...x,department:value}))} placeholder={L("Επιλέξτε τμήμα", "Select department")} />
             <Field label={L("Θάλαμος / Κλίνη", "Room / Bed")}><Input disabled={!editing} value={patient.room} onChange={(v) => setPatient((x) => ({ ...x, room: v }))} /></Field>
             <Field label={L("Ημερομηνία εισαγωγής", "Admission date")}><Input disabled={!editing} type="date" value={normalizeDate(patient.admissionDate)} onChange={(v) => setPatient((x) => ({ ...x, admissionDate: v }))} /></Field>
             <Field label={L("Ημερομηνία εξόδου", "Discharge date")}><Input disabled={!editing} type="date" value={normalizeDate(patient.dischargeDate || patient.exitDate)} onChange={(v) => setPatient((x) => ({ ...x, dischargeDate: v }))} /></Field>
+            <Field label={L("Ώρα εισαγωγής", "Admission time")}><Input disabled={!editing} type="time" value={patient.admissionTime || ""} onChange={(v) => setPatient((x) => ({ ...x, admissionTime: v }))} /></Field>
+            <Field label={L("Ημέρες νοσηλείας", "Days in hospital")}><Input disabled={!editing} type="number" min="0" value={patient.daysInHospital || 0} onChange={(v) => setPatient((x) => ({ ...x, daysInHospital: v }))} /></Field>
+            <Field label={L("Κύρια διάγνωση", "Primary diagnosis")} wide><Input disabled={!editing} value={patient.primaryDiagnosis || ""} onChange={(v) => setPatient((x) => ({ ...x, primaryDiagnosis: v }))} /></Field>
           </div>
         </section>
 
-        <section className="pw-action-hub"><div className="pw-action-copy"><small>{L("ΤΙ ΘΕΛΕΤΕ ΝΑ ΚΑΝΕΤΕ;", "WHAT WOULD YOU LIKE TO DO?")}</small><h3>{L("Επιτήρηση ασθενούς", "Patient surveillance")}</h3><p>{L("Ξεκινήστε νέο φάκελο ή συνεχίστε μια ενεργή επιτήρηση.", "Start a new case or continue an active surveillance episode.")}</p></div><div className="pw-action-grid">
+        {!isNew && <section className="pw-action-hub"><div className="pw-action-copy"><small>{L("ΤΙ ΘΕΛΕΤΕ ΝΑ ΚΑΝΕΤΕ;", "WHAT WOULD YOU LIKE TO DO?")}</small><h3>{L("Επιτήρηση ασθενούς", "Patient surveillance")}</h3><p>{L("Ξεκινήστε νέο φάκελο ή συνεχίστε μια ενεργή επιτήρηση.", "Start a new case or continue an active surveillance episode.")}</p></div><div className="pw-action-grid">
           <ActionCard icon={<Plus size={24} />} title={L("Νέα επιτήρηση", "New surveillance")} text={L("Κλινική υποψία που ξεκινά οργανωμένη παρακολούθηση του ασθενούς.", "Start structured follow-up for a clinical suspicion.")} onClick={createCase} />
           <ActionCard icon={<FlaskConical size={24} />} title={L("Νέο δείγμα", "New sample")} text={L("Νέος εργαστηριακός έλεγχος χωρίς αυτόματη δημιουργία επιτήρησης.", "Create a laboratory sample without automatically opening a surveillance case.")} onClick={createSample} />
           {activeCases.length > 0 && <ActionCard icon={<Activity size={24} />} title={L("Συνέχιση ενεργής επιτήρησης", "Continue active surveillance")} text={activeCases.length === 1 ? L("1 ενεργός φάκελος.", "1 active case.") : (language === "en" ? `${activeCases.length} active cases · select which one to continue.` : `${activeCases.length} ενεργοί φάκελοι · επιλέξτε ποιον θέλετε να συνεχίσετε.`)} onClick={() => activeCases.length === 1 ? openCase(activeCases[0], { tab: 'assessment' }) : setTab('surveillance')} />}
-        </div></section>
+        </div></section>}
 
       </>}
 
       {tab === 'surveillance' && <section className="pw-panel pw-surveillance-panel"><PanelHeader eyebrow={L("ΕΠΙΤΗΡΗΣΕΙΣ", "SURVEILLANCE")} title={L("Φάκελοι επιτήρησης", "Surveillance cases")} badge={patientCount(activeCases.length, "activeCase", language)} actions={<Button size="sm" icon={<Plus size={15} />} onClick={createCase}>{L("Νέα επιτήρηση", "New surveillance")}</Button>} />
-        {cases.length === 0 ? <EmptyState icon={<Activity size={24} />} title={L("Δεν υπάρχουν επιτηρήσεις", "No surveillance cases")} text={L("Δημιουργήστε την πρώτη επιτήρηση του ασθενούς.", "Create the patient’s first surveillance case.")} /> : <>
-          {activeCases.length > 0 && <div className="pw-case-group"><div className="pw-case-group-head"><b>{L("Ενεργές επιτηρήσεις", "Active surveillance")}</b><span>{L("Επιλέξτε τον φάκελο που θέλετε να συνεχίσετε", "Select the case you want to continue")}</span></div><div className="pw-case-cards">{activeCases.map((item) => { const waiting = item.status === 'Αναμονή εργαστηρίου'; return <button key={item.id} type="button" className="pw-case-card is-active" onClick={() => openCase(item, { tab: waiting ? 'samples' : 'assessment' })}><div><b>{patientDisplayValue(item.reason || 'Επιτήρηση', language)}</b><span>{L('Έναρξη', 'Started')} {formatDate(item.startDate)} · {samples.filter((x) => String(x.clinicalCaseId) === String(item.id)).length} {language === 'en' ? 'samples' : 'δείγματα'}</span></div><div className="pw-case-card-end"><Badge tone="warning">{patientDisplayValue(waiting ? 'Αναμονή εργαστηρίου' : 'Ενεργή', language)}</Badge><ChevronRight size={18} /></div></button> })}</div></div>}
-          {closedCases.length > 0 && <div className="pw-case-group is-closed"><div className="pw-case-group-head"><b>{L("Ολοκληρωμένες", "Completed")}</b><span>{patientCount(closedCases.length, "closedCase", language)}</span></div><div className="pw-case-cards">{closedCases.map((item) => <button key={item.id} type="button" className="pw-case-card" onClick={() => openCase(item, { tab: 'assessment' })}><div><b>{patientDisplayValue(item.reason || 'Επιτήρηση', language)}</b><span>{L('Έναρξη', 'Started')} {formatDate(item.startDate)} · {samples.filter((x) => String(x.clinicalCaseId) === String(item.id)).length} {language === 'en' ? 'samples' : 'δείγματα'}</span></div><div className="pw-case-card-end"><Badge tone="success">{patientDisplayValue('Κλειστή', language)}</Badge><ChevronRight size={18} /></div></button>)}</div></div>}
-        </>}
+        {cases.length === 0 ? <EmptyState icon={<Activity size={24} />} title={L("Δεν υπάρχουν επιτηρήσεις", "No surveillance cases")} text={L("Δημιουργήστε την πρώτη επιτήρηση του ασθενούς.", "Create the patient’s first surveillance case.")} /> : <div className="pw-case-columns">
+          <div className="pw-case-group"><div className="pw-case-group-head"><b>{L("Ενεργές επιτηρήσεις", "Active surveillance")}</b><span>{patientCount(activeCases.length, "activeCase", language)}</span></div>{activeCases.length ? <div className="pw-case-cards">{activeCases.map((item) => { const waiting = item.status === 'Αναμονή εργαστηρίου'; return <button key={item.id} type="button" className="pw-case-card is-active" onClick={() => openCase(item, { tab: waiting ? 'samples' : 'assessment' })}><div><b>{patientDisplayValue(item.reason || 'Επιτήρηση', language)}</b><span>{L('Έναρξη', 'Started')} {formatDate(item.startDate)} · {samples.filter((x) => String(x.clinicalCaseId) === String(item.id)).length} {language === 'en' ? 'samples' : 'δείγματα'}</span></div><div className="pw-case-card-end"><Badge tone="warning">{patientDisplayValue(waiting ? 'Αναμονή εργαστηρίου' : 'Ενεργή', language)}</Badge><ChevronRight size={18} /></div></button> })}</div> : <div className="pw-case-empty">{L('Δεν υπάρχουν ενεργές επιτηρήσεις.', 'No active surveillance cases.')}</div>}</div>
+          <div className="pw-case-group is-closed"><div className="pw-case-group-head"><b>{L("Ολοκληρωμένες", "Completed")}</b><span>{patientCount(closedCases.length, "closedCase", language)}</span></div>{closedCases.length ? <div className="pw-case-cards">{closedCases.map((item) => <button key={item.id} type="button" className="pw-case-card" onClick={() => openCase(item, { tab: 'assessment' })}><div><b>{patientDisplayValue(item.reason || 'Επιτήρηση', language)}</b><span>{L('Έναρξη', 'Started')} {formatDate(item.startDate)} · {samples.filter((x) => String(x.clinicalCaseId) === String(item.id)).length} {language === 'en' ? 'samples' : 'δείγματα'}</span></div><div className="pw-case-card-end"><Badge tone="success">{patientDisplayValue('Κλειστή', language)}</Badge><ChevronRight size={18} /></div></button>)}</div> : <div className="pw-case-empty">{L('Δεν υπάρχουν ολοκληρωμένες επιτηρήσεις.', 'No completed surveillance cases.')}</div>}</div>
+        </div>}
       </section>}
 
       {tab === 'samples' && <section className="pw-panel"><PanelHeader eyebrow={L("ΕΡΓΑΣΤΗΡΙΟ", "LABORATORY")} title={L("Δείγματα & αποτελέσματα", "Samples & results")} badge={patientCount(samples.length, "sample", language)} actions={<Button size="sm" icon={<Plus size={15} />} onClick={createSample}>{L("Νέο δείγμα", "New sample")}</Button>} />

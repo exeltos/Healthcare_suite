@@ -1,11 +1,11 @@
 import { APP_ROUTES, routeFor } from '../../config/routes'
-import { confirmAction, notifyAction } from '../../components/core/feedback/index'
+import { notifyAction } from '../../components/core/feedback/index'
 import { APP_EVENTS } from '../../core/events'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
 import { required, useCoreForm } from '../../core/forms'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { FileText, FlaskConical, Printer, Save, ShieldCheck, Trash2 } from 'lucide-react'
+import { FileText, FlaskConical, Printer, Save, ShieldCheck } from 'lucide-react'
 
 import { Badge, Button, IconButton, WorkspaceBody, WorkspaceHeader, WorkspaceShell, WorkspaceTabs } from '../../components/core'
 import {
@@ -20,7 +20,7 @@ import {
   PATIENT_CONFIG_EVENT,
   PATIENT_REGISTRY_EVENT,
 } from '../../services/patientService'
-import { loadClinicalPatients, saveClinicalPatient } from '../../services/backend/clinicalDirectoryService'
+import { deleteClinicalPatient, loadClinicalPatients, saveClinicalPatient } from '../../services/backend/clinicalDirectoryService'
 import {
   EMPLOYEES_EVENT,
   employeeFullName,
@@ -31,6 +31,7 @@ import { LaboratoryAntibiogramSection, LaboratoryResultSection, LaboratorySample
 import { withCanonicalLaboratoryStatus } from '../../core/constants/laboratory'
 import { useI18n } from '../../i18n'
 import { laboratoryDisplayValue } from './laboratoryPresentation'
+import { loadCurrentProfile } from '../../services/profile/profileService'
 import './LaboratoryWorkspacePage.css'
 
 const emptyRecord = {
@@ -55,12 +56,20 @@ const emptyRecord = {
   collectionDate: '',
   collectionTime: '',
   receivedDate: '',
+  sampleAcceptance: 'Αποδεκτό',
+  rejectionReason: '',
   status: 'Εκκρεμεί',
   microorganism: '',
   resistance: '',
   microorganismResults: [],
   resultDate: '',
   resultNotes: '',
+  validatedBy: '',
+  validatedAt: '',
+  criticalResult: false,
+  criticalCommunicatedTo: '',
+  criticalCommunicatedAt: '',
+  criticalCommunicatedBy: '',
   antibiogram: [],
   notes: '',
 }
@@ -109,7 +118,7 @@ export default function LaboratoryWorkspacePage() {
   const returnContext = location.state?.returnContext
   const returnToOrigin = () => {
     if (returnContext?.path) {
-      navigate(returnContext.path, { state: { patientTab: returnContext.patientTab || 'samples', highlightedSampleId: returnContext.highlightedSampleId || record?.id || '' } })
+      navigate(returnContext.path, { state: returnContext.patientTab ? { patientTab: returnContext.patientTab || 'samples', highlightedSampleId: returnContext.highlightedSampleId || record?.id || '' } : { returnFromDetail: true, listScope: returnContext.listScope || returnContext.path, highlightRowKey: returnContext.highlightRowKey || (record ? `${record.sourceType}:${record.id}` : '') } })
       return
     }
     navigate(APP_ROUTES.LABORATORY, { state: { returnFromDetail: true, listScope: APP_ROUTES.LABORATORY, highlightRowKey: record ? `${record.sourceType}:${record.id}` : '' } })
@@ -135,6 +144,10 @@ export default function LaboratoryWorkspacePage() {
   const [employeeMode, setEmployeeMode] = useState('existing')
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
   const [newEmployee, setNewEmployee] = useState(emptyNewEmployee)
+
+  useEffect(() => {
+    setTab('sample')
+  }, [params.recordId])
 
   async function refreshWorkspaceSources(){
     const [patientRows,employeeRows,labRows]=await Promise.all([
@@ -301,29 +314,9 @@ export default function LaboratoryWorkspacePage() {
       fullName: `${newPatient.firstName.trim()} ${newPatient.lastName.trim()}`,
       status: 'Νοσηλεύεται',
     })
-    setPatients(await loadClinicalPatients())
-    setSelectedPatientId(saved.id)
-    setPatientMode('existing')
-    setNewPatient(emptyNewPatient)
     return saved
   }
 
-  async function createAndLinkPatient() {
-    const saved = await persistNewPatient()
-    if (!saved) return
-    setForm((current) => ({
-      ...current,
-      sourceType: 'Ασθενής',
-      patientId: saved.id,
-      subjectName: saved.fullName,
-      subjectCode: saved.patientCode,
-      patientName: saved.fullName,
-      patientCode: saved.patientCode,
-      department: saved.department || '',
-      room: saved.room || '',
-      admissionDate: saved.admissionDate || '',
-    }))
-  }
 
   function chooseEmployee(employeeId) {
     setSelectedEmployeeId(employeeId)
@@ -381,24 +374,45 @@ export default function LaboratoryWorkspacePage() {
 
   async function save() {
     let payload = { ...form }
+    let shouldCreatePatientWithSample = false
 
+    // A new patient entered from Laboratory is not persisted by an inline
+    // "create/link" action. The main Save validates the whole laboratory
+    // record first and then persists patient + sample as one user action.
     if (payload.sourceType === 'Ασθενής' && !payload.patientId && patientMode === 'new') {
-      const savedPatient = await persistNewPatient()
-      if (!savedPatient) return
+      if (!newPatient.firstName.trim() || !newPatient.lastName.trim()) {
+        notifyAction(L('Συμπληρώστε τουλάχιστον όνομα και επώνυμο ασθενούς.', 'Enter at least patient first and last name.'))
+        return
+      }
+      const requestedCode = String(newPatient.patientCode || '').trim()
+      const requestedAmka = String(newPatient.amka || '').trim()
+      const duplicate = patients.find((item) =>
+        (requestedCode && String(item.patientCode || '').trim() === requestedCode) ||
+        (requestedAmka && String(item.amka || '').trim() === requestedAmka)
+      )
+      if (duplicate) {
+        const sameCode = requestedCode && String(duplicate.patientCode || '').trim() === requestedCode
+        notifyAction(L(
+          `Υπάρχει ήδη ασθενής ${duplicate.fullName || ''} με τον ίδιο ${sameCode ? 'κωδικό ασθενούς' : 'ΑΜΚΑ'}. Επιλέξτε την υπάρχουσα εγγραφή.`,
+          `A patient ${duplicate.fullName || ''} already exists with the same ${sameCode ? 'patient code' : 'AMKA'}. Select the existing record.`
+        ))
+        return
+      }
+      const previewName = `${newPatient.firstName.trim()} ${newPatient.lastName.trim()}`
       payload = {
         ...payload,
-        patientId: savedPatient.id,
-        subjectName: savedPatient.fullName,
-        subjectCode: savedPatient.patientCode,
-        patientName: savedPatient.fullName,
-        patientCode: savedPatient.patientCode,
-        department: savedPatient.department || '',
-        room: savedPatient.room || '',
-        admissionDate: savedPatient.admissionDate || '',
+        subjectName: previewName,
+        patientName: previewName,
+        subjectCode: requestedCode || L('Αυτόματος κωδικός', 'Automatic code'),
+        patientCode: requestedCode || '',
+        department: newPatient.department || '',
+        room: newPatient.room || '',
+        admissionDate: newPatient.admissionDate || '',
       }
+      shouldCreatePatientWithSample = true
     }
 
-    if (payload.sourceType === 'Ασθενής' && !payload.patientId) {
+    if (payload.sourceType === 'Ασθενής' && !payload.patientId && !shouldCreatePatientWithSample) {
       notifyAction(L('Επιλέξτε ασθενή ή δημιουργήστε νέο ασθενή.', 'Select a patient or create a new patient.'))
       return
     }
@@ -427,6 +441,16 @@ export default function LaboratoryWorkspacePage() {
       notifyAction(Object.values(formErrors)[0] || L('Συμπληρώστε τα υποχρεωτικά πεδία.', 'Complete the required fields.'))
       return
     }
+    if (payload.sampleAcceptance === 'Απορρίφθηκε' && !String(payload.rejectionReason || '').trim()) {
+      notifyAction(L('Συμπληρώστε τον λόγο απόρριψης του δείγματος.', 'Enter the sample rejection reason.'))
+      setTab('sample')
+      return
+    }
+    if (payload.sampleAcceptance === 'Απορρίφθηκε' && payload.status !== 'Εκκρεμεί') {
+      notifyAction(L('Απορριφθέν δείγμα δεν μπορεί να οριστικοποιηθεί με εργαστηριακό αποτέλεσμα.', 'A rejected sample cannot be finalized with a laboratory result.'))
+      setTab('sample')
+      return
+    }
     const organismRows = normalizeMicroorganismRows(payload)
     payload = { ...payload, microorganismResults: organismRows, microorganism: organismRows[0]?.name || '', resistance: organismRows[0]?.resistance || '' }
     if (payload.sourceType === 'Ασθενής' && payload.category === 'Επανέλεγχος' && !payload.parentSampleId) {
@@ -444,6 +468,48 @@ export default function LaboratoryWorkspacePage() {
     if (payload.status !== 'Εκκρεμεί' && !payload.resultDate) {
       payload = { ...payload, resultDate: todayIso() }
     }
+    if (payload.status !== 'Εκκρεμεί') {
+      const profile = loadCurrentProfile(language)
+      payload = {
+        ...payload,
+        validatedAt: payload.validatedAt || new Date().toISOString(),
+        validatedBy: payload.validatedBy || profile?.displayName || profile?.username || L('Εργαστήριο', 'Laboratory'),
+      }
+    } else {
+      payload = { ...payload, validatedAt: '', validatedBy: '' }
+    }
+    if (payload.criticalResult) {
+      if (!String(payload.criticalCommunicatedTo || '').trim() || !payload.criticalCommunicatedAt) {
+        notifyAction(L('Για κρίσιμο αποτέλεσμα καταγράψτε σε ποιον και πότε γνωστοποιήθηκε.', 'For a critical result, record who was notified and when.'))
+        setTab('result')
+        return
+      }
+      const profile = loadCurrentProfile(language)
+      payload = {
+        ...payload,
+        criticalCommunicatedBy: payload.criticalCommunicatedBy || profile?.displayName || profile?.username || L('Εργαστήριο', 'Laboratory'),
+      }
+    } else {
+      payload = { ...payload, criticalCommunicatedTo: '', criticalCommunicatedAt: '', criticalCommunicatedBy: '' }
+    }
+
+    let createdPatient = null
+    if (shouldCreatePatientWithSample) {
+      createdPatient = await persistNewPatient()
+      if (!createdPatient) return
+      payload = {
+        ...payload,
+        patientId: createdPatient.id,
+        subjectName: createdPatient.fullName,
+        subjectCode: createdPatient.patientCode,
+        patientName: createdPatient.fullName,
+        patientCode: createdPatient.patientCode,
+        department: createdPatient.department || '',
+        room: createdPatient.room || '',
+        admissionDate: createdPatient.admissionDate || '',
+      }
+    }
+
     let saved
     try {
       saved = await upsertLaboratoryRecordAsync(withCanonicalLaboratoryStatus({
@@ -451,20 +517,24 @@ export default function LaboratoryWorkspacePage() {
         id: record?.id || `${sourcePrefix(payload.sourceType)}-${Date.now()}`,
       }))
     } catch (error) {
+      if (createdPatient?.id) {
+        try { await deleteClinicalPatient(createdPatient.id) } catch {}
+        await refreshWorkspaceSources().catch(() => {})
+      }
       notifyAction(error?.message || L('Δεν ήταν δυνατή η αποθήκευση της εργαστηριακής εγγραφής.', 'The laboratory record could not be saved.'))
       return
+    }
+    if (createdPatient?.id) {
+      setPatients(await loadClinicalPatients())
+      setSelectedPatientId(createdPatient.id)
+      setPatientMode('existing')
+      setNewPatient(emptyNewPatient)
     }
     setForm(normalizeForForm(saved))
     setRecord({ ...saved, sourceType: payload.sourceType })
     navigate(routeFor.laboratoryRecordWorkspace(encodeURIComponent(payload.sourceType), encodeURIComponent(saved.id)), { replace: true, state: location.state })
   }
 
-  async function remove() {
-    if (!record) return
-    if (!confirmAction(L('Να διαγραφεί η εργαστηριακή εγγραφή;', 'Delete this laboratory record?'))) return
-    await deleteLaboratoryRecordAsync(record)
-    returnToOrigin()
-  }
 
   if (!isNew && !record) {
     return <div className="lw-page"><div className="lw-missing"><p>{L('Η εργαστηριακή εγγραφή δεν βρέθηκε.', 'Laboratory record not found.')}</p><Button onClick={returnToOrigin}>{returnContext?.label || L('Επιστροφή στο Εργαστήριο', 'Back to Laboratory')}</Button></div></div>
@@ -479,14 +549,14 @@ export default function LaboratoryWorkspacePage() {
         title={record?.id || L('Νέα εργαστηριακή εγγραφή', 'New laboratory record')}
         badges={<><Badge tone={form.status === 'Θετικό' ? 'danger' : form.status === 'Αρνητικό' ? 'success' : 'warning'}>{laboratoryDisplayValue(form.status || 'Εκκρεμεί', language)}</Badge>{form.resistance ? <Badge tone="danger">{form.resistance}</Badge> : null}{form.relatedInfection ? <Badge tone="neutral">Case {form.relatedInfection}</Badge> : null}</>}
         meta={[laboratoryDisplayValue(form.sourceType, language), form.subjectName, laboratoryDisplayValue(form.sampleType, language)].filter(Boolean).join(' · ') || L('Νέα καταχώρηση', 'New record')}
-        actions={<><IconButton label={L("Εκτύπωση εργαστηριακής εγγραφής", "Print laboratory record")} onClick={() => window.print()}><Printer size={17} /></IconButton>{record ? <IconButton label={L("Διαγραφή εργαστηριακής εγγραφής", "Delete laboratory record")} variant="danger" onClick={remove}><Trash2 size={17} /></IconButton> : null}<Button icon={<Save size={16} />} onClick={save}>{L('Αποθήκευση', 'Save')}</Button></>}
+        actions={<><IconButton label={L("Εκτύπωση εργαστηριακής εγγραφής", "Print laboratory record")} onClick={() => window.print()}><Printer size={17} /></IconButton><Button icon={<Save size={16} />} onClick={save}>{L('Αποθήκευση', 'Save')}</Button></>}
       />
       <WorkspaceTabs items={tabItems.map((item) => ({ ...item, label: language === 'en' ? item.labelEn : item.labelEl }))} value={tab} onChange={setTab} ariaLabel={L("Εργαστηριακή εγγραφή", "Laboratory record")} />
       <WorkspaceBody className="lw-body">
         {tab === 'sample' && <div className="lw-stack">
           {isNew ? <LaboratorySourceSection
             form={form} setForm={setForm}
-            patients={patients} patientMode={patientMode} setPatientMode={setPatientMode} selectedPatientId={selectedPatientId} selectedPatient={selectedPatient} choosePatient={choosePatient} newPatient={newPatient} setNewPatient={setNewPatient} createAndLinkPatient={createAndLinkPatient}
+            patients={patients} patientMode={patientMode} setPatientMode={setPatientMode} selectedPatientId={selectedPatientId} selectedPatient={selectedPatient} choosePatient={choosePatient} newPatient={newPatient} setNewPatient={setNewPatient}
             employees={employees} employeeMode={employeeMode} setEmployeeMode={setEmployeeMode} selectedEmployeeId={selectedEmployeeId} selectedEmployee={selectedEmployee} chooseEmployee={chooseEmployee} newEmployee={newEmployee} setNewEmployee={setNewEmployee} createAndLinkEmployee={createAndLinkEmployee}
             employeeFullName={employeeFullName}
             onSourceChange={(value) => { if (value !== 'Ασθενής') setSelectedPatientId(''); if (value !== 'Προσωπικό') setSelectedEmployeeId('') }}

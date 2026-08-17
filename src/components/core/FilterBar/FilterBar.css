@@ -173,7 +173,7 @@
 
 .core-date-range-filter.is-active .core-date-range-filter__trigger {
   border-color: color-mix(in srgb, var(--primary) 54%, var(--border));
-  background: color-mix(in srgb, var(--primary-soft) 48%, #fff);
+  background: color-mix(in srgb, var(--primary-soft) 48%, var(--surface));
 }
 
 .core-date-range-filter__trigger svg:first-child { color: var(--primary); }
@@ -280,7 +280,7 @@
 .core-date-range-filter__apply {
   border: 1px solid var(--primary);
   background: var(--primary);
-  color: #fff;
+  color: var(--surface);
 }
 
 @media (max-width: 860px) {

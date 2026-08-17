@@ -5,7 +5,7 @@ import { patientDisplayValue } from './patientPresentation'
 export function buildPatientTimeline({ patient, cases, samples, isolations, notifiableDiseases = [], language = 'el' }) {
   const L = (el, en) => language === 'en' ? en : el
   const items = []
-  if (patient.admissionDate) items.push({ type: 'admission', id: patient.id, clickable: false, date: patient.admissionDate, time: patient.admissionTime || '', title: L('Εισαγωγή ασθενούς', 'Patient admission'), description: [patient.room, patient.primaryDiagnosis].filter(Boolean).join(' · ') || L('Έναρξη νοσηλείας', 'Start of hospital stay'), icon: <LogIn size={15} /> })
+  if (patient.admissionDate) items.push({ type: 'admission', id: patient.id, date: patient.admissionDate, time: patient.admissionTime || '', title: L('Εισαγωγή ασθενούς', 'Patient admission'), description: [patient.room, patient.primaryDiagnosis].filter(Boolean).join(' · ') || L('Έναρξη νοσηλείας', 'Start of hospital stay'), icon: <LogIn size={15} /> })
   cases.forEach((item) => {
     if (item.startDate) items.push({ type: 'case', id: item.id, date: item.startDate, time: item.startTime || '', title: L('Έναρξη επιτήρησης', 'Surveillance started'), description: patientDisplayValue(item.reason, language) || L('Χωρίς καταχωρημένη αιτία', 'No reason recorded'), clinicalCaseId: item.id, targetTab: 'assessment', recordType: 'case', recordId: item.id, icon: <ClipboardList size={15} />, badge: patientDisplayValue(item.status || 'Ενεργό', language), badgeTone: item.status === 'Κλειστό' ? 'success' : 'warning' })
     getTherapies(item).forEach((therapy) => {
@@ -26,7 +26,7 @@ export function buildPatientTimeline({ patient, cases, samples, isolations, noti
   })
   notifiableDiseases.forEach((item) => { const eventDate = item.declarationDate || item.diagnosisDate; if (eventDate) items.push({ type: 'notifiable', id: item.id, recordType: 'notifiable', recordId: item.id, date: eventDate, title: L('Δηλούμενο νόσημα', 'Notifiable disease'), description: `${item.disease || 'Νόσημα'} · ${item.status || 'Πρόχειρο'}`, icon: <ShieldAlert size={15} />, badge: item.deadline || '', badgeTone: item.status === 'Δηλώθηκε' ? 'success' : 'warning', tone: item.status === 'Δηλώθηκε' ? 'success' : 'warning' }) })
   const dischargeDate = patient.dischargeDate || (patient.status === 'Εξιτήριο' ? patient.exitDate : '')
-  if (dischargeDate) items.push({ type: 'discharge', id: patient.id, clickable: false, date: dischargeDate, time: patient.dischargeTime || '', title: L('Έξοδος ασθενούς', 'Patient discharge'), description: patient.dischargeOutcome || L('Εξιτήριο', 'Discharged'), icon: <LogOut size={15} />, tone: 'success' })
+  if (dischargeDate) items.push({ type: 'discharge', id: patient.id, date: dischargeDate, time: patient.dischargeTime || '', title: L('Έξοδος ασθενούς', 'Patient discharge'), description: patient.dischargeOutcome || L('Εξιτήριο', 'Discharged'), icon: <LogOut size={15} />, tone: 'success' })
   return items.filter((item) => item.date).sort((a, b) => eventDateTimeKey(a).localeCompare(eventDateTimeKey(b)))
 }
 

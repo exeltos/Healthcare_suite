@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppEvents } from '../../core/events'
-import { Bell, CheckCheck, ClipboardCheck, FileClock, GraduationCap, ShieldAlert } from 'lucide-react'
+import { Bell, CheckCheck, ClipboardCheck, FileClock, FlaskConical, GraduationCap, ShieldAlert, Siren } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { loadControlPrograms, SURVEILLANCE_PROGRAMS_EVENT } from '../../services/surveillanceControlsService'
 import { loadTraining, loadDocuments, ORGANIZATION_EVENT } from '../../services/organizationService'
-import { loadCapa, QUALITY_EVENT } from '../../services/qualityService'
+import { loadCapa, loadIncidents, loadRisks, QUALITY_EVENT } from '../../services/qualityService'
+import { loadPatientSamples, PATIENT_SAMPLES_EVENT } from '../../services/patientSamplesService'
+import { loadEnvironmentalSamples, loadStaffSamples, loadWaterRecords, ENVIRONMENTAL_SAMPLES_EVENT, STAFF_SAMPLES_EVENT, WATER_RECORDS_EVENT } from '../../services/laboratorySourcesService'
 import { buildNotificationReviewLink } from '../../core/navigation/recordDeepLink'
 import { dismissNotifications, loadReadNotificationIds, NOTIFICATION_READ_EVENT } from '../../core/notifications/notificationState'
 const DAY = 86400000
@@ -59,7 +61,34 @@ function buildNotifications(){
     items.push({id:`capa:${row.id}:${row.dueDate}`,title:'Εκπρόθεσμη CAPA',message:`${row.title} · ${displayDate(row.dueDate)}`,tone:'danger',path:'/quality/capa',recordId:row.id,module:'capa',icon:ShieldAlert,date:row.dueDate})
   })
 
-  return items.sort((a,b)=>(a.date||'').localeCompare(b.date||''))
+  loadRisks().filter(row=>row.reviewDate && !['Κλειστός','Ακυρωμένος'].includes(row.status)).forEach(row=>{
+    const days=daysUntil(row.reviewDate)
+    if(days===null || days>=0) return
+    items.push({id:`risk:${row.id}:${row.reviewDate}`,title:'Εκπρόθεσμος επανέλεγχος κινδύνου',message:`${row.title} · ${displayDate(row.reviewDate)}`,tone:Number(row.riskScore)>=10?'danger':'warning',path:'/quality/risks',recordId:row.id,module:'risks',icon:ShieldAlert,date:row.reviewDate})
+  })
+
+  // Serious safety events stay visible until the investigation has moved beyond the initial report.
+  loadIncidents().filter(row=>['Σοβαρή βλάβη','Θάνατος'].includes(row.outcome) && row.status==='Νέα αναφορά').forEach(row=>{
+    items.push({id:`incident-serious:${row.id}:${row.date||''}`,title:'Σοβαρό συμβάν προς διερεύνηση',message:`${row.title||row.id} · ${row.department||'—'}`,tone:'danger',path:'/quality/incidents',recordId:row.id,module:'incidents',icon:Siren,date:row.date||isoToday()})
+  })
+
+  // Critical laboratory results are alerts only while closed-loop communication is incomplete.
+  const laboratoryRows=[...loadPatientSamples(),...loadStaffSamples(),...loadEnvironmentalSamples(),...loadWaterRecords()]
+  laboratoryRows.filter(row=>row.criticalResult && (!row.criticalCommunicatedTo || !row.criticalCommunicatedAt)).forEach(row=>{
+    items.push({id:`lab-critical:${row.id}:${row.resultDate||''}`,title:'Κρίσιμο εργαστηριακό αποτέλεσμα',message:`${row.patientCode||row.subjectCode||row.employeeCode||row.id} · απαιτείται γνωστοποίηση`,tone:'danger',path:'/laboratory',recordId:row.id,module:'laboratory',icon:FlaskConical,date:row.resultDate||isoToday()})
+  })
+
+  // Competency follow-up is surfaced only after completed training, avoiding noise during delivery.
+  loadTraining().filter(row=>row.status==='Ολοκληρωμένη' && row.competencyRequired).forEach(row=>{
+    const pending=(row.attendance||[]).filter(a=>['Παρών','Online'].includes(a.status) && a.competencyResult!=='Επαρκής')
+    if(!pending.length)return
+    items.push({id:`competency:${row.id}:${pending.map(a=>a.employeeId||a.employeeName).join('-')}`,title:'Εκκρεμής επάρκεια / επανεκπαίδευση',message:`${row.title} · ${pending.length} ${pending.length===1?'εργαζόμενος':'εργαζόμενοι'}`,tone:'warning',path:'/training',recordId:row.id,module:'training',icon:GraduationCap,date:row.date||isoToday()})
+  })
+
+  return items.sort((a,b)=>{
+    const priority={danger:0,warning:1,default:2}
+    return (priority[a.tone]??2)-(priority[b.tone]??2) || (a.date||'').localeCompare(b.date||'')
+  })
 }
 
 export default function NotificationCenter(){
@@ -68,7 +97,7 @@ export default function NotificationCenter(){
   const [open,setOpen]=useState(false)
   const [version,setVersion]=useState(0)
   const [readIds,setReadIds]=useState(loadReadNotificationIds)
-  useAppEvents([SURVEILLANCE_PROGRAMS_EVENT, ORGANIZATION_EVENT, QUALITY_EVENT], () => setVersion(v => v + 1))
+  useAppEvents([SURVEILLANCE_PROGRAMS_EVENT, ORGANIZATION_EVENT, QUALITY_EVENT, PATIENT_SAMPLES_EVENT, STAFF_SAMPLES_EVENT, ENVIRONMENTAL_SAMPLES_EVENT, WATER_RECORDS_EVENT], () => setVersion(v => v + 1))
   useAppEvents(NOTIFICATION_READ_EVENT, () => setReadIds(loadReadNotificationIds()), { includeStorage: true })
   useEffect(()=>{
     const onPointerDown=event=>{if(open && ref.current && !ref.current.contains(event.target))setOpen(false)}

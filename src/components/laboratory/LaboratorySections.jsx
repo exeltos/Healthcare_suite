@@ -1,7 +1,7 @@
 import { Trash2 } from 'lucide-react'
 import { confirmAction } from '../core/feedback/index'
 import {
-  Alert, Button, DateField, IconButton, RepeatableList, SelectField, TextAreaField, TextField, TimeField, WorkspaceSectionHeader,
+  Alert, Button, CheckboxField, DateField, IconButton, RepeatableList, SelectField, TextAreaField, TextField, TimeField, WorkspaceSectionHeader,
 } from '../core'
 import LibraryField from '../core/LibraryField/LibraryField'
 import PersonLinkSelector from './PersonLinkSelector'
@@ -11,7 +11,7 @@ import { laboratoryDisplayValue, laboratoryOptions } from '../../pages/Laborator
 
 export function LaboratorySourceSection({
   form, setForm,
-  patients, patientMode, setPatientMode, selectedPatientId, selectedPatient, choosePatient, newPatient, setNewPatient, createAndLinkPatient,
+  patients, patientMode, setPatientMode, selectedPatientId, selectedPatient, choosePatient, newPatient, setNewPatient,
   employees, employeeMode, setEmployeeMode, selectedEmployeeId, selectedEmployee, chooseEmployee, newEmployee, setNewEmployee, createAndLinkEmployee,
   employeeFullName, onSourceChange,
 }) {
@@ -59,7 +59,6 @@ export function LaboratorySourceSection({
       existingLabel={L('Επιλογή ασθενούς', 'Select patient')}
       newLabel={L('Νέος ασθενής', 'New patient')}
       fieldLabel={L('Ασθενής', 'Patient')}
-      createLabel={L('Δημιουργία & σύνδεση ασθενούς', 'Create & link patient')}
       mode={patientMode}
       onModeChange={setPatientMode}
       selectedId={selectedPatientId}
@@ -74,7 +73,7 @@ export function LaboratorySourceSection({
         { label: L('Τμήμα', 'Department'), value: selectedPatient?.department },
         { label: L('Θάλαμος / Κλίνη', 'Room / Bed'), value: selectedPatient?.room },
       ]}
-      onCreate={createAndLinkPatient}
+      showCreateAction={false}
     >
       <div className="lw-grid lw-grid--three">
         <TextField label={L('Επώνυμο *', 'Last name *')} value={newPatient.lastName} onChange={(e) => setNewPatient({ ...newPatient, lastName: e.target.value })} />
@@ -98,6 +97,7 @@ export function LaboratorySourceSection({
         <TextField label={L('Θάλαμος / Κλίνη', 'Room / Bed')} value={newPatient.room} onChange={(e) => setNewPatient({ ...newPatient, room: e.target.value })} />
         <DateField label={L('Ημερομηνία εισαγωγής', 'Admission date')} value={newPatient.admissionDate} onChange={(e) => setNewPatient({ ...newPatient, admissionDate: e.target.value })} />
       </div>
+      <p className="lw-inline-save-hint">{L('Ο νέος ασθενής και το δείγμα θα αποθηκευτούν μαζί με το κύριο κουμπί «Αποθήκευση».', 'The new patient and sample will be saved together with the main Save button.')}</p>
     </PersonLinkSelector> : form.sourceType === 'Προσωπικό' ? <PersonLinkSelector
       ariaLabel={L('Τρόπος σύνδεσης εργαζομένου', 'Staff linking mode')}
       existingLabel={L('Επιλογή εργαζομένου', 'Select staff')}
@@ -205,6 +205,19 @@ export function LaboratorySampleSection({ form, setForm, isNew, patientSampleOpt
       <DateField label={L('Ημερομηνία λήψης', 'Collection date')} value={form.collectionDate} onChange={(e) => setForm({ ...form, collectionDate: e.target.value })} />
       <TimeField label={L('Ώρα λήψης', 'Collection time')} value={form.collectionTime || ''} onChange={(e) => setForm({ ...form, collectionTime: e.target.value })} />
       <DateField label={L('Ημερομηνία παραλαβής', 'Receipt date')} value={form.receivedDate} onChange={(e) => setForm({ ...form, receivedDate: e.target.value })} />
+      <SelectField
+        label={L('Αποδοχή δείγματος', 'Sample acceptance')}
+        value={form.sampleAcceptance || 'Αποδεκτό'}
+        options={laboratoryOptions(['Αποδεκτό', 'Απορρίφθηκε'], language)}
+        placeholder={null}
+        onChange={(e) => setForm({ ...form, sampleAcceptance: e.target.value, rejectionReason: e.target.value === 'Απορρίφθηκε' ? form.rejectionReason : '' })}
+      />
+      {form.sampleAcceptance === 'Απορρίφθηκε' ? <TextField
+        label={L('Λόγος απόρριψης *', 'Rejection reason *')}
+        value={form.rejectionReason || ''}
+        onChange={(e) => setForm({ ...form, rejectionReason: e.target.value })}
+        fullWidth
+      /> : null}
       {form.sourceType === 'Ασθενής' ? <TextField label={L('Τμήμα', 'Department')} disabled value={form.department || ''} /> : null}
       <TextAreaField fullWidth label={L('Σημειώσεις', 'Notes')} value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
     </div>
@@ -256,6 +269,32 @@ export function LaboratoryResultSection({ form, setForm, normalizeMicroorganismR
       <DateField label={L('Ημερομηνία αποτελέσματος', 'Result date')} value={form.resultDate || ''} onChange={(e) => setForm({ ...form, resultDate: e.target.value })} />
       <TextAreaField fullWidth label={L('Παρατηρήσεις αποτελέσματος', 'Result notes')} value={form.resultNotes || ''} onChange={(e) => setForm({ ...form, resultNotes: e.target.value })} />
     </div>
+
+    {form.status !== 'Εκκρεμεί' ? <Alert tone="success" title={L('Επικύρωση αποτελέσματος', 'Result validation')}>
+      {form.validatedAt
+        ? `${L('Επικυρώθηκε από', 'Validated by')} ${form.validatedBy || '—'} · ${new Date(form.validatedAt).toLocaleString(language === 'en' ? 'en-GB' : 'el-GR')}`
+        : L('Με την αποθήκευση, η επικύρωση καταγράφεται αυτόματα στον τρέχοντα χρήστη.', 'On save, validation is automatically recorded against the current user.')}
+    </Alert> : null}
+
+    {form.status !== 'Εκκρεμεί' ? <div className="lw-grid lw-grid--three">
+      <CheckboxField
+        label={L('Κρίσιμο αποτέλεσμα', 'Critical result')}
+        description={L('Ενεργοποιήστε μόνο όταν απαιτείται άμεση γνωστοποίηση.', 'Use only when immediate communication is required.')}
+        checked={!!form.criticalResult}
+        onChange={(e) => setForm({ ...form, criticalResult: e.target.checked })}
+      />
+      {form.criticalResult ? <TextField
+        label={L('Γνωστοποιήθηκε σε *', 'Communicated to *')}
+        value={form.criticalCommunicatedTo || ''}
+        onChange={(e) => setForm({ ...form, criticalCommunicatedTo: e.target.value })}
+      /> : null}
+      {form.criticalResult ? <TextField
+        type="datetime-local"
+        label={L('Ημερομηνία / ώρα γνωστοποίησης *', 'Communication date / time *')}
+        value={String(form.criticalCommunicatedAt || '').slice(0,16)}
+        onChange={(e) => setForm({ ...form, criticalCommunicatedAt: e.target.value })}
+      /> : null}
+    </div> : null}
 
     <RepeatableList
       className="lw-organisms"

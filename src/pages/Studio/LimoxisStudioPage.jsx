@@ -86,7 +86,7 @@ export default function LimoxisStudioPage(){
         placeholder={L('Αναζήτηση στο Κέντρο Διαχείρισης…','Search Management Center…')}
         aria-label={L('Αναζήτηση εργαλείου στο Κέντρο Διαχείρισης','Search Management Center tool')}
       />
-      {search&&<button type="button" onClick={()=>setSearch('')}>{L('Καθαρισμός','Clear')}</button>}
+      {search&&<Button size="sm" variant="ghost" onClick={()=>setSearch('')}>{L('Καθαρισμός','Clear')}</Button>}
     </div>
 
     <div className="studio-groups">
@@ -101,26 +101,26 @@ export default function LimoxisStudioPage(){
 
     {visibleGroups.length===0&&<div className="studio-empty">{L('Δεν βρέθηκε εργαλείο με αυτά τα κριτήρια.','No tool matched these criteria.')}</div>}
 
-    <p className="studio-admin-note">
-      {L(
-        'Οι ρυθμίσεις Workflows, Rules, Notifications, Dashboard Studio και AI Studio δεν εμφανίζονται ως λειτουργικά εργαλεία μέχρι να συνδεθούν με πραγματικό runtime μηχανισμό. Έτσι αποφεύγονται επιλογές που αποθηκεύουν ρυθμίσεις αλλά δεν επηρεάζουν την εφαρμογή.',
-        'Workflows, Rules, Notifications, Dashboard Studio and AI Studio are not shown as operational tools until they are connected to a real runtime engine. This avoids presenting settings that are stored but do not affect the application.'
-      )}
-    </p>
+
   </PageChrome>
 }
 
 function StudioToolCard({tool,language,onOpen}){
   const Icon=tool.icon
-  return <article className="studio-card">
+  const action=tool.actions[0]
+  return <article
+    className="studio-card studio-card--clickable"
+    role="button"
+    tabIndex={0}
+    onClick={()=>action&&onOpen(action.path)}
+    onKeyDown={e=>{if((e.key==='Enter'||e.key===' ')&&action){e.preventDefault();onOpen(action.path)}}}
+    aria-label={`${language==='en'?'Open':'Άνοιγμα'} ${language==='en'?tool.titleEn:tool.titleEl}`}
+  >
     <div className="studio-card__icon"><Icon size={22}/></div>
     <div className="studio-card__content">
       <span>{language==='en'?tool.noteEn:tool.noteEl}</span>
       <h3>{language==='en'?tool.titleEn:tool.titleEl}</h3>
       <p>{language==='en'?tool.textEn:tool.textEl}</p>
-    </div>
-    <div className="studio-card__actions">
-      {tool.actions.map((action,index)=><Button key={action.path} variant={index===0?'secondary':'ghost'} onClick={()=>onOpen(action.path)}>{language==='en'?action.labelEn:action.labelEl}</Button>)}
     </div>
   </article>
 }

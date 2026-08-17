@@ -46,7 +46,7 @@ export default function CoreShowcasePage() {
     <PageChrome
       header={(
         <PageHeader
-          eyebrow="Limoxis Core"
+          eyebrow="Healthcare Suite Core"
           title="Design System"
           description="Η μοναδική πηγή αλήθειας για τα κοινά components, τα states και τους κανόνες αλληλεπίδρασης."
           actions={<ActionBar create={{ onClick: () => {} }} exportAction={{ onClick: () => {} }} />}

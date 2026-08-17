@@ -33,6 +33,7 @@ export async function hydrateIndicatorBackend(){
 }
 
 export async function saveIndicatorSettingsBackend(settings={}){
+  validateIndicatorGovernance(settings)
   if(!IS_PRODUCTION)return saveIndicatorSettings(settings)
   const c=requireSupabase(),org=await orgId(c)
   const rows=Object.entries(settings||{}).map(([indicatorId,value])=>({organization_id:org,indicator_id:indicatorId,settings:value||{}}))
@@ -41,6 +42,7 @@ export async function saveIndicatorSettingsBackend(settings={}){
   saveIndicatorSettings(settings);return settings
 }
 export async function saveCustomIndicatorsBackend(rows=[]){
+  validateCustomIndicatorGovernance(rows)
   if(!IS_PRODUCTION)return saveCustomIndicators(rows)
   const c=requireSupabase(),org=await orgId(c)
   const {error:delError}=await c.from('custom_indicators').delete().eq('organization_id',org);if(delError)throw delError
@@ -64,3 +66,22 @@ export async function saveIndicatorSourceBackend(type,rows=[]){
 function localWriter(type){if(type==='daily_census')return saveDailyCensus;if(type==='antibiotic_ddd')return saveAntibioticDDD;if(type==='structural_snapshot')return saveStructuralSnapshots;if(type==='prevalence_snapshot')return savePrevalenceSnapshots;throw new Error('Unknown indicator source type.')}
 async function orgId(c){const {data,error}=await c.rpc('current_organization_id');if(error)throw error;if(!data)throw new Error('Organization context not found.');return data}
 function date(v){const s=String(v||'').trim();return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:null}
+
+function validateIndicatorGovernance(settings={}){
+  for(const [id,value] of Object.entries(settings||{})){
+    if(!value||typeof value!=='object')continue
+    if(value.warningThreshold!==''&&value.warningThreshold!=null&&!Number.isFinite(Number(value.warningThreshold)))throw new Error(`Indicator ${id} warning threshold must be numeric.`)
+    if(value.governanceVersion!=null&&!String(value.governanceVersion).trim())throw new Error(`Indicator ${id} definition version cannot be blank.`)
+  }
+}
+function validateCustomIndicatorGovernance(rows=[]){
+  const ids=new Set()
+  for(const row of rows||[]){
+    const id=String(row?.id||'').trim()
+    if(!id)throw new Error('Custom indicator requires an id.')
+    if(ids.has(id))throw new Error('Custom indicator ids must be unique.')
+    ids.add(id)
+    if(!String(row?.name||'').trim())throw new Error('Custom indicator requires a name.')
+    if(row.warningThreshold!==''&&row.warningThreshold!=null&&!Number.isFinite(Number(row.warningThreshold)))throw new Error(`Indicator ${id} warning threshold must be numeric.`)
+  }
+}

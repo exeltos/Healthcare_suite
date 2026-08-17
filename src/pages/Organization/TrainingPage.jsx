@@ -1,7 +1,7 @@
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
-import { BookOpenCheck, Check, Download, GraduationCap, Plus, Printer, Trash2, UserCheck } from 'lucide-react'
+import { Archive, BookOpenCheck, Check, Download, GraduationCap, Plus, Printer, UserCheck } from 'lucide-react'
 import {
   Badge, Button, DateRangeFilter, Drawer, EntityCell, EntitySummary, FormActions, FormField, FormGrid, FormSection,
   LibraryField, ListWorkspace, PageChrome, PageHeader, StatCard,
@@ -11,7 +11,7 @@ import HybridMultiSelector from '../../components/core/HybridMultiSelector/Hybri
 import { downloadCsv, printRows } from '../../core/utils/listExport'
 import { normalizeText, selectedRows, sortRows } from '../../core/utils/entityList'
 import { loadTraining, ORGANIZATION_EVENT } from '../../services/organizationService'
-import { deleteOperationalTraining, loadOperationalTraining, saveOperationalTraining } from '../../services/backend/organizationBackendService'
+import { loadOperationalTraining, saveOperationalTraining } from '../../services/backend/organizationBackendService'
 import { EMPLOYEES_EVENT, loadEmployees } from '../../services/employeesService'
 import { useRecordDeepLink } from '../../core/navigation/recordDeepLink'
 import { masterNames } from '../../services/masterDataService'
@@ -21,7 +21,7 @@ import './OrganizationUnified.css'
 
 const EMPTY={
   title:'', category:'Κλινική εκπαίδευση', department:'', trainer:'', date:'',
-  status:'Προγραμματισμένη', durationHours:'1', validUntil:'', attendance:[], attachments:[], notes:'',
+  status:'Προγραμματισμένη', durationHours:'1', validUntil:'', mandatory:false, recurrenceMonths:'', competencyRequired:false, attendance:[], attachments:[], notes:'',
 }
 const STATUSES=['Προγραμματισμένη','Σε εξέλιξη','Ολοκληρωμένη','Ακυρωμένη']
 const CATEGORIES=['Κλινική εκπαίδευση','Ασφάλεια','Ποιότητα','Εισαγωγική','Υποχρεωτική']
@@ -75,6 +75,8 @@ export default function TrainingPage(){
     scheduled:filtered.filter(r=>r.status==='Προγραμματισμένη').length,
     completed:filtered.filter(r=>r.status==='Ολοκληρωμένη').length,
     attended:filtered.reduce((n,r)=>n+(r.attendance||[]).filter(x=>['Παρών','Online'].includes(x.status)).length,0),
+    competencyDue:filtered.reduce((n,r)=>n+(r.attendance||[]).filter(x=>r.competencyRequired && ['Παρών','Online'].includes(x.status) && x.competencyResult!=='Επαρκής').length,0),
+    renewalDue:filtered.reduce((n,r)=>n+(r.attendance||[]).filter(x=>['Παρών','Online'].includes(x.status) && (x.competencyValidUntil||r.validUntil) && (x.competencyValidUntil||r.validUntil) < new Date().toISOString().slice(0,10)).length,0),
   }),[filtered])
 
   const attendeeKey=item=>String(item.employeeId||item.attendeeId||item.id||'')
@@ -148,6 +150,13 @@ export default function TrainingPage(){
       notifyAction(L('Για ολοκληρωμένη εκπαίδευση καταχωρήστε τουλάχιστον έναν συμμετέχοντα ή αλλάξτε την κατάσταση.','For completed training, add at least one participant or change the status.'))
       return
     }
+    if(form.status==='Ολοκληρωμένη' && form.competencyRequired){
+      const pending=(form.attendance||[]).filter(x=>['Παρών','Online'].includes(x.status) && !x.competencyResult)
+      if(pending.length){
+        notifyAction(L('Για εκπαίδευση με αξιολόγηση επάρκειας, καταγράψτε αποτέλεσμα για όλους όσοι ολοκλήρωσαν.','For competency-assessed training, record a result for everyone who completed it.'))
+        return
+      }
+    }
     try {
       await saveOperationalTraining({...form,id:editing?.id||form.id,durationHours:String(form.durationHours||'')})
       setRows(await loadOperationalTraining())
@@ -158,15 +167,15 @@ export default function TrainingPage(){
     }
   }
 
-  async function remove(){
-    if(!editing||!confirmAction(L('Να διαγραφεί η εκπαίδευση;','Delete this training record?'))) return
+  async function archiveRecord(){
+    if(!editing||!confirmAction(L('Να αρχειοθετηθεί η εκπαίδευση; Το ιστορικό και οι συμμετοχές θα διατηρηθούν.','Archive this training record? History and attendance will be retained.'))) return
     try {
-      await deleteOperationalTraining(editing.id)
+      await saveOperationalTraining({...form,id:editing.id,status:'Ακυρωμένη',archived:true,archivedAt:new Date().toISOString()})
       setRows(await loadOperationalTraining())
       close()
     } catch (error) {
-      console.error('Training delete failed', error)
-      notifyAction(L('Η διαγραφή της εκπαίδευσης απέτυχε.','Training could not be deleted.'))
+      console.error('Training archive failed', error)
+      notifyAction(L('Η αρχειοθέτηση της εκπαίδευσης απέτυχε.','Training could not be archived.'))
     }
   }
 
@@ -188,6 +197,11 @@ export default function TrainingPage(){
           status:existing.status||'Παρών',
           score:existing.score||'',
           certificate:existing.certificate||null,
+          competencyResult:existing.competencyResult||'',
+          assessedBy:existing.assessedBy||'',
+          assessedAt:existing.assessedAt||'',
+          competencyNotes:existing.competencyNotes||'',
+          competencyValidUntil:existing.competencyValidUntil||'',
         }
       })
       return {...c,attendance}
@@ -204,11 +218,13 @@ export default function TrainingPage(){
     actions={<Button icon={<Plus size={17}/>} onClick={openNew}>{L('Νέα εκπαίδευση','New training')}</Button>}
   />}>
     <ListWorkspace
-      stats={<EntitySummary columns={4}>
+      stats={<EntitySummary columns={6}>
         <StatCard compact icon={GraduationCap} label={L('Εκπαιδεύσεις','Training records')} value={metrics.total}/>
         <StatCard compact icon={BookOpenCheck} label={L('Προγραμματισμένες','Scheduled')} value={metrics.scheduled}/>
         <StatCard compact icon={Check} label={L('Ολοκληρωμένες','Completed')} value={metrics.completed}/>
         <StatCard compact icon={UserCheck} label={L('Παρουσίες','Attendance')} value={metrics.attended}/>
+        <StatCard compact icon={Check} label={L('Εκκρεμής επάρκεια','Competency due')} value={metrics.competencyDue}/>
+        <StatCard compact icon={BookOpenCheck} label={L('Ληγμένη / επανεκπαίδευση','Expired / retraining')} value={metrics.renewalDue} tone={metrics.renewalDue?'warning':'default'}/>
       </EntitySummary>}
       searchValue={search}
       onSearchChange={setSearch}
@@ -254,7 +270,7 @@ export default function TrainingPage(){
       description={L('Στοιχεία, παρουσιολόγιο και αρχεία στην ίδια scrollable καρτέλα.','Details, attendance and files in the same scrollable record.')}
       width={1180}
       position="center"
-      footer={<FormActions form="training-form" onCancel={close} extraActions={editing?<Button variant="danger" icon={<Trash2 size={16}/>} onClick={remove}>{L('Διαγραφή','Delete')}</Button>:null}/>}
+      footer={<FormActions form="training-form" onCancel={close} extraActions={editing?<Button variant="secondary" icon={<Archive size={16}/>} onClick={archiveRecord}>{L('Αρχειοθέτηση','Archive')}</Button>:null}/>}
     >
       <form id="training-form" className="organization-unified-form" onSubmit={save}>
         <FormSection title={L('Βασικά στοιχεία','Basic details')}>
@@ -267,6 +283,11 @@ export default function TrainingPage(){
             <FormField label={L('Διάρκεια (ώρες)','Duration (hours)')}><input inputMode="decimal" value={form.durationHours} onChange={e=>setField('durationHours',e.target.value)} placeholder={L('π.χ. 1,5','e.g. 1.5')}/></FormField>
             <FormField label={L('Κατάσταση','Status')}><select value={form.status} onChange={e=>setField('status',e.target.value)}>{STATUSES.map(x=><option key={x} value={x}>{trainingDisplayValue(x,language)}</option>)}</select></FormField>
             <FormField label={L('Ισχύς πιστοποίησης έως','Certification valid until')}><input type="date" value={form.validUntil||''} onChange={e=>setField('validUntil',e.target.value)}/></FormField>
+            <FormField label={L('Υποχρεωτική εκπαίδευση','Mandatory training')}><label className="org-inline-check"><input type="checkbox" checked={!!form.mandatory} onChange={e=>setField('mandatory',e.target.checked)}/><span>{L('Παρακολούθηση συμμόρφωσης προσωπικού','Track staff compliance')}</span></label></FormField>
+            <FormField label={L('Επανάληψη κάθε (μήνες)','Repeat every (months)')}><input type="number" min="1" value={form.recurrenceMonths||''} onChange={e=>setField('recurrenceMonths',e.target.value)} placeholder={L('π.χ. 12','e.g. 12')}/></FormField>
+            <FormField label={L('Αξιολόγηση επάρκειας','Competency assessment')}>
+              <label className="org-inline-check"><input type="checkbox" checked={!!form.competencyRequired} onChange={e=>setField('competencyRequired',e.target.checked)}/><span>{L('Απαιτείται για αυτή την εκπαίδευση','Required for this training')}</span></label>
+            </FormField>
           </FormGrid>
         </FormSection>
 
@@ -301,6 +322,23 @@ export default function TrainingPage(){
                 {ATTENDANCE_STATUSES.map(x=><option key={x} value={x}>{trainingDisplayValue(x,language)}</option>)}
               </select>
               <input className="org-score" inputMode="decimal" value={att.score||''} onChange={e=>updateAttendance(attendeeKey(att),{score:e.target.value})} placeholder={L('Βαθμός','Score')}/>
+              {form.competencyRequired&&<select value={att.competencyResult||''} onChange={e=>updateAttendance(attendeeKey(att),{competencyResult:e.target.value,assessedAt:e.target.value?new Date().toISOString():att.assessedAt})} aria-label={L('Αποτέλεσμα επάρκειας','Competency result')}>
+                <option value="">{L('Αξιολόγηση…','Assessment…')}</option>
+                <option value="Επαρκής">{L('Επαρκής','Competent')}</option>
+                <option value="Χρειάζεται επανεκπαίδευση">{L('Χρειάζεται επανεκπαίδευση','Retraining required')}</option>
+              </select>}
+            </div>)}
+          </div>}
+          {form.competencyRequired&&form.attendance.some(att=>['Παρών','Online'].includes(att.status))&&<div className="org-competency-followup">
+            <div className="org-competency-followup__title">{L('Στοιχεία αξιολόγησης επάρκειας','Competency assessment details')}</div>
+            {form.attendance.filter(att=>['Παρών','Online'].includes(att.status)).map(att=><div className="org-competency-followup__card" key={`competency-${attendeeKey(att)}`}>
+              <div className="org-competency-followup__person"><strong>{att.employeeName}</strong><small>{[att.department,att.professionalCategory].filter(Boolean).join(' · ')}</small></div>
+              <div className="org-competency-followup__fields">
+                <label><span>{L('Αξιολογητής','Assessed by')}</span><input value={att.assessedBy||''} onChange={e=>updateAttendance(attendeeKey(att),{assessedBy:e.target.value})}/></label>
+                <label><span>{L('Ημερομηνία αξιολόγησης','Assessment date')}</span><input type="date" value={(att.assessedAt||'').slice(0,10)} onChange={e=>updateAttendance(attendeeKey(att),{assessedAt:e.target.value})}/></label>
+                <label><span>{L('Επάρκεια έως','Competency valid until')}</span><input type="date" value={att.competencyValidUntil||''} onChange={e=>updateAttendance(attendeeKey(att),{competencyValidUntil:e.target.value})}/></label>
+                <label className="org-competency-followup__notes"><span>{L('Σημείωση επάρκειας / επανεκπαίδευσης','Competency / retraining note')}</span><input value={att.competencyNotes||''} onChange={e=>updateAttendance(attendeeKey(att),{competencyNotes:e.target.value})}/></label>
+              </div>
             </div>)}
           </div>}
         </FormSection>

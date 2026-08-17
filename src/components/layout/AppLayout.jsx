@@ -9,7 +9,8 @@ import NewEntryLauncher from '../launcher/NewEntryLauncher'
 import { useI18n } from '../../i18n'
 import { readSessionValue, removeSessionValue } from '../../core/storage'
 import { isSessionAllowed, signOutUser, validateProductionSession } from '../../services/auth'
-import { IS_PRODUCTION } from '../../core/runtime'
+import { IS_PRODUCTION, SESSION_IDLE_MS } from '../../core/runtime'
+import { isSupabaseConfigured, requireSupabase } from '../../integrations/supabase'
 import { writeSessionValue } from '../../core/storage'
 import { canViewModule, moduleForPath } from '../../services/accessControlService'
 
@@ -48,6 +49,46 @@ export default function AppLayout() {
       })
     return()=>{cancelled=true}
   },[])
+
+  // Keep the UI in sync with provider-side sign-out/session expiry.
+  useEffect(()=>{
+    if(!IS_PRODUCTION || !isSupabaseConfigured) return undefined
+    const client=requireSupabase()
+    const {data}=client.auth.onAuthStateChange((event)=>{
+      if(['SIGNED_OUT','USER_DELETED'].includes(event)){
+        removeSessionValue(SESSION_KEY)
+        removeSessionValue('healthcare-suite.user')
+        setUser(null)
+        setAuthState('invalid')
+      }
+    })
+    return()=>data?.subscription?.unsubscribe?.()
+  },[])
+
+  // Idle timeout is intentionally invisible during normal work. User activity
+  // refreshes the timer; inactivity signs out both the provider and local shell.
+  useEffect(()=>{
+    if(!IS_PRODUCTION || authState!=='ready') return undefined
+    let timer
+    const expire=async()=>{
+      try{await signOutUser()}catch{}
+      removeSessionValue(SESSION_KEY)
+      removeSessionValue('healthcare-suite.user')
+      setUser(null)
+      setAuthState('invalid')
+    }
+    const reset=()=>{
+      clearTimeout(timer)
+      timer=setTimeout(expire,SESSION_IDLE_MS)
+    }
+    const events=['pointerdown','keydown','touchstart','scroll']
+    events.forEach(name=>window.addEventListener(name,reset,{passive:true}))
+    reset()
+    return()=>{
+      clearTimeout(timer)
+      events.forEach(name=>window.removeEventListener(name,reset))
+    }
+  },[authState])
 
   const session=readSessionValue(SESSION_KEY)
   if(authState==='checking') return <div className="app-auth-loading"><div className="suite-logo">H</div><span>{t('common.loading')}</span></div>

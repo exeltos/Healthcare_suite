@@ -24,6 +24,7 @@ import { WASTE_MEASUREMENTS_EVENT, deleteWasteMeasurement, loadWasteMeasurements
 import { deletePreventionRecord, loadPreventionRecords, savePreventionRecord } from '../../services/backend/preventionBackendService'
 import '../Records/RecordsUnified.css'
 import { masterNames } from '../../services/masterDataService'
+import { loadDailyCensus } from '../../services/indicatorSourceDataService'
 import { useI18n } from '../../i18n'
 
 const EMPTY_RECORD={date:'',department:'',wasteType:'',weightKg:'',containers:'',patientDays:'',collectionCompany:'',documentNumber:'',responsible:'',notes:''}
@@ -40,6 +41,7 @@ const exportColumns=[
   {label:'Περιέκτες',value:(row)=>row.containers||''},{label:'Ημέρες νοσηλείας',value:(row)=>row.patientDays||''},{label:'Δείκτης kg/1.000',value:(row)=>recordIndicator(row).toFixed(1)},{label:'Εταιρεία αποκομιδής',value:(row)=>row.collectionCompany||''},{label:'Παραστατικό',value:(row)=>row.documentNumber||''},
 ]
 
+function monthlyBedDays(dateValue,department){if(!dateValue||!department)return 0;const iso=String(dateValue).includes('/')?String(dateValue).split('/').reverse().join('-'):String(dateValue);const ym=iso.slice(0,7);return loadDailyCensus().filter(row=>String(row.date||'').slice(0,7)===ym&&row.department===department).reduce((sum,row)=>sum+Number(row.patientDays||row.totalPatients||0),0)}
 export default function WasteMeasurementsPage(){
   const { language } = useI18n()
   const L = (el,en) => language === 'en' ? en : el
@@ -66,7 +68,7 @@ export default function WasteMeasurementsPage(){
   function openNew(){setSelectedId(null);setFormData({...EMPTY_RECORD,date:todayGreek()});setDrawerOpen(true)}
   function openRecord(record){setSelectedId(record.id);setFormData({...EMPTY_RECORD,...record});setDrawerOpen(true)}
   function close(){setDrawerOpen(false);setSelectedId(null);setFormData(EMPTY_RECORD)}
-  function setField(name,value){setFormData(current=>({...current,[name]:value}))}
+  function setField(name,value){setFormData(current=>{const next={...current,[name]:value};if((name==='date'||name==='department')&&!next.patientDays){const days=monthlyBedDays(next.date,next.department);if(days)next.patientDays=String(days)}return next})}
   async function save(event){event.preventDefault();if(!formData.date||!formData.department||!formData.wasteType||number(formData.weightKg)<=0){notifyAction(L('Συμπληρώστε ημερομηνία, τμήμα, κατηγορία και βάρος.','Enter date, department, category and weight.'));return}await savePreventionRecord('waste',{...formData,id:selectedId||`WASTE-${Date.now()}`,weightKg:String(number(formData.weightKg)),containers:formData.containers===''?'':String(number(formData.containers)),patientDays:formData.patientDays===''?'':String(number(formData.patientDays)),indicator:recordIndicator(formData),updatedAt:new Date().toISOString()});setRecords(await loadPreventionRecords('waste'));close()}
   async function remove(){if(!selectedId||!confirmAction(L('Να διαγραφεί η μέτρηση αποβλήτων;','Delete this waste measurement?')))return;await deletePreventionRecord('waste',selectedId);setRecords(await loadPreventionRecords('waste'));close()}
   function clearFilters(){setSearch('');setDepartmentFilter('');setTypeFilter('');setDateFrom('');setDateTo('')}

@@ -3,6 +3,8 @@ import { Accessibility, Building2, Check, ChevronDown, CircleHelp, Globe2, KeyRo
 import NotificationCenter from './NotificationCenter'
 import LanguageSwitcher from '../core/LanguageSwitcher'
 import Dialog from '../core/Dialog/Dialog'
+import Button from '../core/Button/Button'
+import IconButton from '../core/IconButton/IconButton'
 import { useI18n } from '../../i18n'
 import { loadCurrentProfile } from '../../services/profile'
 import { readJsonObject, writeJson } from '../../core/storage'
@@ -32,22 +34,22 @@ export default function Header({ navigationControl, onLogout, user }) {
   const L=(el,en)=>language==='en'?en:el
   return <>
     <header className="topbar">
-      <div className="topbar-left">{navigationControl}<div className="suite-brand"><div className="suite-logo">H</div><div><strong>Healthcare Suite</strong><span>Limoxis Observer</span></div></div></div>
+      <div className="topbar-left">{navigationControl}<div className="suite-brand"><div className="suite-logo">H</div><div><strong>Healthcare Suite</strong><span>Clinical Quality &amp; Surveillance</span></div></div></div>
       <div className="topbar-actions">
-        <LanguageSwitcher compact/><button className="icon-button" type="button" aria-label={L('Βοήθεια','Help')} title={L('Βοήθεια','Help')} onClick={()=>setHelpOpen(true)}><CircleHelp size={19}/></button>
+        <LanguageSwitcher compact/><IconButton className="icon-button" label={L('Βοήθεια','Help')} onClick={()=>setHelpOpen(true)}><CircleHelp size={19}/></IconButton>
         <div className="header-popover-wrap" ref={accessRef}>
-          <button className="icon-button" type="button" aria-label={t('common.accessibility')} title={t('common.accessibility')} onClick={()=>{setAccessOpen(v=>!v);setUserOpen(false)}}><Accessibility size={19}/></button>
-          {accessOpen&&<div className="header-popover accessibility-popover"><strong>{t('common.accessibility')}</strong><div className="access-row"><span>{t('common.textSize')}</span><div className="access-stepper"><button type="button" aria-label="-" onClick={()=>update({textScale:Math.max(.9,+(access.textScale-.1).toFixed(1))})}><Minus size={15}/></button><b>{Math.round(access.textScale*100)}%</b><button type="button" aria-label="+" onClick={()=>update({textScale:Math.min(1.2,+(access.textScale+.1).toFixed(1))})}><Plus size={15}/></button></div></div><button type="button" className="access-option" onClick={()=>update({highContrast:!access.highContrast})}><span>{t('common.highContrast')}</span>{access.highContrast&&<Check size={16}/>}</button><button type="button" className="access-option" onClick={()=>update({reducedMotion:!access.reducedMotion})}><span>{t('common.reducedMotion')}</span>{access.reducedMotion&&<Check size={16}/>}</button><button type="button" className="access-reset" onClick={()=>setAccess(defaults)}><RotateCcw size={15}/>{t('common.reset')}</button></div>}
+          <IconButton className="icon-button" label={t('common.accessibility')} onClick={()=>{setAccessOpen(v=>!v);setUserOpen(false)}}><Accessibility size={19}/></IconButton>
+          {accessOpen&&<div className="header-popover accessibility-popover"><strong>{t('common.accessibility')}</strong><div className="access-row"><span>{t('common.textSize')}</span><div className="access-stepper"><IconButton size="sm" label="-" onClick={()=>update({textScale:Math.max(.9,+(access.textScale-.1).toFixed(1))})}><Minus size={15}/></IconButton><b>{Math.round(access.textScale*100)}%</b><IconButton size="sm" label="+" onClick={()=>update({textScale:Math.min(1.2,+(access.textScale+.1).toFixed(1))})}><Plus size={15}/></IconButton></div></div><Button variant="secondary" className="access-option" onClick={()=>update({highContrast:!access.highContrast})}>{t('common.highContrast')}{access.highContrast&&<Check size={16}/>}</Button><Button variant="secondary" className="access-option" onClick={()=>update({reducedMotion:!access.reducedMotion})}>{t('common.reducedMotion')}{access.reducedMotion&&<Check size={16}/>}</Button><Button variant="secondary" size="sm" className="access-reset" icon={<RotateCcw size={15}/>} onClick={()=>setAccess(defaults)}>{t('common.reset')}</Button></div>}
         </div>
         <NotificationCenter/>
-        <div className="header-popover-wrap" ref={userRef}><button type="button" className="user-profile user-profile-button" onClick={()=>{setUserOpen(v=>!v);setAccessOpen(false)}} aria-expanded={userOpen}><div className="avatar">{initials}</div><div className="user-copy"><strong>{displayName}</strong><span>{role}</span></div><ChevronDown size={15}/></button>{userOpen&&<div className="header-popover user-popover"><button type="button" onClick={()=>{setUserOpen(false);setProfileOpen(true)}}><UserRound size={16}/>{t('common.profile')}</button><button type="button" className="logout-menu-item" onClick={()=>{setUserOpen(false);setLogoutOpen(true)}}><LogOut size={16}/>{t('common.logout')}</button></div>}</div>
+        <div className="header-popover-wrap" ref={userRef}><Button variant="secondary" className="user-profile user-profile-button user-profile-button--compact" aria-label={L('Λογαριασμός χρήστη','User account')} title={displayName} onClick={()=>{setUserOpen(v=>!v);setAccessOpen(false)}} aria-expanded={userOpen}><div className="avatar">{initials}</div><ChevronDown size={14}/></Button>{userOpen&&<div className="header-popover user-popover"><Button variant="secondary" size="sm" icon={<UserRound size={16}/>} onClick={()=>{setUserOpen(false);setProfileOpen(true)}}>{t('common.profile')}</Button><Button variant="secondary" size="sm" className="logout-menu-item" icon={<LogOut size={16}/>} onClick={()=>{setUserOpen(false);setLogoutOpen(true)}}>{t('common.logout')}</Button></div>}</div>
       </div>
     </header>
     {profileOpen&&<div className="profile-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setProfileOpen(false)}}>
       <aside className="profile-drawer" role="dialog" aria-modal="true" aria-label={t('common.profile')}>
         <header className="profile-drawer__header">
           <div className="profile-drawer__identity"><div className="profile-drawer__avatar">{initials}</div><div><span className="profile-drawer__eyebrow">{profile?.demo?'DEMO':L('ΠΡΟΦΙΛ ΧΡΗΣΤΗ','USER PROFILE')}</span><h2>{displayName}</h2><p>{role}</p></div></div>
-          <button type="button" className="icon-button" onClick={()=>setProfileOpen(false)} aria-label={L('Κλείσιμο','Close')}><X size={19}/></button>
+          <IconButton className="icon-button" label={L('Κλείσιμο','Close')} onClick={()=>setProfileOpen(false)}><X size={19}/></IconButton>
         </header>
         {profile?.demo&&<div className="profile-demo-note"><ShieldCheck size={18}/><div><strong>{L('Περιβάλλον επίδειξης','Demo environment')}</strong><span>{L('Ο λογαριασμός χρησιμοποιεί μόνο δοκιμαστικά δεδομένα και δεν αποτελεί πραγματικό λογαριασμό προσωπικού.','This account uses demo data only and is not a real staff account.')}</span></div></div>}
         <div className="profile-drawer__body">

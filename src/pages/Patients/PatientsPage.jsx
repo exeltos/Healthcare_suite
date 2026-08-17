@@ -11,7 +11,6 @@ import {
   PATIENT_REGISTRY_EVENT,
 } from '../../services/patientService'
 import { loadClinicalPatients, loadClinicalPatientSamples, saveClinicalPatient } from '../../services/backend/clinicalDirectoryService'
-import NewPatientDrawer from './NewPatientDrawer'
 import {
   Badge,
   Button,
@@ -57,7 +56,6 @@ export default function PatientsPage() {
   const [risk, setRisk] = useState('')
   const [sort, setSort] = useState({ key: 'fullName', direction: 'asc' })
   const [selectedKeys, setSelectedKeys] = useState([])
-  const [newPatientOpen, setNewPatientOpen] = useState(false)
 
   async function refreshClinicalList(){
     try{
@@ -125,13 +123,6 @@ export default function PatientsPage() {
     setRisk('')
   }
 
-  async function savePatient(updatedPatient) {
-    await saveClinicalPatient(updatedPatient)
-    setPatients(await loadClinicalPatients())
-    setPatientSamples(await loadClinicalPatientSamples())
-    setNewPatientOpen(false)
-  }
-
 
   const selectedPatients = useMemo(
     () => selectedRows(filteredPatients, selectedKeys),
@@ -190,7 +181,7 @@ export default function PatientsPage() {
         <PageHeader
           title={t('patients.title', "Ασθενείς")}
           description={t('patients.description', "Μητρώο και παρακολούθηση ασθενών")}
-          actions={<Button icon={<Plus size={17} />} onClick={() => setNewPatientOpen(true)}>{t('patients.newPatient', "Νέος ασθενής")}</Button>}
+          actions={<Button icon={<Plus size={17} />} onClick={() => navigate(routeFor.patientWorkflow('new'))}>{t('patients.newPatient', "Νέος ασθενής")}</Button>}
         />
       }
     >
@@ -248,14 +239,6 @@ export default function PatientsPage() {
         ariaLabel={t('patients.registryAria', "Μητρώο ασθενών")}
         footer={<span>{clinicalLoading?t('common.loading',"Φόρτωση…"):`${filteredPatients.length} ${t('patients.records', "εγγραφές")}${selectedKeys.length ? ` · ${selectedKeys.length} ${t('patients.selected', "επιλεγμένες")}` : ''}`}</span>}
         emptyTitle={clinicalLoading?t('common.loading',"Φόρτωση…"):t('patients.noRecords',"Δεν υπάρχουν ασθενείς")}
-      />
-
-
-      <NewPatientDrawer
-        open={newPatientOpen}
-        onClose={() => setNewPatientOpen(false)}
-        onSave={savePatient}
-        departments={departments}
       />
     </PageChrome>
   )

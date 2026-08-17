@@ -27,6 +27,8 @@ const EN = {
   'Άνδρας': 'Male',
   'Γυναίκα': 'Female',
   'Άλλο / μη δηλωμένο': 'Other / not specified',
+  'Αποδεκτό': 'Accepted',
+  'Απορρίφθηκε': 'Rejected',
 }
 export function laboratoryDisplayValue(value, language = 'el') {
   if (value == null || value === '') return value

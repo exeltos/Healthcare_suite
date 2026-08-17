@@ -15,6 +15,7 @@ export default function PersonLinkSelector({
   summary,
   children,
   onCreate,
+  showCreateAction = true,
 }) {
   return <div className="lw-patient-selector">
     <div className="lw-mode-switch" role="group" aria-label={ariaLabel}>
@@ -26,7 +27,7 @@ export default function PersonLinkSelector({
       <div className="lw-patient-summary">{summary.map((item) => <span key={item.label}><strong>{item.label}</strong>{item.value || '—'}</span>)}</div>
     </div> : <div className="lw-new-patient">
       {children}
-      <div className="lw-inline-actions"><Button variant="secondary" icon={<UserPlus size={16} />} onClick={onCreate}>{createLabel}</Button></div>
+      {showCreateAction && onCreate ? <div className="lw-inline-actions"><Button variant="secondary" icon={<UserPlus size={16} />} onClick={onCreate}>{createLabel}</Button></div> : null}
     </div>}
   </div>
 }

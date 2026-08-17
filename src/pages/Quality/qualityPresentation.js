@@ -7,6 +7,9 @@ const EN = {
   'Διορθωτική':'Corrective','Προληπτική':'Preventive','Βελτίωση διαδικασίας':'Process improvement',
   'Συμβάν':'Incident','Έλεγχος':'Control','Δείκτης':'Indicator','Παράπονο':'Complaint','Επιτροπή':'Committee','Άλλο':'Other',
   'Ολοκληρωμένο':'Completed','Ανοικτό':'Open','Μείζον':'Major','Κρίσιμο':'Critical',
+  'Ανοικτός':'Open','Υπό έλεγχο':'Under control','Αποδεκτός':'Accepted','Κλειστός':'Closed','Ακυρωμένος':'Cancelled',
+  'Χαμηλός':'Low','Μέτριος':'Medium','Υψηλός':'High','Κρίσιμος':'Critical',
+  'Κλινικός':'Clinical','Λοίμωξη / IPC':'Infection / IPC','Φάρμακα':'Medication','Εργαστήριο':'Laboratory','Προσωπικό':'Staff','Εξοπλισμός':'Equipment','Υποδομές':'Infrastructure','Πληροφορίες / δεδομένα':'Information / data','Κίνδυνος':'Risk',
 }
 export function qualityDisplayValue(value, language='el') {
   if (value == null || value === '') return value

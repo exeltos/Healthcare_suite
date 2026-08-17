@@ -2,6 +2,7 @@ import { confirmAction, notifyAction } from '../../components/core/feedback/inde
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
 import { AlertTriangle, CheckCircle2, Download, FileText, Plus, Printer, Trash2 } from 'lucide-react'
+import HybridMultiSelector from '../../components/core/HybridMultiSelector/HybridMultiSelector'
 import AttachmentManager from '../../components/core/AttachmentManager/AttachmentManager'
 import {
   Badge,
@@ -23,6 +24,8 @@ import { normalizeText, selectedRows, sortRows } from '../../core/utils/entityLi
 import { downloadCsv, printRows } from '../../core/utils/listExport'
 import { EODY_DISEASES, loadNotifiableDiseases, NOTIFIABLE_DISEASES_EVENT } from '../../services/notifiableDiseasesService'
 import { deleteClinicalNotifiableDisease, loadClinicalNotifiableDiseases, saveClinicalNotifiableDisease } from '../../services/backend/clinicalSupportBackendService'
+import { loadPatientRegistry } from '../../services/patientService'
+import { activeMasterItems } from '../../services/masterDataService'
 import './RecordsUnified.css'
 
 const EMPTY = { disease:'', deadline:'', patientName:'', patientCode:'', department:'', diagnosisDate:'', declarationDate:'', status:'Πρόχειρο', caseClassification:'Ύποπτο', physician:'', notes:'', attachments:[], history:[] }
@@ -54,6 +57,9 @@ export default function NotifiableDiseasesPage(){
   const [drawerOpen,setDrawerOpen]=useState(false)
   const [selectedId,setSelectedId]=useState(null)
   const [draft,setDraft]=useState(EMPTY)
+  const [patientSelection,setPatientSelection]=useState([])
+  const patients=useMemo(()=>loadPatientRegistry(),[])
+  const diseaseLibrary=useMemo(()=>{const rows=activeMasterItems('notifiable-diseases');return rows.length?rows:EODY_DISEASES},[])
 
   async function refreshDiseases(){setItems(await loadClinicalNotifiableDiseases())}
   useEffect(()=>{refreshDiseases().catch(()=>{})},[])
@@ -75,11 +81,11 @@ export default function NotifiableDiseasesPage(){
     declared:items.filter(x=>x.status==='Δηλώθηκε').length,
   }),[items])
 
-  function openNew(){ setSelectedId(null); setDraft({...EMPTY}); setDrawerOpen(true) }
-  function openItem(item){ setSelectedId(item.id); setDraft(structuredClone(item)); setDrawerOpen(true) }
+  function openNew(){ setSelectedId(null); setDraft({...EMPTY}); setPatientSelection([]); setDrawerOpen(true) }
+  function openItem(item){ setSelectedId(item.id); setDraft(structuredClone(item)); setPatientSelection([]); setDrawerOpen(true) }
   function close(){ setDrawerOpen(false); setSelectedId(null); setDraft(EMPTY) }
   function update(name,value){ setDraft(current=>({...current,[name]:value})) }
-  function diseaseChanged(value){ const match=EODY_DISEASES.find(item=>item.name===value); setDraft(current=>({...current,disease:value,deadline:match?.deadline||''})) }
+  function diseaseChanged(value){ const match=diseaseLibrary.find(item=>item.name===value); setDraft(current=>({...current,disease:value,deadline:match?.deadline||''})) }
   async function save(event){
     event.preventDefault()
     if(!draft.disease||!draft.patientName){ notifyAction('Συμπληρώστε νόσημα και ασθενή.'); return }
@@ -122,7 +128,7 @@ export default function NotifiableDiseasesPage(){
       <form id="notifiable-disease-form" className="records-unified-form" onSubmit={save}>
         <FormSection title="Στοιχεία δήλωσης">
           <FormGrid columns={3}>
-            <FormField label="Νόσημα" required fullWidth><select value={draft.disease} onChange={e=>diseaseChanged(e.target.value)}><option value="">Επιλέξτε νόσημα</option>{EODY_DISEASES.map(item=><option key={item.name}>{item.name}</option>)}</select></FormField>
+            <FormField label="Νόσημα" required fullWidth><select value={draft.disease} onChange={e=>diseaseChanged(e.target.value)}><option value="">Επιλέξτε νόσημα</option>{diseaseLibrary.map(item=><option key={item.name}>{item.name}</option>)}</select></FormField>
             <FormField label="Χρόνος δήλωσης"><input value={draft.deadline} readOnly/></FormField>
             <FormField label="Κατάσταση"><select value={draft.status} onChange={e=>update('status',e.target.value)}>{STATUS.map(x=><option key={x}>{x}</option>)}</select></FormField>
             <FormField label="Ταξινόμηση κρούσματος"><select value={draft.caseClassification} onChange={e=>update('caseClassification',e.target.value)}><option>Ύποπτο</option><option>Πιθανό</option><option>Επιβεβαιωμένο</option></select></FormField>
@@ -131,6 +137,7 @@ export default function NotifiableDiseasesPage(){
           </FormGrid>
         </FormSection>
         <FormSection title="Ασθενής & υπεύθυνος">
+          {!selectedId&&<HybridMultiSelector items={patients} selected={patientSelection} onChange={value=>{const one=value.slice(-1);setPatientSelection(one);const subject=one[0];if(subject){const source=subject.source||subject;const values=subject.values||{};setDraft(current=>({...current,patientId:subject.manual?'':subject.id,patientName:subject.name||source.fullName||'',patientCode:source.patientCode||values.code||'',department:source.department||values.department||''}))}}} label="Ασθενής *" getName={item=>item.fullName||item.name||''} getMeta={item=>[item.patientCode,item.department].filter(Boolean).join(' · ')} manualFields={[{key:'name',label:'Ονοματεπώνυμο',required:true},{key:'code',label:'Κωδικός ασθενούς'},{key:'department',label:'Τμήμα'}]}/>}
           <FormGrid columns={3}>
             <FormField label="Ονοματεπώνυμο ασθενούς" required><input value={draft.patientName} onChange={e=>update('patientName',e.target.value)}/></FormField>
             <FormField label="Κωδικός ασθενούς"><input value={draft.patientCode} onChange={e=>update('patientCode',e.target.value)}/></FormField>

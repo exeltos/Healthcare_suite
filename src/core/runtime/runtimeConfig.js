@@ -22,11 +22,18 @@ export const SUPABASE_URL = RAW_SUPABASE_URL
 export const SUPABASE_PUBLISHABLE_KEY = RAW_SUPABASE_KEY
 export const AUTH_REDIRECT_URL = String(import.meta.env.VITE_AUTH_REDIRECT_URL || '').trim()
 
+// Client-side idle protection complements the provider session lifetime.
+// Production defaults to 30 minutes; deployment can choose a different value.
+const RAW_IDLE_MINUTES = Number(import.meta.env.VITE_SESSION_IDLE_MINUTES || 30)
+export const SESSION_IDLE_MINUTES = Number.isFinite(RAW_IDLE_MINUTES) ? Math.min(Math.max(RAW_IDLE_MINUTES, 5), 240) : 30
+export const SESSION_IDLE_MS = SESSION_IDLE_MINUTES * 60 * 1000
+
 export function runtimeSummary() {
   return {
     mode: APP_MODE,
     authProvider: AUTH_PROVIDER || (IS_DEMO ? 'demo-session' : 'unconfigured'),
     dataProvider: DATA_PROVIDER || (IS_DEMO ? 'browser-local' : 'unconfigured'),
     supabaseConfigured: Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY),
+    sessionIdleMinutes: SESSION_IDLE_MINUTES,
   }
 }

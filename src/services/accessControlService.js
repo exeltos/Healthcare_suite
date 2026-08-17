@@ -89,6 +89,23 @@ export function canWriteModule(user,module){
   return canPerformModuleAction(user,module,'create')||canPerformModuleAction(user,module,'edit')
 }
 
+
+export function canAccessDepartment(user, department=''){
+  if(user?.demo===true) return true
+  if(user?.role==='admin'||user?.role==='infection_lead'||user?.scopeMode==='all') return true
+  const value=String(department||'').trim()
+  if(!value) return true
+  if(user?.scopeMode==='selected'){
+    return (user?.scopeDepartments||[]).some(item=>String(item||'').trim()===value)
+  }
+  const own=String(user?.department||'').trim()
+  return !own||own===value
+}
+
+export function filterRowsByDepartmentScope(rows=[],user,getDepartment=(row)=>row?.department){
+  return (rows||[]).filter(row=>canAccessDepartment(user,getDepartment(row)))
+}
+
 export function moduleForPath(pathname=''){
   const p=String(pathname||'')
   if(p.startsWith('/studio')||p.startsWith('/forms/designer')) return MODULES.STUDIO

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { APP_ROUTES } from './config/routes'
 import { useI18n } from './i18n'
 
@@ -24,12 +24,14 @@ const PreventionAuditsPage = lazy(() => import('./pages/Prevention/PreventionAud
 const BundlesPage = lazy(() => import('./pages/Prevention/BundlesPage'))
 const VaccinationsPage = lazy(() => import('./pages/Prevention/VaccinationsPage'))
 const PromotedAntibioticsPage = lazy(() => import('./pages/Prevention/PromotedAntibioticsPage'))
+const AntimicrobialConsumptionPage = lazy(() => import('./pages/Surveillance/AntimicrobialConsumptionPage'))
 const EmployeesPage = lazy(() => import('./pages/Employees/EmployeesPage'))
 const EmployeeWorkspacePage = lazy(() => import('./pages/Employees/EmployeeWorkspacePage'))
 const FormDesignerPage = lazy(() => import('./pages/Forms/FormDesignerPage'))
 const QualityCenterPage = lazy(() => import('./pages/Quality/QualityCenterPage'))
 const IncidentsPage = lazy(() => import('./pages/Quality/IncidentsPage'))
 const CapaPage = lazy(() => import('./pages/Quality/CapaPage'))
+const RisksPage = lazy(() => import('./pages/Quality/RisksPage'))
 const IndicatorsPage = lazy(() => import('./pages/Quality/IndicatorsPage'))
 const IndicatorDesignerPage = lazy(() => import('./pages/Studio/IndicatorDesignerPage'))
 const QualityReportsPage = lazy(() => import('./pages/Quality/QualityReportsPage'))
@@ -47,12 +49,30 @@ const CoreShowcasePage = lazy(() => import('./pages/Core/CoreShowcasePage'))
 const NotifiableDiseasesPage = lazy(() => import('./pages/Records/NotifiableDiseasesPage'))
 const SurveillanceControlsPage = lazy(() => import('./pages/Surveillance/SurveillanceControlsPage'))
 
+function RootEntry(){
+  const location=useLocation()
+  const params=new URLSearchParams(location.search)
+  const helpPreview=params.get('helpPreview')==='1'
+  const helpRoute=params.get('helpRoute')
+
+  if(helpPreview&&helpRoute){
+    // The Help Center iframe loads '/' first, then performs a client-side route
+    // transition. This keeps previews working on static hosts such as Netlify.
+    const next=new URLSearchParams({helpPreview:'1'})
+    const refresh=params.get('r')
+    if(refresh)next.set('r',refresh)
+    return <Navigate to={`${helpRoute}?${next.toString()}`} replace />
+  }
+
+  return <LoginPage />
+}
+
 export default function App() {
   const { t } = useI18n()
   return (
     <Suspense fallback={<div className="route-loading" role="status" aria-live="polite">{t('common.loading')}</div>}>
       <Routes>
-      <Route path={APP_ROUTES.ROOT} element={<LoginPage />} />
+      <Route path={APP_ROUTES.ROOT} element={<RootEntry />} />
       <Route path={APP_ROUTES.LOGIN} element={<LoginPage />} />
 
       <Route element={<AppLayout />}>
@@ -63,6 +83,7 @@ export default function App() {
         <Route path={APP_ROUTES.NOTIFIABLE_DISEASES} element={<NotifiableDiseasesPage />} />
         <Route path={APP_ROUTES.VACCINATIONS} element={<VaccinationsPage />} />
         <Route path={APP_ROUTES.PROMOTED_ANTIBIOTICS} element={<PromotedAntibioticsPage />} />
+        <Route path={APP_ROUTES.ANTIMICROBIAL_CONSUMPTION} element={<AntimicrobialConsumptionPage />} />
 
         <Route path={APP_ROUTES.PREVENTION} element={<PreventionCenterPage />} />
         <Route path={APP_ROUTES.HAND_HYGIENE} element={<HandHygienePage />} />
@@ -122,6 +143,7 @@ export default function App() {
           path={APP_ROUTES.QUALITY_CAPA}
           element={<CapaPage />}
         />
+        <Route path={APP_ROUTES.QUALITY_RISKS} element={<RisksPage />} />
 
         <Route path={APP_ROUTES.INDICATORS} element={<IndicatorsPage />} />
         <Route path={APP_ROUTES.QUALITY_INDICATORS} element={<Navigate to={APP_ROUTES.INDICATORS} replace />} />
