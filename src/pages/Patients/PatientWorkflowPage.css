@@ -398,3 +398,14 @@
     overflow:visible !important;
   }
 }
+
+.patient-runtime-warning{
+  margin:10px 14px 0;
+  padding:9px 12px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface-soft);
+  font-size:.82rem;
+  font-weight:700;
+  color:var(--text-muted);
+}

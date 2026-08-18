@@ -37,3 +37,9 @@ export function runtimeSummary() {
     sessionIdleMinutes: SESSION_IDLE_MINUTES,
   }
 }
+
+export function persistenceRuntimeLabel(){
+  return IS_PRODUCTION && Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY)
+    ? 'supabase'
+    : 'browser-local'
+}

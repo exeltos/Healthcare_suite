@@ -30,6 +30,7 @@ import {
   DEPARTMENT_OPTIONS, RESISTANCE_OPTIONS,
 } from '../../core/constants/clinicalOptions'
 import { masterNames, upsertMasterItem } from '../../services/masterDataService'
+import { IS_PRODUCTION, persistenceRuntimeLabel } from '../../core/runtime'
 import './PatientWorkflowPage.css'
 import { PatientHome, CaseWorkspace, buildPatientTimeline, deriveOverallResistance, formatDate, getPatientSignals, getSampleDescendants, getTherapies, calculateHospitalDays, isRepeatSample, normalizeOrganismResults, sampleMicroorganismLabel, today } from './PatientWorkflowSections'
 
@@ -173,16 +174,26 @@ export default function PatientWorkflowPage() {
       notifyAction(L('Συμπληρώστε όνομα, επώνυμο και κωδικό ασθενούς.', 'Enter first name, last name and patient code.'))
       return
     }
-    const saved=await saveClinicalPatient({
-      ...patientForm,
-      fullName: [patientForm.firstName, patientForm.lastName].filter(Boolean).join(' '),
-      daysInHospital: calculateHospitalDays(patientForm.admissionDate, patientForm.dischargeDate || patientForm.exitDate),
-    })
-    setPatient(saved)
-    setPatientForm(saved)
-    setEditingPatient(false)
-    if (isNewPatient) {
-      navigate(routeFor.patientWorkflow(saved.id), { replace: true, state: { patientTab: 'summary' } })
+    try{
+      const saved=await saveClinicalPatient({
+        ...patientForm,
+        fullName: [patientForm.firstName, patientForm.lastName].filter(Boolean).join(' '),
+        daysInHospital: calculateHospitalDays(patientForm.admissionDate, patientForm.dischargeDate || patientForm.exitDate),
+      })
+      setPatient(saved)
+      setPatientForm(saved)
+      setEditingPatient(false)
+      notifyAction(
+        persistenceRuntimeLabel()==='supabase'
+          ? L('Ο ασθενής αποθηκεύτηκε στο Supabase.','Patient saved to Supabase.')
+          : L('Demo/local mode: ο ασθενής αποθηκεύτηκε μόνο στον browser και όχι στο Supabase.','Demo/local mode: patient saved only in the browser, not Supabase.')
+      )
+      if (isNewPatient) {
+        navigate(routeFor.patientWorkflow(saved.id), { replace: true, state: { patientTab: 'summary' } })
+      }
+    }catch(error){
+      console.error('Patient persistence failed',error)
+      notifyAction(L(`Η αποθήκευση στο Supabase απέτυχε: ${error?.message||'Άγνωστο σφάλμα'}`,`Supabase save failed: ${error?.message||'Unknown error'}`))
     }
   }
   async function removePatient() {
@@ -386,7 +397,9 @@ export default function PatientWorkflowPage() {
   const signals = getPatientSignals({ patient: patientForm, cases, samples, isolations })
   const timeline = buildPatientTimeline({ patient: patientForm, cases, samples, isolations, notifiableDiseases, language })
 
-  return <WorkspaceShell className="pw-page-shell" shellClassName="pw-page">
+  return <>
+  {!IS_PRODUCTION&&<div className="patient-runtime-warning" role="status">{L('Demo/local mode — οι αλλαγές ασθενών δεν αποθηκεύονται στο Supabase.','Demo/local mode — patient changes are not saved to Supabase.')}</div>}
+  <WorkspaceShell className="pw-page-shell" shellClassName="pw-page">
     <WorkspaceHeader
       backLabel={screen === 'home' ? L('Επιστροφή στους ασθενείς', 'Back to patients') : L('Ένα βήμα πίσω', 'Back one step')}
       onBack={screen === 'home' ? () => navigate(APP_ROUTES.PATIENTS, isNewPatient ? undefined : { state: { returnFromDetail: true, listScope: APP_ROUTES.PATIENTS, highlightRowKey: patient.id } }) : returnToPatientHome}
@@ -423,5 +436,6 @@ export default function PatientWorkflowPage() {
       />}
     </main>
   </WorkspaceShell>
+  </>
 }
 

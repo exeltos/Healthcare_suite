@@ -29,6 +29,7 @@ import { normalizeText, selectedRows, sortRows, uniqueSortedValues } from '../..
 import { masterNames } from '../../services/masterDataService'
 import { useI18n } from '../../i18n'
 import { patientDisplayValue } from './patientPresentation'
+import { IS_PRODUCTION } from '../../core/runtime'
 
 
 export default function PatientsPage() {
@@ -175,7 +176,9 @@ export default function PatientsPage() {
   ]
 
   return (
-    <PageChrome
+    <>
+      {!IS_PRODUCTION&&<div className="patient-runtime-warning" role="status">{language==='en'?'Demo/local mode — patient changes are not saved to Supabase.':'Demo/local mode — οι αλλαγές ασθενών δεν αποθηκεύονται στο Supabase.'}</div>}
+      <PageChrome
       className="patients-page"
       header={
         <PageHeader
@@ -241,5 +244,6 @@ export default function PatientsPage() {
         emptyTitle={clinicalLoading?t('common.loading',"Φόρτωση…"):t('patients.noRecords',"Δεν υπάρχουν ασθενείς")}
       />
     </PageChrome>
+    </>
   )
 }
