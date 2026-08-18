@@ -1,6 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl=String(import.meta.env.VITE_SUPABASE_URL||'').trim()
+function normalizeSupabaseUrl(value=''){
+  let url=String(value||'').trim().replace(/\/+$/,'')
+  url=url.replace(/\/(?:rest|auth|storage)\/v1$/i,'')
+  return url
+}
+const rawSupabaseUrl=String(import.meta.env.VITE_SUPABASE_URL||'').trim()
+const supabaseUrl=normalizeSupabaseUrl(rawSupabaseUrl)
 const supabasePublishableKey=String(
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_ANON_KEY ||

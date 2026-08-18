@@ -11,6 +11,8 @@ import { clearProductionLocalOperationalCache } from '../../data/productionDataB
 import { authenticateUser, requestRecovery } from '../../services/auth'
 import { IS_DEMO, IS_PRODUCTION } from '../../core/runtime'
 
+const BUILD_VERSION = '0.12.0-rc.111'
+
 export default function LoginPage() {
   const [view, setView] = useState('welcome')
   const [showPassword, setShowPassword] = useState(false)
@@ -110,14 +112,14 @@ export default function LoginPage() {
             <h1>{t('login.heroTitle')}</h1><p>{t('login.heroText')}</p>
             <ul className="login-feature-list"><li><span>✓</span>{t('login.infectionSurveillance')}</li><li><span>✓</span>{t('login.sampleManagement')}</li><li><span>✓</span>{t('login.automaticIndicators')}</li><li><span>✓</span>{t('login.reportsAi')}</li></ul>
           </div>
-          <footer className="login-visual-footer"><span>Healthcare Suite Platform</span><span>{t('login.secureEnvironment')}</span></footer>
+          <footer className="login-visual-footer"><span>Healthcare Suite Platform · v{BUILD_VERSION}</span><span>{t('login.secureEnvironment')}</span></footer>
         </aside>
         <section className="login-auth-panel"><div className="login-auth-wrapper">
           <div className="login-language-row" aria-hidden="true"/>
           {view === 'welcome' ? (
             <section className="login-auth-view"><header className="login-auth-header"><h2>{t('login.welcome')}</h2><p>{t('login.welcomeText')}</p></header>
               <div className="login-welcome-actions"><button type="button" className="login-primary-button" onClick={() => setView('login')}>{t('login.enter')}</button>{IS_DEMO&&<button type="button" className="login-demo-button" onClick={enterDemo}>{t('login.demoEnter')}</button>}<button type="button" className="login-secondary-button" onClick={() => notifyAction(t('login.supportLater'))}>{t('login.support')}</button></div>
-              <div className={`login-system-status ${IS_PRODUCTION?'is-production':''}`}><span className="login-status-dot"/>{IS_PRODUCTION?t('login.productionMode'):t('login.demoMode')}</div><footer className="login-auth-footer">Healthcare Suite</footer>
+              <div className={`login-system-status ${IS_PRODUCTION?'is-production':''}`}><span className="login-status-dot"/>{IS_PRODUCTION?t('login.productionMode'):t('login.demoMode')}</div><footer className="login-auth-footer">Healthcare Suite · v{BUILD_VERSION}</footer>
             </section>
           ) : view === 'login' ? (
             <section className="login-auth-view"><button type="button" className="login-back-button" onClick={() => setView('welcome')}>{t('login.back')}</button><header className="login-auth-header"><h2>{t('login.signInTitle')}</h2><p>{t('login.signInText')}</p></header>
