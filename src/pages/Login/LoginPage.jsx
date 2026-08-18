@@ -57,6 +57,10 @@ export default function LoginPage() {
         setMessage(t('login.productionEmailRequired'))
         return
       }
+      if(IS_PRODUCTION&&error?.message){
+        setMessage(error.message)
+        return
+      }
       setMessage(t('login.invalidCredentials'))
     }
   }

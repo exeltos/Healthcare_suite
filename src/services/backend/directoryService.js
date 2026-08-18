@@ -240,7 +240,7 @@ export async function resetDirectoryUserPassword(row){
   if(!email) throw new Error('User email is required.')
   const client=requireSupabase()
   const { error }=await client.auth.resetPasswordForEmail(email,{
-    redirectTo:typeof window!=='undefined'?`${window.location.origin}/login` : undefined,
+    redirectTo:typeof window!=='undefined'?`${window.location.origin}/reset-password` : undefined,
   })
   if(error) throw error
   return row

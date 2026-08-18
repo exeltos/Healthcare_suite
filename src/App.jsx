@@ -6,6 +6,7 @@ import { useI18n } from './i18n'
 import AppLayout from './components/layout/AppLayout'
 
 const LoginPage = lazy(() => import('./pages/Login/LoginPage'))
+const ResetPasswordPage = lazy(() => import('./pages/Login/ResetPasswordPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const PatientsPage = lazy(() => import('./pages/Patients/PatientsPage'))
 const PatientWorkflowPage = lazy(() => import('./pages/Patients/PatientWorkflowPage'))
@@ -75,6 +76,7 @@ export default function App() {
       <Routes>
       <Route path={APP_ROUTES.ROOT} element={<RootEntry />} />
       <Route path={APP_ROUTES.LOGIN} element={<LoginPage />} />
+      <Route path={APP_ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
 
       <Route element={<AppLayout />}>
         <Route path={APP_ROUTES.DASHBOARD} element={<DashboardPage />} />

@@ -1,6 +1,7 @@
 export const APP_ROUTES = Object.freeze({
   ROOT: '/',
   LOGIN: '/login',
+  RESET_PASSWORD: '/reset-password',
   DASHBOARD: '/dashboard',
   CORE: '/core',
   PATIENTS: '/patients',

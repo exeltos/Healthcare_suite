@@ -117,7 +117,7 @@ export async function requestRecovery({ username }) {
       error.code='EMAIL_REQUIRED'
       throw error
     }
-    const redirectTo=AUTH_REDIRECT_URL || (typeof window!=='undefined'?`${window.location.origin}/login`:'')
+    const redirectTo=AUTH_REDIRECT_URL || (typeof window!=='undefined'?`${window.location.origin}/reset-password`:'')
     const { error }=await client.auth.resetPasswordForEmail(cleanUsername,redirectTo?{redirectTo}:undefined)
     if(error) throw error
     return { ok:true, demo:false }
