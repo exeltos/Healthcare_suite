@@ -40,6 +40,24 @@ Deno.serve(async(req)=>{
     if(profileError){await admin.auth.admin.deleteUser(userId).catch(()=>{});await admin.from('organizations').delete().eq('id',org.id);return json({error:profileError.message},400)}
     return json({ok:true,organization:org,userId},201)
   }
+  if(body.action==='updateOrganization'){
+    const id=String(body.organizationId||''),name=String(body.name||'').trim(),slug=slugify(body.slug||name)
+    if(!id||!name||!slug)return json({error:'organizationId, hospital name and slug are required.'},400)
+    const {data,error}=await admin.from('organizations').update({name,slug}).eq('id',id).select('id,name,slug,active').maybeSingle()
+    if(error)return json({error:error.message},400)
+    if(!data)return json({error:'Hospital was not found.'},404)
+    return json({ok:true,organization:data})
+  }
+  if(body.action==='deleteOrganization'){
+    const id=String(body.organizationId||'')
+    if(!id)return json({error:'organizationId is required'},400)
+    const {count,error:profileCountError}=await admin.from('user_profiles').select('user_id',{count:'exact',head:true}).eq('organization_id',id)
+    if(profileCountError)return json({error:profileCountError.message},400)
+    if((count||0)>0)return json({error:'Το νοσοκομείο έχει ήδη χρήστες και δεν μπορεί να διαγραφεί. Απενεργοποίησέ το αντί για διαγραφή.'},409)
+    const {error}=await admin.from('organizations').delete().eq('id',id)
+    if(error)return json({error:'Η διαγραφή δεν επιτρέπεται επειδή υπάρχουν ήδη συνδεδεμένα δεδομένα. Απενεργοποίησε το νοσοκομείο αντί για διαγραφή.'},409)
+    return json({ok:true})
+  }
   if(body.action==='setOrganizationActive'){
     const id=String(body.organizationId||'');if(!id)return json({error:'organizationId is required'},400)
     const {error}=await admin.from('organizations').update({active:Boolean(body.active)}).eq('id',id)

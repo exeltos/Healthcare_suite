@@ -29,5 +29,7 @@ async function invoke(body){
 
 export async function loadPlatformOrganizations(){return (await invoke({action:'list'})).organizations||[]}
 export async function createPlatformOrganization(input){return invoke({action:'createOrganization',...input})}
+export async function updatePlatformOrganization(organizationId,input){return invoke({action:'updateOrganization',organizationId,...input})}
+export async function deletePlatformOrganization(organizationId){return invoke({action:'deleteOrganization',organizationId})}
 export async function setPlatformOrganizationActive(organizationId,active){return invoke({action:'setOrganizationActive',organizationId,active})}
 export async function resendPlatformAdminInvite(organizationId,userId){return invoke({action:'resendAdminInvite',organizationId,userId})}
