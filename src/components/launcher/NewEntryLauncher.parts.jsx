@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { whoMoments } from './NewEntryLauncher.config'
 import { useI18n } from '../../i18n'
+import { calculateWhoCompliance } from '../../core/utils/observationMetrics'
 
 export function EnvironmentSummary({ samples }) {
   const total = samples.length
@@ -49,7 +50,7 @@ export function EnvironmentSummary({ samples }) {
   )
 }
 
-export function WhoSummary({ observations, language: languageProp }) {
+export function WhoSummary({ observations, draftObservation, professionalCount, language: languageProp }) {
   const { language: contextLanguage } = useI18n()
   const language = languageProp || contextLanguage
   const L = (el,en) => language === 'en' ? en : el
@@ -63,20 +64,13 @@ export function WhoSummary({ observations, language: languageProp }) {
     }
     return language === 'en' ? (en[moment.id] || moment.label) : moment.label
   }
-  const opportunities = observations.length
-  const professionals = new Set(
-    observations
-      .map((item) => item.professionalCode.trim().toLocaleUpperCase('el-GR'))
-      .filter(Boolean),
-  ).size
-  const handRub = observations.filter((item) => item.action === 'HR').length
-  const handWash = observations.filter((item) => item.action === 'HW').length
-  const missed = observations.filter((item) => item.action === 'MISSED').length
-  const correctActions = handRub + handWash
-  const compliance =
-    opportunities > 0
-      ? Math.round((correctActions / opportunities) * 1000) / 10
-      : 0
+  const draftReady = Boolean(
+    String(draftObservation?.professionalCode || '').trim()
+    && draftObservation?.moment
+    && draftObservation?.action
+  )
+  const previewObservations = draftReady ? [...observations, draftObservation] : observations
+  const { opportunities, professionals, handRub, handWash, missed, compliance } = calculateWhoCompliance(previewObservations, professionalCount)
 
   return (
     <>
@@ -124,14 +118,14 @@ export function WhoSummary({ observations, language: languageProp }) {
       <div className="who-professional-summary">
         {Array.from(
           new Set(
-            observations
-              .map((item) => item.professionalCode.trim())
+            previewObservations
+              .map((item) => String(item.professionalCode || '').trim())
               .filter(Boolean),
           ),
         ).map((professionalCode) => {
-          const items = observations.filter(
+          const items = previewObservations.filter(
             (item) =>
-              item.professionalCode.trim().toLocaleUpperCase('el-GR') ===
+              String(item.professionalCode || '').trim().toLocaleUpperCase('el-GR') ===
               professionalCode.toLocaleUpperCase('el-GR'),
           )
           const compliant = items.filter(
@@ -162,7 +156,7 @@ export function WhoSummary({ observations, language: languageProp }) {
 
       <div className="who-moment-summary">
         {whoMoments.map((moment) => {
-          const items = observations.filter(
+          const items = previewObservations.filter(
             (item) => item.moment === moment.id,
           )
           const compliant = items.filter(
@@ -315,12 +309,14 @@ export function SmartSelect({
   )
 }
 
-export function HybridInput({ label, value, onChange }) {
+export function HybridInput({ label, value, onChange, type = 'text', readOnly = false }) {
   return (
     <label className="hybrid-field">
       <span>{label}</span>
       <input
+        type={type}
         value={value}
+        readOnly={readOnly}
         onChange={(event) => onChange(event.target.value)}
       />
     </label>

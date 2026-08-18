@@ -7,6 +7,7 @@ import { upsertWaterRecord } from './laboratorySourcesService'
 import { savePreventionRecord } from './backend/preventionBackendService'
 import { calculateEnvironmentStats, calculateWhoCompliance } from '../core/utils/observationMetrics'
 import { hybridEntriesRepository } from '../repositories/hybridEntriesRepository'
+import { IS_PRODUCTION } from '../core/runtime'
 
 export async function persistNewEntry({
   selectedType,
@@ -27,8 +28,8 @@ export async function persistNewEntry({
   }
 
   if (selectedType.id === 'hand-hygiene') {
-    if (!whoSession.date || !whoSession.department || !whoSession.observer || whoObservations.length === 0) {
-      return { ok: false, error: 'Συμπληρώστε ημερομηνία, τμήμα, παρατηρητή και τουλάχιστον μία παρατήρηση.' }
+    if (!whoSession.date || !whoSession.department || !whoSession.observer || Number(whoSession.professionalCount) <= 0 || whoObservations.length === 0) {
+      return { ok: false, error: 'Συμπληρώστε ημερομηνία, τμήμα, παρατηρητή, αριθμό επαγγελματιών και τουλάχιστον μία ευκαιρία.' }
     }
   } else if (selectedType.id === 'environment') {
     if (!environmentSession.date || !environmentSession.department || !environmentSession.observer || environmentSamples.length === 0) {
@@ -75,7 +76,7 @@ export async function persistNewEntry({
     }
   }
 
-  const whoStats = calculateWhoCompliance(whoObservations)
+  const whoStats = calculateWhoCompliance(whoObservations, whoSession.professionalCount)
   const environmentStats = calculateEnvironmentStats(environmentSamples)
   const payload = {
     id: `ENTRY-${Date.now()}`,
@@ -103,6 +104,7 @@ export async function persistNewEntry({
       department: whoSession.department,
       date: whoSession.date,
       observer: whoSession.observer,
+      professionalCount: Number(whoSession.professionalCount) || 0,
       startTime: whoSession.startTime,
       endTime: whoSession.endTime,
       observations: whoObservations,
@@ -160,10 +162,10 @@ export async function persistNewEntry({
         sampleType: sample.surfaceType,
         method: sample.method,
         collectionDate: environmentSession.date,
-        status: sample.resultStatus,
-        microorganism: sample.microorganism,
-        colonyCount: sample.cfu,
-        acceptable: sample.acceptable,
+        status: 'Εκκρεμεί',
+        microorganism: '',
+        colonyCount: '',
+        acceptable: '',
         collector: environmentSession.observer,
         notes: sample.notes,
       })
@@ -185,7 +187,7 @@ export async function persistNewEntry({
     })
   }
 
-  hybridEntriesRepository.save(payload)
+  if (!IS_PRODUCTION) hybridEntriesRepository.save(payload)
 
   return { ok: true, payload, patientRegistryChanged }
 }

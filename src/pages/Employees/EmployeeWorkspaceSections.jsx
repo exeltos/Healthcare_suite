@@ -61,7 +61,7 @@ export function ProfileTab({ language, form, setForm, editing, onEdit, onCancel,
         title={L('Προσωπικά στοιχεία', 'Personal details')}
         text={L('Στοιχεία ταυτοποίησης του εργαζομένου.', 'Employee identification details.')}
         actions={editing
-          ? <><IconButton label={L('Ακύρωση', 'Cancel')} size="sm" onClick={onCancel}><X size={15} /></IconButton><Button size="sm" icon={<Save size={15} />} onClick={onSave}>{L('Αποθήκευση', 'Save')}</Button></>
+          ? <><Button variant="secondary" size="sm" icon={<X size={15}/>} onClick={onCancel}>{L('Ακύρωση', 'Cancel')}</Button><Button size="sm" icon={<Save size={15} />} onClick={onSave}>{L('Αποθήκευση', 'Save')}</Button></>
           : <IconButton label={L('Επεξεργασία', 'Edit')} size="sm" onClick={onEdit}><Edit3 size={15} /></IconButton>}
       />
       <div className="ew-grid ew-grid--three">

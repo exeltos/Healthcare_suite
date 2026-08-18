@@ -90,3 +90,15 @@ export function buildPatientSampleRows(samples = []) {
   return rows.sort((a, b) => eventDateTimeKey({ date: a.sample.collectionDate, time: a.sample.collectionTime }).localeCompare(eventDateTimeKey({ date: b.sample.collectionDate, time: b.sample.collectionTime })))
 }
 
+
+
+export function calculateHospitalDays(admissionDate, dischargeDate = '') {
+  const start = normalizeDate(admissionDate)
+  if (!start) return 0
+  const end = normalizeDate(dischargeDate) || today()
+  const from = new Date(`${start}T12:00:00`)
+  const to = new Date(`${end}T12:00:00`)
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to < from) return 0
+  // Calendar patient-days shown in the patient record: admission day = day 1.
+  return Math.floor((to - from) / 86400000) + 1
+}

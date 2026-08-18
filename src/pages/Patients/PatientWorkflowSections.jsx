@@ -8,7 +8,7 @@ export {
 } from './PatientWorkflowEditors'
 export { buildPatientTimeline } from './patientWorkflowTimeline'
 export {
-  attachmentSectionLabel, buildPatientSampleRows, buildSampleChainRows, deriveOverallResistance,
+  attachmentSectionLabel, buildPatientSampleRows, buildSampleChainRows, calculateHospitalDays, deriveOverallResistance,
   eventDateTimeKey, formatDate, formatDateTime, formatFileSize, getDeviceRecords,
   getPatientSignals, getSampleDescendants, getTherapies, highestResistance, isRepeatSample,
   normalizeDate, normalizeOrganismResults, sampleMicroorganismLabel, sampleResistanceLabel, today,

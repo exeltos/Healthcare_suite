@@ -3,6 +3,7 @@ import { requireSupabase } from '../../integrations/supabase'
 import { loadFormTemplates,saveFormTemplates } from '../formTemplatesService'
 import { loadFormResponses,saveFormResponses } from '../formResponsesService'
 import { loadMasterData,saveMasterData } from '../masterDataService'
+import { writeJsonCache } from '../../core/storage'
 import { loadStudioRows,saveStudioRows,studioModules } from '../studioConfigService'
 
 export async function hydrateFormsBackend(){
@@ -39,13 +40,13 @@ export async function hydrateMasterDataBackend(){
  if(!IS_PRODUCTION)return loadMasterData()
  const c=requireSupabase(),org=await orgId(c);const {data,error}=await c.from('master_data_libraries').select('library_key,rows').eq('organization_id',org);if(error)throw error
  if(!(data||[]).length)return loadMasterData()
- const merged={...loadMasterData(),...Object.fromEntries(data.map(r=>[r.library_key,Array.isArray(r.rows)?r.rows:[]]))};saveMasterData(merged);return merged
+ const merged={...loadMasterData(),...Object.fromEntries(data.map(r=>[r.library_key,Array.isArray(r.rows)?r.rows:[]]))};writeJsonCache('limoxisMasterData',merged);return merged
 }
 export async function saveMasterDataBackend(next={}){
  if(!IS_PRODUCTION)return saveMasterData(next)
  const c=requireSupabase(),org=await orgId(c),rows=Object.entries(next).map(([key,value])=>({organization_id:org,library_key:key,rows:Array.isArray(value)?value:[]}))
  const {error:del}=await c.from('master_data_libraries').delete().eq('organization_id',org);if(del)throw del
- if(rows.length){const {error}=await c.from('master_data_libraries').insert(rows);if(error)throw error}saveMasterData(next);return next
+ if(rows.length){const {error}=await c.from('master_data_libraries').insert(rows);if(error)throw error}writeJsonCache('limoxisMasterData',next);return next
 }
 export async function hydrateStudioBackend(){
  if(!IS_PRODUCTION)return Object.fromEntries(Object.keys(studioModules).map(k=>[k,loadStudioRows(k)]))

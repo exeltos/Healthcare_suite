@@ -25,6 +25,7 @@ import { useI18n } from '../../i18n'
 import { loadCurrentProfile } from '../../services/profile/profileService'
 import { filterRowsByDepartmentScope } from '../../services/accessControlService'
 import { preventionDisplayValue } from './preventionPresentation'
+import { calculateWhoCompliance } from '../../core/utils/observationMetrics'
 
 const MOMENT_LABELS = {
   moment1: '1. Πριν την επαφή με τον ασθενή', moment2: '2. Πριν από καθαρό / άσηπτο χειρισμό', moment3: '3. Μετά από κίνδυνο έκθεσης σε σωματικά υγρά', moment4: '4. Μετά την επαφή με τον ασθενή', moment5: '5. Μετά την επαφή με το περιβάλλον του ασθενούς',
@@ -33,7 +34,7 @@ const ACTION_LABELS = { HR: 'Αλκοολούχο αντισηπτικό', HW: '
 function normalizeDate(value){if(!value)return'';if(/^\d{4}-\d{2}-\d{2}$/.test(value))return value;const parts=String(value).split(/[/.-]/);return parts.length===3&&parts[2]?.length===4?`${parts[2]}-${String(parts[1]).padStart(2,'0')}-${String(parts[0]).padStart(2,'0')}`:value}
 function displayDate(value,language='el'){const normalized=normalizeDate(value);if(!normalized)return'—';const date=new Date(`${normalized}T12:00:00`);return Number.isNaN(date.getTime())?value:date.toLocaleDateString(language==='en'?'en-GB':'el-GR')}
 function isCompliant(observation){if(observation.action)return observation.action==='HR'||observation.action==='HW';return observation.compliant==='Ναι'}
-function getSessionStats(session){const observations=session.observations||[];const compliant=observations.filter(isCompliant).length;const missed=Math.max(0,observations.length-compliant);const rate=observations.length?Math.round((compliant/observations.length)*1000)/10:0;return{opportunities:observations.length,compliant,missed,rate}}
+function getSessionStats(session){const stats=calculateWhoCompliance(session.observations||[]);return{opportunities:stats.opportunities,compliant:stats.correctActions,missed:stats.missed,rate:stats.compliance}}
 function rateTone(rate){if(rate>=90)return'success';if(rate>=75)return'warning';return'danger'}
 
 export default function HandHygienePage(){

@@ -32,6 +32,7 @@ export function WhoEntryFlow({
   setWhoObservations,
   departmentOptions,
   professionalCategoryOptions,
+  employeeOptions,
   savedMessage,
   onSubmit,
 }) {
@@ -64,7 +65,11 @@ export function WhoEntryFlow({
       ...items,
       { ...whoObservation, id: `WHO-OBS-${Date.now()}` },
     ])
-    setWhoObservation(emptyWhoObservation)
+    setWhoObservation({
+      ...emptyWhoObservation,
+      professionalCode: whoObservation.professionalCode,
+      professionalCategory: whoObservation.professionalCategory,
+    })
   }
 
   function deleteObservation(observationId) {
@@ -115,22 +120,35 @@ export function WhoEntryFlow({
 
           <HybridInput
             label={L('Ημερομηνία','Date')}
+            type="date"
             value={whoSession.date}
             onChange={(value) =>
               setWhoSession((current) => ({ ...current, date: value }))
             }
           />
 
-          <HybridInput
+          <SmartSelect
             label={L('Παρατηρητής','Observer')}
             value={whoSession.observer}
+            options={employeeOptions || []}
+            placeholder={L('Επιλέξτε από το προσωπικό…','Select from staff…')}
             onChange={(value) =>
               setWhoSession((current) => ({ ...current, observer: value }))
             }
           />
 
           <HybridInput
+            label={L('Αριθμός επαγγελματιών','Number of professionals')}
+            type="number"
+            value={whoSession.professionalCount || ''}
+            onChange={(value) =>
+              setWhoSession((current) => ({ ...current, professionalCount: value }))
+            }
+          />
+
+          <HybridInput
             label={L('Ώρα έναρξης','Start time')}
+            type="time"
             value={whoSession.startTime}
             onChange={(value) =>
               setWhoSession((current) => ({ ...current, startTime: value }))
@@ -139,6 +157,7 @@ export function WhoEntryFlow({
 
           <HybridInput
             label={L('Ώρα λήξης','End time')}
+            type="time"
             value={whoSession.endTime}
             onChange={(value) =>
               setWhoSession((current) => ({ ...current, endTime: value }))
@@ -155,7 +174,7 @@ export function WhoEntryFlow({
       >
         <div className="who-observation-grid">
           <label className="hybrid-field">
-            <span>{L('Αριθμός επαγγελματιών','Professional identifier')}</span>
+            <span>{L('Κωδικός επαγγελματία','Professional identifier')}</span>
             <input
               value={whoObservation.professionalCode}
               placeholder={L('π.χ. 1, 2','e.g. 1, 2')}
@@ -269,11 +288,11 @@ export function WhoEntryFlow({
         </label>
 
         <button className="who-add-button" type="button" onClick={addObservation}>
-          {L('＋ Προσθήκη παρατήρησης','＋ Add observation')}
+          {L('＋ Προσθήκη ευκαιρίας','＋ Add opportunity')}
         </button>
       </EntryFormSection>
 
-      <WhoSummary observations={whoObservations} language={language} />
+      <WhoSummary observations={whoObservations} draftObservation={whoObservation} professionalCount={whoSession.professionalCount} language={language} />
 
       <div className="who-observation-list">
         {whoObservations.map((observation, index) => {
@@ -328,6 +347,8 @@ export function EnvironmentEntryFlow({
   setStep,
   onSubmit,
 }) {
+  const { language } = useI18n()
+  const L = (el,en) => language === 'en' ? en : el
   function addSample() {
     const errors = validateValues(environmentSample, environmentSampleValidationSchema)
     if (Object.keys(errors).length) {
@@ -340,12 +361,10 @@ export function EnvironmentEntryFlow({
       {
         ...environmentSample,
         id: `ENV-SAMPLE-${Date.now()}`,
-        acceptable:
-          environmentSample.resultStatus === 'Αρνητικό'
-            ? 'Ναι'
-            : environmentSample.resultStatus === 'Θετικό'
-              ? 'Όχι'
-              : '',
+        resultStatus:'Εκκρεμεί',
+        microorganism:'',
+        cfu:'',
+        acceptable:'',
       },
     ])
     setEnvironmentSample(emptyEnvironmentSample)
@@ -382,6 +401,7 @@ export function EnvironmentEntryFlow({
           />
           <HybridInput
             label={L('Ημερομηνία','Date')}
+            type="date"
             value={environmentSession.date}
             onChange={(value) =>
               setEnvironmentSession((current) => ({ ...current, date: value }))
@@ -484,43 +504,11 @@ export function EnvironmentEntryFlow({
               ))}
             </select>
           </label>
-          <label className="hybrid-field">
-            <span>Κατάσταση αποτελέσματος</span>
-            <select
-              value={environmentSample.resultStatus}
-              onChange={(event) =>
-                setEnvironmentSample((current) => ({
-                  ...current,
-                  resultStatus: event.target.value,
-                }))
-              }
-            >
-              <option>Εκκρεμεί</option>
-              <option>Αρνητικό</option>
-              <option>Θετικό</option>
-            </select>
-          </label>
-          <SmartSelect
-            label="Μικροοργανισμός"
-            value={environmentSample.microorganism}
-            options={microorganismOptions}
-            placeholder="Αναζήτηση μικροοργανισμού..."
-            allowCustom
-            onChange={(value) =>
-              setEnvironmentSample((current) => ({
-                ...current,
-                microorganism: value,
-              }))
-            }
-          />
-          <HybridInput
-            label="CFU / Τιμή ATP"
-            value={environmentSample.cfu}
-            onChange={(value) =>
-              setEnvironmentSample((current) => ({ ...current, cfu: value }))
-            }
-          />
-          <div className="full">
+          <div className="hybrid-lab-pending full">
+            <strong>{L('Εργαστηριακό αποτέλεσμα: Εκκρεμεί','Laboratory result: Pending')}</strong>
+            <span>{L('Αποτέλεσμα, μικροοργανισμός, CFU/ATP και αποδοχή συμπληρώνονται αποκλειστικά από το Εργαστήριο.','Result, microorganism, CFU/ATP and acceptance are completed only in Laboratory.')}</span>
+          </div>
+<div className="full">
             <HybridInput
               label="Παρατηρήσεις"
               value={environmentSample.notes}
@@ -545,19 +533,9 @@ export function EnvironmentEntryFlow({
             <div>
               <strong>{sample.samplingPoint}</strong>
               <span>{sample.surfaceType} · {sample.method}</span>
-              <small>
-                {sample.resultStatus}
-                {sample.microorganism ? ` · ${sample.microorganism}` : ''}
-                {sample.cfu ? ` · ${sample.cfu}` : ''}
-              </small>
+              <small>{L('Εκκρεμεί εργαστηριακό αποτέλεσμα','Laboratory result pending')}</small>
             </div>
-            <span className={`environment-result result-${sample.resultStatus}`}>
-              {sample.acceptable === 'Ναι'
-                ? 'Αποδεκτό'
-                : sample.acceptable === 'Όχι'
-                  ? 'Μη αποδεκτό'
-                  : 'Εκκρεμεί'}
-            </span>
+            <span className="environment-result result-Εκκρεμεί">{L('Εκκρεμεί','Pending')}</span>
             <button type="button" onClick={() => deleteSample(sample.id)}>
               Διαγραφή
             </button>

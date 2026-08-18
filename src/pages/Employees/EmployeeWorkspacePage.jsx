@@ -1,4 +1,4 @@
-import { APP_ROUTES } from '../../config/routes'
+import { APP_ROUTES, routeFor } from '../../config/routes'
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
@@ -30,10 +30,13 @@ export default function EmployeeWorkspacePage() {
   const L = (el, en) => language === 'en' ? en : el
   const { employeeId } = useParams()
   const navigate = useNavigate()
-  const [employee, setEmployee] = useState(() => loadAllEmployees().find((item) => String(item.id) === String(employeeId)) || null)
-  const [form, setForm] = useState(employee || {})
+  const isNewEmployee = String(employeeId) === 'new'
+  const emptyEmployee = {firstName:'',lastName:'',fatherName:'',gender:'',employeeCode:'',department:'',professionalCategory:'',email:'',phone:'',hireDate:'',status:'Ενεργό',notes:'',vaccinations:[]}
+  const initialEmployee = isNewEmployee ? emptyEmployee : (loadAllEmployees().find((item) => String(item.id) === String(employeeId)) || null)
+  const [employee, setEmployee] = useState(initialEmployee)
+  const [form, setForm] = useState(initialEmployee || {})
   const [tab, setTab] = useState('profile')
-  const [editingProfile, setEditingProfile] = useState(() => !hasProfileData(employee))
+  const [editingProfile, setEditingProfile] = useState(() => isNewEmployee || !hasProfileData(employee))
   const [vaccinations, setVaccinations] = useState(loadStaffVaccinations)
   const [samples, setSamples] = useState(loadStaffSamples)
   const [training, setTraining] = useState(loadTraining)
@@ -53,6 +56,7 @@ export default function EmployeeWorkspacePage() {
   }, [employeeId])
 
   async function refreshEmployeeDirectory({preserveDraft=true}={}){
+    if(isNewEmployee) return employee
     const employeeRows=await loadDirectoryEmployees()
     const next=employeeRows.find((item)=>String(item.id)===String(employeeId))||null
     setEmployee(next)
@@ -67,6 +71,7 @@ export default function EmployeeWorkspacePage() {
   }
 
   useEffect(()=>{
+    if(isNewEmployee){ setEmployee({...emptyEmployee}); setForm({...emptyEmployee}); setEditingProfile(true); return }
     let active=true
     Promise.all([loadDirectoryEmployees(),loadDirectoryUserAccounts(),loadEmployeeOccupationalVisits(employeeId)])
       .then(([employeeRows,userRows,occupationalRows])=>{
@@ -80,7 +85,7 @@ export default function EmployeeWorkspacePage() {
       })
       .catch(()=>{})
     return()=>{active=false}
-  },[employeeId])
+  },[employeeId,isNewEmployee])
 
   useAppEvents([EMPLOYEES_EVENT, STAFF_VACCINATIONS_EVENT, STAFF_SAMPLES_EVENT, ORGANIZATION_EVENT, USER_ACCOUNTS_EVENT], () => {
     refreshEmployeeDirectory().catch(()=>{})
@@ -113,7 +118,7 @@ export default function EmployeeWorkspacePage() {
 
   const occupationalVisits = occupationalVisitsState
 
-  if (!employee) {
+  if (!employee && !isNewEmployee) {
     return <div className="ew-page"><div className="ew-missing">
       <p>{L('Ο εργαζόμενος δεν βρέθηκε.', 'Employee not found.')}</p>
       <Button onClick={() => navigate(APP_ROUTES.EMPLOYEES)}>{L('Επιστροφή', 'Back')}</Button>
@@ -125,11 +130,14 @@ export default function EmployeeWorkspacePage() {
       notifyAction(L('Συμπληρώστε όνομα και επώνυμο.', 'Enter first and last name.'))
       return
     }
-    const saved = await saveDirectoryEmployee({ ...employee, ...form })
+    const saved = await saveDirectoryEmployee({ ...(isNewEmployee?{}:employee), ...form })
     setEmployee(saved)
     setForm(saved)
     setEditingProfile(false)
-    notifyAction(L('Τα στοιχεία του εργαζομένου αποθηκεύτηκαν.', 'Employee details saved.'))
+    notifyAction(isNewEmployee ? L('Ο εργαζόμενος δημιουργήθηκε.', 'Employee created.') : L('Τα στοιχεία του εργαζομένου αποθηκεύτηκαν.', 'Employee details saved.'))
+    if(isNewEmployee){
+      navigate(routeFor.employeeWorkspace(saved.id), { replace:true, state:{ createdEmployee:true } })
+    }
   }
 
   async function remove() {
@@ -181,7 +189,7 @@ export default function EmployeeWorkspacePage() {
     setOccupationalDraft(null)
   }
 
-  const tabItems = TABS.map((item) => ({
+  const tabItems = (isNewEmployee ? TABS.filter(item=>item.id==='profile') : TABS).map((item) => ({
     id: item.id,
     label: language === 'en' ? item.en : item.el,
     count: item.id === 'health'
@@ -202,10 +210,10 @@ export default function EmployeeWorkspacePage() {
         onBack={() => {
           if (selectedVaccination) { setSelectedVaccination(null); return }
           if (occupationalDraft) { setOccupationalDraft(null); return }
-          navigate(APP_ROUTES.EMPLOYEES, { state: { returnFromDetail: true, listScope: APP_ROUTES.EMPLOYEES, highlightRowKey: employee.id } })
+          navigate(APP_ROUTES.EMPLOYEES, isNewEmployee ? undefined : { state: { returnFromDetail: true, listScope: APP_ROUTES.EMPLOYEES, highlightRowKey: employee.id } })
         }}
-        eyebrow={L('ΚΑΡΤΕΛΑ ΕΡΓΑΖΟΜΕΝΟΥ', 'EMPLOYEE RECORD')}
-        title={employeeFullName(form) || L('Εργαζόμενος', 'Employee')}
+        eyebrow={isNewEmployee ? L('ΝΕΟΣ ΕΡΓΑΖΟΜΕΝΟΣ','NEW EMPLOYEE') : L('ΚΑΡΤΕΛΑ ΕΡΓΑΖΟΜΕΝΟΥ', 'EMPLOYEE RECORD')}
+        title={employeeFullName(form) || (isNewEmployee ? L('Νέος εργαζόμενος','New employee') : L('Εργαζόμενος', 'Employee'))}
         badges={<>
           <Badge tone={form.status === 'Ανενεργό' ? 'neutral' : 'success'}>{employeeDisplayValue(form.status || 'Ενεργό', language)}</Badge>
           <Badge tone={userAccount?.status === 'active' ? 'success' : userAccount ? 'warning' : 'neutral'}>
@@ -215,7 +223,7 @@ export default function EmployeeWorkspacePage() {
           </Badge>
         </>}
         meta={[form.professionalCategory, form.department, form.employeeCode].filter(Boolean).join(' · ')}
-        actions={<>
+        actions={isNewEmployee ? null : <>
           <Button
             variant="secondary"
             size="sm"
@@ -232,7 +240,7 @@ export default function EmployeeWorkspacePage() {
       <WorkspaceTabs ariaLabel={L('Καρτέλα εργαζομένου', 'Employee record')} value={tab} onChange={setTab} items={tabItems} />
 
       <WorkspaceBody className="ew-body">
-        {tab === 'profile' && <ProfileTab language={language} form={form} setForm={setForm} editing={editingProfile} onEdit={() => setEditingProfile(true)} onCancel={() => { setForm(employee); setEditingProfile(false) }} onSave={save} />}
+        {tab === 'profile' && <ProfileTab language={language} form={form} setForm={setForm} editing={editingProfile} onEdit={() => setEditingProfile(true)} onCancel={() => { if(isNewEmployee){navigate(APP_ROUTES.EMPLOYEES);return} setForm(employee); setEditingProfile(false) }} onSave={save} />}
 
         {tab === 'health' && <EmployeeHealthTab
           language={language}

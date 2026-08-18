@@ -1,10 +1,14 @@
-export function calculateWhoCompliance(observations = []) {
+export function calculateWhoCompliance(observations = [], professionalCount = null) {
   const opportunities = observations.length
-  const professionals = new Set(
+  const detectedProfessionals = new Set(
     observations
       .map((item) => String(item.professionalCode || '').trim().toLocaleUpperCase('el-GR'))
       .filter(Boolean),
   ).size
+  const explicitProfessionals = Number(professionalCount)
+  const professionals = Number.isFinite(explicitProfessionals) && explicitProfessionals > 0
+    ? Math.floor(explicitProfessionals)
+    : detectedProfessionals
   const handRub = observations.filter((item) => item.action === 'HR').length
   const handWash = observations.filter((item) => item.action === 'HW').length
   const missed = observations.filter((item) => item.action === 'MISSED').length

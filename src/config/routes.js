@@ -45,6 +45,7 @@ export const APP_ROUTES = Object.freeze({
   STUDIO_DASHBOARDS: '/studio/dashboards',
   STUDIO_AI: '/studio/ai',
   STUDIO_SECURITY: '/studio/security',
+  STUDIO_GOVERNANCE: '/studio/governance',
   STUDIO_USERS: '/studio/users',
   STUDIO_ROLES: '/studio/roles',
   STUDIO_SETTINGS: '/studio/settings',

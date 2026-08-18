@@ -82,3 +82,5 @@
   .indicator-drawer-actions{flex-wrap:wrap}
   .indicator-drawer-actions__spacer{display:none}
 }
+
+.indicator-definition-history{display:grid;gap:8px}.indicator-definition-history__row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.indicator-definition-history__row strong,.indicator-definition-history__row small{display:block}.indicator-definition-history__row small{margin-top:3px;color:var(--text-muted);font-size:11px}.indicator-definition-history__row>span{font-size:12px;color:var(--text-muted);text-align:right}

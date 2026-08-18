@@ -9,6 +9,8 @@ import { loadPatientSamples, PATIENT_SAMPLES_EVENT } from '../../services/patien
 import { loadEnvironmentalSamples, loadStaffSamples, loadWaterRecords, ENVIRONMENTAL_SAMPLES_EVENT, STAFF_SAMPLES_EVENT, WATER_RECORDS_EVENT } from '../../services/laboratorySourcesService'
 import { buildNotificationReviewLink } from '../../core/navigation/recordDeepLink'
 import { dismissNotifications, loadReadNotificationIds, NOTIFICATION_READ_EVENT } from '../../core/notifications/notificationState'
+import { GOVERNANCE_EVENT, loadNotificationPolicies } from '../../services/backend/governanceBackendService'
+import { loadCurrentProfile } from '../../services/profile/profileService'
 const DAY = 86400000
 const isoToday = () => new Date().toISOString().slice(0, 10)
 const parseDate = value => value ? new Date(`${value}T12:00:00`) : null
@@ -25,7 +27,7 @@ function isTerminalStatus(value=''){
   return ['ολοκληρωμένη','ολοκληρωμενη','ολοκληρωμένο','ολοκληρωμενο','κλειστό','κλειστο','αρχειοθετημένο','αρχειοθετημενο','ακυρωμένη','ακυρωμενη','ακυρωμένο','ακυρωμενο'].includes(normalized)
 }
 
-function buildNotifications(){
+function buildNotifications(policies=[],currentRole=''){
   const items=[]
 
   // Bell policy: only items that are already overdue. Future reminders belong in the
@@ -52,13 +54,13 @@ function buildNotifications(){
   loadDocuments().filter(row=>row.reviewDate && !isTerminalStatus(row.status)).forEach(row=>{
     const days=daysUntil(row.reviewDate)
     if(days===null || days>=0) return
-    items.push({id:`document:${row.id}:${row.reviewDate}`,title:'Εκπρόθεσμη αναθεώρηση εγγράφου',message:`${row.title} · ${displayDate(row.reviewDate)}`,tone:'danger',path:'/documents',recordId:row.id,module:'documents',icon:FileClock,date:row.reviewDate})
+    items.push({id:`document:${row.id}:${row.reviewDate}`,title:'Εκπρόθεσμη αναθεώρηση εγγράφου',message:`${row.title} · ${displayDate(row.reviewDate)}`,tone:'danger',path:'/documents',recordId:row.id,module:'documents',icon:FileClock,date:row.reviewDate,policyKey:'document_review_overdue'})
   })
 
   loadCapa().filter(row=>row.dueDate && !isTerminalStatus(row.status)).forEach(row=>{
     const days=daysUntil(row.dueDate)
     if(days===null || days>=0) return
-    items.push({id:`capa:${row.id}:${row.dueDate}`,title:'Εκπρόθεσμη CAPA',message:`${row.title} · ${displayDate(row.dueDate)}`,tone:'danger',path:'/quality/capa',recordId:row.id,module:'capa',icon:ShieldAlert,date:row.dueDate})
+    items.push({id:`capa:${row.id}:${row.dueDate}`,title:'Εκπρόθεσμη CAPA',message:`${row.title} · ${displayDate(row.dueDate)}`,tone:'danger',path:'/quality/capa',recordId:row.id,module:'capa',icon:ShieldAlert,date:row.dueDate,policyKey:'overdue_capa'})
   })
 
   loadRisks().filter(row=>row.reviewDate && !['Κλειστός','Ακυρωμένος'].includes(row.status)).forEach(row=>{
@@ -69,25 +71,37 @@ function buildNotifications(){
 
   // Serious safety events stay visible until the investigation has moved beyond the initial report.
   loadIncidents().filter(row=>['Σοβαρή βλάβη','Θάνατος'].includes(row.outcome) && row.status==='Νέα αναφορά').forEach(row=>{
-    items.push({id:`incident-serious:${row.id}:${row.date||''}`,title:'Σοβαρό συμβάν προς διερεύνηση',message:`${row.title||row.id} · ${row.department||'—'}`,tone:'danger',path:'/quality/incidents',recordId:row.id,module:'incidents',icon:Siren,date:row.date||isoToday()})
+    items.push({id:`incident-serious:${row.id}:${row.date||''}`,title:'Σοβαρό συμβάν προς διερεύνηση',message:`${row.title||row.id} · ${row.department||'—'}`,tone:'danger',path:'/quality/incidents',recordId:row.id,module:'incidents',icon:Siren,date:row.date||isoToday(),policyKey:'serious_incident'})
   })
 
   // Critical laboratory results are alerts only while closed-loop communication is incomplete.
   const laboratoryRows=[...loadPatientSamples(),...loadStaffSamples(),...loadEnvironmentalSamples(),...loadWaterRecords()]
   laboratoryRows.filter(row=>row.criticalResult && (!row.criticalCommunicatedTo || !row.criticalCommunicatedAt)).forEach(row=>{
-    items.push({id:`lab-critical:${row.id}:${row.resultDate||''}`,title:'Κρίσιμο εργαστηριακό αποτέλεσμα',message:`${row.patientCode||row.subjectCode||row.employeeCode||row.id} · απαιτείται γνωστοποίηση`,tone:'danger',path:'/laboratory',recordId:row.id,module:'laboratory',icon:FlaskConical,date:row.resultDate||isoToday()})
+    items.push({id:`lab-critical:${row.id}:${row.resultDate||''}`,title:'Κρίσιμο εργαστηριακό αποτέλεσμα',message:`${row.patientCode||row.subjectCode||row.employeeCode||row.id} · απαιτείται γνωστοποίηση`,tone:'danger',path:'/laboratory',recordId:row.id,module:'laboratory',icon:FlaskConical,date:row.resultDate||isoToday(),policyKey:'critical_lab_result'})
   })
 
   // Competency follow-up is surfaced only after completed training, avoiding noise during delivery.
   loadTraining().filter(row=>row.status==='Ολοκληρωμένη' && row.competencyRequired).forEach(row=>{
     const pending=(row.attendance||[]).filter(a=>['Παρών','Online'].includes(a.status) && a.competencyResult!=='Επαρκής')
     if(!pending.length)return
-    items.push({id:`competency:${row.id}:${pending.map(a=>a.employeeId||a.employeeName).join('-')}`,title:'Εκκρεμής επάρκεια / επανεκπαίδευση',message:`${row.title} · ${pending.length} ${pending.length===1?'εργαζόμενος':'εργαζόμενοι'}`,tone:'warning',path:'/training',recordId:row.id,module:'training',icon:GraduationCap,date:row.date||isoToday()})
+    items.push({id:`competency:${row.id}:${pending.map(a=>a.employeeId||a.employeeName).join('-')}`,title:'Εκκρεμής επάρκεια / επανεκπαίδευση',message:`${row.title} · ${pending.length} ${pending.length===1?'εργαζόμενος':'εργαζόμενοι'}`,tone:'warning',path:'/training',recordId:row.id,module:'training',icon:GraduationCap,date:row.date||isoToday(),policyKey:'competency_followup'})
   })
 
-  return items.sort((a,b)=>{
-    const priority={danger:0,warning:1,default:2}
-    return (priority[a.tone]??2)-(priority[b.tone]??2) || (a.date||'').localeCompare(b.date||'')
+  const policyMap=new Map((policies||[]).map(row=>[row.policy_key,row]))
+  const governed=items.filter(item=>{
+    if(!item.policyKey)return true
+    const policy=policyMap.get(item.policyKey)
+    if(!policy)return true
+    if(policy.enabled===false)return false
+    const roles=Array.isArray(policy.settings?.recipientRoles)?policy.settings.recipientRoles:[]
+    if(roles.length && currentRole && currentRole!=='admin' && !roles.includes(currentRole))return false
+    item.tone=policy.severity||item.tone
+    item.governancePolicy=policy
+    return true
+  })
+  return governed.sort((a,b)=>{
+    const priority={danger:0,warning:1,info:2,default:3}
+    return (priority[a.tone]??3)-(priority[b.tone]??3) || (a.date||'').localeCompare(b.date||'')
   })
 }
 
@@ -97,14 +111,17 @@ export default function NotificationCenter(){
   const [open,setOpen]=useState(false)
   const [version,setVersion]=useState(0)
   const [readIds,setReadIds]=useState(loadReadNotificationIds)
-  useAppEvents([SURVEILLANCE_PROGRAMS_EVENT, ORGANIZATION_EVENT, QUALITY_EVENT, PATIENT_SAMPLES_EVENT, STAFF_SAMPLES_EVENT, ENVIRONMENTAL_SAMPLES_EVENT, WATER_RECORDS_EVENT], () => setVersion(v => v + 1))
+  const [policies,setPolicies]=useState([])
+  const currentRole=loadCurrentProfile()?.role||''
+  useAppEvents([SURVEILLANCE_PROGRAMS_EVENT, ORGANIZATION_EVENT, QUALITY_EVENT, PATIENT_SAMPLES_EVENT, STAFF_SAMPLES_EVENT, ENVIRONMENTAL_SAMPLES_EVENT, WATER_RECORDS_EVENT, GOVERNANCE_EVENT], () => setVersion(v => v + 1))
   useAppEvents(NOTIFICATION_READ_EVENT, () => setReadIds(loadReadNotificationIds()), { includeStorage: true })
+  useEffect(()=>{loadNotificationPolicies().then(setPolicies).catch(()=>setPolicies([]))},[version])
   useEffect(()=>{
     const onPointerDown=event=>{if(open && ref.current && !ref.current.contains(event.target))setOpen(false)}
     document.addEventListener('pointerdown',onPointerDown)
     return()=>document.removeEventListener('pointerdown',onPointerDown)
   },[open])
-  const notifications=useMemo(()=>buildNotifications(),[version])
+  const notifications=useMemo(()=>buildNotifications(policies,currentRole),[version,policies,currentRole])
   const visibleNotifications=notifications.filter(item=>!readIds.has(item.id))
   const unread=visibleNotifications.length
   function markAll(){dismissNotifications(notifications.map(item=>item.id));setReadIds(loadReadNotificationIds())}

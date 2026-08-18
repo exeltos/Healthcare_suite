@@ -148,6 +148,10 @@ export default function UserAccessPage(){
           ? L('Ο λογαριασμός δημιουργήθηκε και εστάλη πρόσκληση στο email του χρήστη.','The account was created and an invitation was sent to the user email.')
           : L('Ο λογαριασμός δημιουργήθηκε επιτυχώς και εμφανίζεται πλέον στο μητρώο Χρηστών.','Account created successfully and is now visible in the Users registry.'))
       notifyAction(isUpdate?L('Ο λογαριασμός ενημερώθηκε επιτυχώς.','Account updated successfully.'):L('Ο λογαριασμός δημιουργήθηκε επιτυχώς.','Account created successfully.'))
+      if(location.state?.fromEmployeeAccount){
+        navigate(-1)
+        return
+      }
     }catch(err){
       setFeedback('')
       setError(localizeAccountError(err?.message,language)||L('Δεν ήταν δυνατή η αποθήκευση του λογαριασμού.','The account could not be saved.'))

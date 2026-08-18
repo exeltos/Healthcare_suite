@@ -230,3 +230,5 @@
 }
 /* Entry forms now inherit the shared FormActions. */
 .entry-form-footer.common-form-action-bar{margin-top:0}
+
+.entry-form-header__cancel{flex:0 0 auto;align-self:flex-start}

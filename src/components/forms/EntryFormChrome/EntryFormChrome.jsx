@@ -1,7 +1,12 @@
 import FormActions from '../../core/FormActions/FormActions'
+import Button from '../../core/Button/Button'
+import { X } from 'lucide-react'
+import { useI18n } from '../../../i18n'
 import './EntryFormChrome.css'
 
 export function EntryFormHeader({ eyebrow, title, description, onClose }) {
+  const { language } = useI18n()
+  const L = (el,en) => language === 'en' ? en : el
   return (
     <header className="entry-form-header">
       <div className="entry-form-header__identity">
@@ -11,14 +16,16 @@ export function EntryFormHeader({ eyebrow, title, description, onClose }) {
           {description && <p>{description}</p>}
         </div>
       </div>
-      <button
+      {onClose && <Button
         type="button"
-        className="entry-form-header__close"
+        variant="secondary"
+        size="sm"
+        icon={<X size={15}/>}
         onClick={onClose}
-        aria-label="Κλείσιμο"
+        className="entry-form-header__cancel"
       >
-        ×
-      </button>
+        {L('Ακύρωση','Cancel')}
+      </Button>}
     </header>
   )
 }
@@ -71,6 +78,7 @@ export function EntryFormFooter({
   primaryType = 'button',
   form,
   primaryDisabled = false,
+  saving = false,
 }) {
   return (
     <FormActions
@@ -82,6 +90,7 @@ export function EntryFormFooter({
       primaryType={primaryType}
       form={form}
       primaryDisabled={primaryDisabled}
+      saving={saving}
       sticky={false}
       className="entry-form-footer"
     />

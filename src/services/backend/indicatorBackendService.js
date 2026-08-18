@@ -37,21 +37,38 @@ export async function saveIndicatorSettingsBackend(settings={}){
   if(!IS_PRODUCTION)return saveIndicatorSettings(settings)
   const c=requireSupabase(),org=await orgId(c)
   const rows=Object.entries(settings||{}).map(([indicatorId,value])=>({organization_id:org,indicator_id:indicatorId,settings:value||{}}))
-  const {error:delError}=await c.from('indicator_settings').delete().eq('organization_id',org);if(delError)throw delError
-  if(rows.length){const {error}=await c.from('indicator_settings').insert(rows);if(error)throw error}
+  const ids=rows.map(row=>row.indicator_id)
+  const {data:existing,error:readError}=await c.from('indicator_settings').select('indicator_id').eq('organization_id',org);if(readError)throw readError
+  const remove=(existing||[]).map(x=>x.indicator_id).filter(id=>!ids.includes(id))
+  if(remove.length){const {error}=await c.from('indicator_settings').delete().eq('organization_id',org).in('indicator_id',remove);if(error)throw error}
+  if(rows.length){const {error}=await c.from('indicator_settings').upsert(rows,{onConflict:'organization_id,indicator_id'});if(error)throw error}
   saveIndicatorSettings(settings);return settings
 }
 export async function saveCustomIndicatorsBackend(rows=[]){
   validateCustomIndicatorGovernance(rows)
   if(!IS_PRODUCTION)return saveCustomIndicators(rows)
   const c=requireSupabase(),org=await orgId(c)
-  const {error:delError}=await c.from('custom_indicators').delete().eq('organization_id',org);if(delError)throw delError
-  if(rows.length){const {error}=await c.from('custom_indicators').insert(rows.map(r=>({id:String(r.id),organization_id:org,data:r})));if(error)throw error}
+  const ids=(rows||[]).map(r=>String(r.id))
+  const {data:existing,error:readError}=await c.from('custom_indicators').select('id').eq('organization_id',org);if(readError)throw readError
+  const remove=(existing||[]).map(x=>String(x.id)).filter(id=>!ids.includes(id))
+  if(remove.length){const {error}=await c.from('custom_indicators').delete().eq('organization_id',org).in('id',remove);if(error)throw error}
+  if(rows.length){const {error}=await c.from('custom_indicators').upsert(rows.map(r=>({id:String(r.id),organization_id:org,data:r})),{onConflict:'id'});if(error)throw error}
   saveCustomIndicators(rows);return rows
 }
 export async function updateIndicatorSettingBackend(id,patch){
   const current=loadIndicatorSettings();return saveIndicatorSettingsBackend({...current,[id]:{...(current[id]||{}),...patch}})
 }
+
+export async function loadIndicatorDefinitionHistory(indicatorId,{limit=30}={}){
+  if(!IS_PRODUCTION)return []
+  const c=requireSupabase()
+  const {data,error}=await c.from('indicator_definition_history')
+    .select('history_id,indicator_id,definition_version,settings,changed_at,changed_by,change_type')
+    .eq('indicator_id',String(indicatorId)).order('changed_at',{ascending:false}).limit(limit)
+  if(error)throw error
+  return data||[]
+}
+
 export async function saveIndicatorSourceBackend(type,rows=[]){
   const local=localWriter(type)
   if(!IS_PRODUCTION)return local(rows)

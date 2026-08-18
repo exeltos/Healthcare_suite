@@ -16,6 +16,8 @@ export default function Sidebar({ collapsed, mobileOpen, onNavigate, user }) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const [openGroup, setOpenGroup] = useState(null)
+  const returnPath = location.state?.returnContext?.path || ''
+  const navigationPath = returnPath || location.pathname
 
   const visibleNavigation = user?.demo===true
     ? navigation
@@ -26,8 +28,6 @@ export default function Sidebar({ collapsed, mobileOpen, onNavigate, user }) {
 
   useEffect(() => {
     let activeGroup = null
-    const returnPath = location.state?.returnContext?.path || ''
-    const navigationPath = returnPath || location.pathname
     visibleNavigation.forEach((section) => section.items.forEach((item) => {
       if (item.children?.length && containsPath(item, navigationPath)) activeGroup = item.id
     }))
@@ -50,7 +50,7 @@ export default function Sidebar({ collapsed, mobileOpen, onNavigate, user }) {
     const label = item.labelKey ? t(item.labelKey) : item.label
     const hasChildren = Boolean(item.children?.length)
     const expanded = openGroup === item.id
-    const active = containsPath(item, location.pathname)
+    const active = containsPath(item, navigationPath)
 
     if (!hasChildren) return <NavLink key={item.id} to={item.path} end={item.id==='laboratory'||item.id==='dashboard'} onClick={() => closeGroupsAndNavigate(item, depth)} title={collapsed ? label : undefined} className={({isActive}) => `${depth ? 'sidebar-submenu-link' : 'nav-link'} ${(isActive || active) ? 'active' : ''} ${item.emphasis ? 'emphasis' : ''}`}><span className={depth ? '' : 'nav-icon'}><Icon size={depth ? 16 : 19} strokeWidth={2.1}/></span>{!collapsed && <span className={depth ? '' : 'nav-label'}>{label}</span>}</NavLink>
 

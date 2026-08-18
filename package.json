@@ -1,7 +1,7 @@
 {
   "name": "healthcare-suite",
   "private": true,
-  "version": "0.12.0-rc.77",
+  "version": "0.12.0-rc.86",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,7 @@
     "audit:ui": "node tools/ui-audit.mjs",
     "audit:imports": "node tools/check-imports.mjs",
     "audit:production": "node tools/production-audit.mjs",
-    "check": "npm run audit:imports && npm run audit:navigation && npm run audit:architecture && npm run audit:integration && npm run audit:ui && npm run audit:production && npm run audit:consistency && npm run audit:design && npm run audit:workflow && npm run audit:i18n && npm run audit:security && npm run audit:clinical && npm run audit:staff && npm run audit:quality && npm run audit:organization && npm run audit:management && npm run audit:release && npm run audit:migrations && npm run audit:clean-data && npm run audit:seed-isolation && npm run check:syntax",
+    "check": "npm run audit:imports && npm run audit:navigation && npm run audit:architecture && npm run audit:integration && npm run audit:ui && npm run audit:production && npm run audit:consistency && npm run audit:design && npm run audit:workflow && npm run audit:i18n && npm run audit:security && npm run audit:tenant-isolation && npm run audit:clinical && npm run audit:staff && npm run audit:quality && npm run audit:organization && npm run audit:management && npm run audit:release && npm run audit:migrations && npm run audit:clean-data && npm run audit:seed-isolation && npm run check:syntax",
     "audit:architecture": "node tools/architecture-structure-audit.mjs",
     "audit:integration": "node tools/integration-readiness-audit.mjs",
     "audit:consistency": "node tools/consistency-audit.mjs",
@@ -30,7 +30,17 @@
     "audit:migrations": "node tools/migration-schema-audit.mjs",
     "audit:clean-data": "node tools/production-clean-data-audit.mjs",
     "audit:seed-isolation": "node tools/production-seed-isolation-audit.mjs",
-    "release:verify": "npm run check && npm run build"
+    "release:verify": "npm run release:preflight && npm run release:static && npm run check:syntax && npm run build",
+    "audit:tenant-isolation": "node tools/tenant-isolation-audit.mjs",
+    "audit:clinical-scenarios": "node tools/clinical-scenario-contract-audit.mjs",
+    "release:static": "npm run audit:imports && npm run audit:navigation && npm run audit:architecture && npm run audit:integration && npm run audit:ui && npm run audit:production && npm run audit:consistency && npm run audit:design && npm run audit:workflow && npm run audit:i18n && npm run audit:security && npm run audit:tenant-isolation && npm run audit:clinical && npm run audit:clinical-scenarios && npm run audit:staff && npm run audit:quality && npm run audit:organization && npm run audit:management && npm run audit:release && npm run audit:migrations && npm run audit:clean-data && npm run audit:seed-isolation && npm run audit:deployment && npm run audit:governance && npm run audit:functional-qa && npm run audit:form-actions && npm run audit:rc84 && npm run audit:rc85 && npm run audit:rc86",
+    "release:preflight": "node scripts/release-preflight.mjs",
+    "audit:governance": "node scripts/audit-governance-visibility.mjs",
+    "audit:functional-qa": "node scripts/audit-functional-qa-rc82.mjs",
+    "audit:form-actions": "node scripts/audit-form-action-consistency.mjs",
+    "audit:rc84": "node scripts/audit-rc84-root-cause.mjs",
+    "audit:rc85": "node scripts/audit-rc85-scroll-who-session.mjs",
+    "audit:rc86": "node scripts/audit-rc86-who-save-close.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

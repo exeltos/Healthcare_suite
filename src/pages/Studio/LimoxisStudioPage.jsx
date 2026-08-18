@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { BarChart3, FormInput, Library, Search, ShieldCheck, Users } from 'lucide-react'
+import { BarChart3, FormInput, Library, Search, ShieldCheck, Users, Landmark } from 'lucide-react'
 import SettingsPage from '../SettingsPage'
 import { BackLink, Button, PageChrome } from '../../components/core'
 import PageHeader from '../../components/core/PageHeader/PageHeader'
@@ -18,6 +18,7 @@ const GROUPS = [
     tools:[
       {id:'users',icon:Users,titleEl:'Χρήστες',titleEn:'Users',textEl:'Λογαριασμοί πρόσβασης, σύνδεση με το προσωπικό, τμήματα και πρόσθετες αρμοδιότητες.',textEn:'Access accounts linked to staff, departments and additional capabilities.',noteEl:'Λογαριασμοί',noteEn:'Accounts',actions:[{labelEl:'Άνοιγμα',labelEn:'Open',path:APP_ROUTES.STUDIO_USERS}]},
       {id:'roles',icon:ShieldCheck,titleEl:'Ρόλοι & Δικαιώματα',titleEn:'Roles & Permissions',textEl:'Ρόλοι και λειτουργικό scope πρόσβασης κάθε κατηγορίας χρήστη.',textEn:'Roles and functional access scope for each user category.',noteEl:'Πρόσβαση & ασφάλεια',noteEn:'Access & security',actions:[{labelEl:'Άνοιγμα',labelEn:'Open',path:APP_ROUTES.STUDIO_ROLES}]},
+      {id:'governance',icon:Landmark,titleEl:'Governance & Συμμόρφωση',titleEn:'Governance & Compliance',textEl:'Audit trail, ειδοποιήσεις, retention, business continuity, privacy και κενά επάρκειας.',textEn:'Audit trail, notifications, retention, business continuity, privacy and competency gaps.',noteEl:'ISO / JCI / Security',noteEn:'ISO / JCI / Security',actions:[{labelEl:'Άνοιγμα',labelEn:'Open',path:APP_ROUTES.STUDIO_GOVERNANCE}]},
     ]
   },
   {

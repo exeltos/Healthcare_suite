@@ -31,7 +31,7 @@ import {
 } from '../../core/constants/clinicalOptions'
 import { masterNames, upsertMasterItem } from '../../services/masterDataService'
 import './PatientWorkflowPage.css'
-import { PatientHome, CaseWorkspace, buildPatientTimeline, deriveOverallResistance, formatDate, getPatientSignals, getSampleDescendants, getTherapies, isRepeatSample, normalizeOrganismResults, sampleMicroorganismLabel, today } from './PatientWorkflowSections'
+import { PatientHome, CaseWorkspace, buildPatientTimeline, deriveOverallResistance, formatDate, getPatientSignals, getSampleDescendants, getTherapies, calculateHospitalDays, isRepeatSample, normalizeOrganismResults, sampleMicroorganismLabel, today } from './PatientWorkflowSections'
 
 const emptyQuestionnaire = { symptoms: [], devices: [], surgery: '', riskFactors: [], notes: '', completed: false }
 const emptyCase = {
@@ -173,7 +173,11 @@ export default function PatientWorkflowPage() {
       notifyAction(L('Συμπληρώστε όνομα, επώνυμο και κωδικό ασθενούς.', 'Enter first name, last name and patient code.'))
       return
     }
-    const saved=await saveClinicalPatient({ ...patientForm, fullName: [patientForm.firstName, patientForm.lastName].filter(Boolean).join(' ') })
+    const saved=await saveClinicalPatient({
+      ...patientForm,
+      fullName: [patientForm.firstName, patientForm.lastName].filter(Boolean).join(' '),
+      daysInHospital: calculateHospitalDays(patientForm.admissionDate, patientForm.dischargeDate || patientForm.exitDate),
+    })
     setPatient(saved)
     setPatientForm(saved)
     setEditingPatient(false)
@@ -396,7 +400,7 @@ export default function PatientWorkflowPage() {
     <input ref={fileRef} type="file" hidden onChange={uploadFile} />
     <main className="pw-page-body">
       {screen === 'home' && <PatientHome
-        patient={patientForm} isNew={isNewPatient} editing={editingPatient} setEditing={setEditingPatient} setPatient={setPatientForm} savePatient={savePatient}
+        patient={patientForm} isNew={isNewPatient} editing={editingPatient} setEditing={setEditingPatient} setPatient={setPatientForm} savePatient={savePatient} onCancelNew={() => navigate(APP_ROUTES.PATIENTS)}
         activeCases={activeCases} closedCases={closedCases} cases={cases} samples={samples} isolations={isolations} attachments={attachments} timeline={timeline} notifiableDiseases={notifiableDiseases}
         createCase={createCase} createSample={() => navigate(routeFor.laboratoryNewWorkspace(), { state: { prefillPatient: { id: patient.id, fullName: patient.fullName, patientCode: patient.patientCode, department: patient.department, room: patient.room, admissionDate: patient.admissionDate }, returnContext: { path: routeFor.patientWorkflow(patient.id), label: L('Πίσω στα δείγματα ασθενούς', 'Back to patient samples'), patientTab: 'samples' } } })} openCase={openCase} openCaseRecord={openCaseRecord}
         initialTab={location.state?.patientTab || 'summary'} highlightedSampleId={location.state?.highlightedSampleId || ''}

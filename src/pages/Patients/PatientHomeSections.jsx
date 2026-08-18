@@ -7,12 +7,12 @@ import Tabs from '../../components/core/Tabs/Tabs'
 import Timeline from '../../components/core/Timeline/Timeline'
 import LibraryField from '../../components/core/LibraryField/LibraryField'
 import { EODY_DISEASES } from '../../services/notifiableDiseasesService'
-import { buildPatientSampleRows, formatDate, formatDateTime, getTherapies, normalizeDate, sampleMicroorganismLabel, sampleResistanceLabel, today } from './patientWorkflowUtils'
+import { buildPatientSampleRows, calculateHospitalDays, formatDate, formatDateTime, getTherapies, normalizeDate, sampleMicroorganismLabel, sampleResistanceLabel, today } from './patientWorkflowUtils'
 import { ActionCard, EmptyState, Field, FileLibrary, IconButton, Input, PanelHeader, SectionHeader, Select, Tab } from './PatientWorkflowEditors'
 import { patientCount, patientDisplayValue } from './patientPresentation'
 import { readSessionValue, writeSessionValue } from '../../core/storage'
 
-export function PatientHome({ patient, isNew = false, editing, setEditing, setPatient, savePatient, activeCases, closedCases, cases, samples, isolations, attachments, timeline, notifiableDiseases, createCase, createSample, openCase, openCaseRecord, openLaboratorySample, upload, deleteAttachment, saveNotifiable, deleteNotifiable, initialTab = 'summary', highlightedSampleId = '' }) {
+export function PatientHome({ patient, isNew = false, editing, setEditing, setPatient, savePatient, onCancelNew, activeCases, closedCases, cases, samples, isolations, attachments, timeline, notifiableDiseases, createCase, createSample, openCase, openCaseRecord, openLaboratorySample, upload, deleteAttachment, saveNotifiable, deleteNotifiable, initialTab = 'summary', highlightedSampleId = '' }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
   const patientViewKey = `limoxis:patient-view:${patient.id || patient.patientCode || 'unknown'}`
@@ -71,7 +71,7 @@ export function PatientHome({ patient, isNew = false, editing, setEditing, setPa
     <section className="pw-patient-tab-body">
       {tab === 'summary' && <>
         <section className="pw-registry-strip">
-          <div className="pw-registry-title"><div><small>{L("ΜΗΤΡΩΟ", "REGISTRY")}</small><h3>{isNew ? L("Νέα εγγραφή ασθενούς", "New patient record") : L("Στοιχεία ασθενούς", "Patient details")}</h3></div><div>{editing ? <>{!isNew && <IconButton label={L("Ακύρωση", "Cancel")} icon={<X size={16} />} onClick={() => setEditing(false)} />}<Button size="sm" icon={<Save size={15} />} onClick={savePatient}>{L("Αποθήκευση", "Save")}</Button></> : <IconButton label={L("Επεξεργασία", "Edit")} icon={<Edit3 size={16} />} onClick={() => setEditing(true)} />}</div></div>
+          <div className="pw-registry-title"><div><small>{L("ΜΗΤΡΩΟ", "REGISTRY")}</small><h3>{isNew ? L("Νέα εγγραφή ασθενούς", "New patient record") : L("Στοιχεία ασθενούς", "Patient details")}</h3></div><div>{editing ? <><Button variant="secondary" size="sm" icon={<X size={15}/>} onClick={() => isNew ? onCancelNew?.() : setEditing(false)}>{L("Ακύρωση", "Cancel")}</Button><Button size="sm" icon={<Save size={15} />} onClick={savePatient}>{L("Αποθήκευση", "Save")}</Button></> : <IconButton label={L("Επεξεργασία", "Edit")} icon={<Edit3 size={16} />} onClick={() => setEditing(true)} />}</div></div>
           <div className="pw-registry-grid pw-registry-grid--identity">
             <Field label={L("Όνομα", "First name")}><Input disabled={!editing} value={patient.firstName} onChange={(v) => setPatient((x) => ({ ...x, firstName: v, fullName: [v, x.lastName].filter(Boolean).join(' ') }))} /></Field>
             <Field label={L("Επώνυμο", "Last name")}><Input disabled={!editing} value={patient.lastName} onChange={(v) => setPatient((x) => ({ ...x, lastName: v, fullName: [x.firstName, v].filter(Boolean).join(' ') }))} /></Field>
@@ -86,7 +86,7 @@ export function PatientHome({ patient, isNew = false, editing, setEditing, setPa
             <Field label={L("Ημερομηνία εισαγωγής", "Admission date")}><Input disabled={!editing} type="date" value={normalizeDate(patient.admissionDate)} onChange={(v) => setPatient((x) => ({ ...x, admissionDate: v }))} /></Field>
             <Field label={L("Ημερομηνία εξόδου", "Discharge date")}><Input disabled={!editing} type="date" value={normalizeDate(patient.dischargeDate || patient.exitDate)} onChange={(v) => setPatient((x) => ({ ...x, dischargeDate: v }))} /></Field>
             <Field label={L("Ώρα εισαγωγής", "Admission time")}><Input disabled={!editing} type="time" value={patient.admissionTime || ""} onChange={(v) => setPatient((x) => ({ ...x, admissionTime: v }))} /></Field>
-            <Field label={L("Ημέρες νοσηλείας", "Days in hospital")}><Input disabled={!editing} type="number" min="0" value={patient.daysInHospital || 0} onChange={(v) => setPatient((x) => ({ ...x, daysInHospital: v }))} /></Field>
+            <Field label={L("Ημέρες νοσηλείας", "Days in hospital")}><Input disabled value={calculateHospitalDays(patient.admissionDate, patient.dischargeDate || patient.exitDate)} /></Field>
             <Field label={L("Κύρια διάγνωση", "Primary diagnosis")} wide><Input disabled={!editing} value={patient.primaryDiagnosis || ""} onChange={(v) => setPatient((x) => ({ ...x, primaryDiagnosis: v }))} /></Field>
           </div>
         </section>
@@ -143,7 +143,7 @@ export function PatientNotifiableDiseases({ patient, items, focusId, onFocusHand
   function save(event) { event.preventDefault(); if (!draft?.disease) return; onSave(draft); setDraft(null) }
   return <div className="pw-disease-panel">
     <div className="pw-disease-head"><div><small>EODY</small><h3>{L("Υποχρεωτικώς δηλούμενα νοσήματα", "Notifiable diseases")}</h3><p>{L("Οι δηλώσεις συνδέονται με τον ασθενή και διατηρούν τα δικά τους συνοδευτικά αρχεία.", "Notifications are linked to the patient and keep their own supporting files.")}</p></div><Button size="sm" icon={<Plus size={15} />} onClick={() => setDraft({ ...empty })}>{L("Νέα δήλωση", "New notification")}</Button></div>
-    {draft && <form className="pw-editor pw-disease-editor" onSubmit={save}><div className="pw-editor-head"><h3>{draft.id ? L('Επεξεργασία δήλωσης', 'Edit notification') : L('Νέα δήλωση νοσήματος', 'New disease notification')}</h3><IconButton label={L("Κλείσιμο", "Close")} icon={<X size={16} />} onClick={() => setDraft(null)} /></div><div className="pw-form-grid compact">
+    {draft && <form className="pw-editor pw-disease-editor" onSubmit={save}><div className="pw-editor-head"><h3>{draft.id ? L('Επεξεργασία δήλωσης', 'Edit notification') : L('Νέα δήλωση νοσήματος', 'New disease notification')}</h3></div><div className="pw-form-grid compact">
       <Field label={L("Νόσημα", "Disease")} wide><Select value={draft.disease} onChange={diseaseChanged}><option value="">{L("Επιλέξτε από τον κατάλογο", "Select from list")}</option>{EODY_DISEASES.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</Select></Field>
       <Field label={L("Χρόνος δήλωσης", "Notification timeframe")}><Input value={draft.deadline} onChange={() => {}} readOnly /></Field>
       <Field label={L("Κατάσταση", "Status")}><Select value={draft.status} onChange={(v) => update('status', v)}><option value="Πρόχειρο">{L("Πρόχειρο", "Draft")}</option><option value="Προς δήλωση">{L("Προς δήλωση", "Pending notification")}</option><option value="Δηλώθηκε">{L("Δηλώθηκε", "Notified")}</option><option value="Ακυρώθηκε">{L("Ακυρώθηκε", "Cancelled")}</option></Select></Field>

@@ -37,6 +37,7 @@ const IndicatorDesignerPage = lazy(() => import('./pages/Studio/IndicatorDesigne
 const QualityReportsPage = lazy(() => import('./pages/Quality/QualityReportsPage'))
 const AuditsPage = lazy(() => import('./pages/Quality/AuditsPage'))
 const LimoxisStudioPage = lazy(() => import('./pages/Studio/LimoxisStudioPage'))
+const GovernancePage = lazy(() => import('./pages/Studio/GovernancePage'))
 const DeveloperCenterPage = lazy(() => import('./pages/Studio/DeveloperCenterPage'))
 const StudioConfigPage = lazy(() => import('./pages/Studio/StudioConfigPage'))
 const UserAccessPage = lazy(() => import('./pages/Studio/UserAccessPage'))
@@ -156,6 +157,7 @@ export default function App() {
         <Route path={APP_ROUTES.STUDIO_DASHBOARDS} element={<StudioConfigPage moduleKey="dashboards" />} />
         <Route path={APP_ROUTES.STUDIO_AI} element={<StudioConfigPage moduleKey="ai" />} />
         <Route path={APP_ROUTES.STUDIO_SECURITY} element={<UserAccessPage />} />
+        <Route path={APP_ROUTES.STUDIO_GOVERNANCE} element={<GovernancePage />} />
         <Route path={APP_ROUTES.STUDIO_USERS} element={<UserAccessPage />} />
         <Route path={APP_ROUTES.STUDIO_ROLES} element={<RolePermissionsPage />} />
         <Route path={APP_ROUTES.STUDIO_SETTINGS} element={<LimoxisStudioPage />} />

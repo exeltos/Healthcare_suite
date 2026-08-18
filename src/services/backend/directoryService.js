@@ -1,6 +1,6 @@
 import { IS_PRODUCTION } from '../../core/runtime'
 import { emitAppEvent, APP_EVENTS } from '../../core/events'
-import { writeJson } from '../../core/storage'
+import { readJsonObject, writeJsonCache } from '../../core/storage'
 import { requireSupabase } from '../../integrations/supabase'
 import { loadMasterData, saveMasterData } from '../masterDataService'
 import { loadAllEmployees, saveEmployees, upsertEmployee, deleteEmployee } from '../employeesService'
@@ -344,7 +344,7 @@ function localDepartments(){
 }
 
 function mirrorDepartments(rows){
-  const master=loadMasterData()
+  const master=readJsonObject('limoxisMasterData',{})
   const departments=rows.map(row=>({
     id:row.id,
     code:row.code||'',
@@ -353,21 +353,21 @@ function mirrorDepartments(rows){
   }))
   if(JSON.stringify(master.departments||[])===JSON.stringify(departments)) return
   const next={...master,departments}
-  saveMasterData(next)
+  writeJsonCache('limoxisMasterData',next)
   emitAppEvent(APP_EVENTS.MASTER_DATA_UPDATED,next)
 }
 
 function mirrorEmployees(rows){
-  const current=loadAllEmployees()
-  if(JSON.stringify(current)===JSON.stringify(rows)) return
-  saveEmployees(rows)
+  const master=readJsonObject('limoxisMasterData',{})
+  const next={...master,'employees-library':rows}
+  writeJsonCache('limoxisMasterData',next)
+  emitAppEvent(APP_EVENTS.MASTER_DATA_UPDATED,next)
+  emitAppEvent(APP_EVENTS.EMPLOYEES_UPDATED,rows)
 }
 
 function mirrorUsers(rows){
-  const current=loadUserAccounts()
-  if(JSON.stringify(current)===JSON.stringify(rows)) return
-  writeJson('healthcare-suite.user-accounts',rows)
-  emitAppEvent(USER_ACCOUNTS_EVENT,{entityType:'user-account',source:'supabase'})
+  writeJsonCache('healthcare-suite.user-accounts',rows)
+  emitAppEvent(USER_ACCOUNTS_EVENT,{entityType:'user-account',source:'supabase-cache'})
 }
 
 function mapDepartmentFromDb(row={}){

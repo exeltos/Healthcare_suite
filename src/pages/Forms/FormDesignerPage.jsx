@@ -56,7 +56,7 @@ export default function FormDesignerPage(){
    </article>)}</section>
 
    {draft&&<div className="fd-modal-backdrop"><div className="fd-modal">
-    <header><div><span>{draft.id?L('ΕΠΕΞΕΡΓΑΣΙΑ','EDIT'):L('ΝΕΑ ΦΟΡΜΑ','NEW FORM')}</span><h2>{draft.name||L('Χωρίς τίτλο','Untitled')}</h2></div><IconButton variant="ghost" label={L('Κλείσιμο','Close')} onClick={()=>setDraft(null)}><X/></IconButton></header>
+    <header><div><span>{draft.id?L('ΕΠΕΞΕΡΓΑΣΙΑ','EDIT'):L('ΝΕΑ ΦΟΡΜΑ','NEW FORM')}</span><h2>{draft.name||L('Χωρίς τίτλο','Untitled')}</h2></div></header>
     <div className="fd-modal-body">
      <section className="fd-section"><h3>{L('Βασικά στοιχεία','Basic details')}</h3><div className="fd-form-grid">
       <label>{L('Όνομα','Name')}<input value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label>

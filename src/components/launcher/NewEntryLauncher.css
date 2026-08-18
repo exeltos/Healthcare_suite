@@ -776,3 +776,6 @@
     gap: 6px;
   }
 }
+
+.hybrid-lab-pending{display:grid;gap:4px;padding:11px 13px;border:1px solid var(--border);border-radius:10px;background:var(--surface-subtle);color:var(--text)}
+.hybrid-lab-pending span{font-size:.73rem;color:var(--muted);line-height:1.45}

@@ -5,6 +5,7 @@ export function createWhoSession() {
     department: '',
     date: '',
     observer: '',
+    professionalCount: '',
     startTime: '',
     endTime: '',
   }

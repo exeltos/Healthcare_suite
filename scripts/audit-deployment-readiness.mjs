@@ -81,8 +81,14 @@ if(!preventionConfigurationMigrated){
   findings.push(['BLOCKER','Prevention, Forms, Studio configuration and master-data do not all have Production Supabase boundaries.'])
 }
 
-if(storage.includes('localStorage')){
-  findings.push(['HIGH','Browser-local repositories remain as demo/cache compatibility layers. Final go-live review must verify that every real Production write path uses a Supabase backend adapter and that no clinical/operational write can silently fall back to browser-only storage.'])
+const productionStorageGuard=
+  /IS_PRODUCTION/.test(storage) &&
+  /PRODUCTION_PREFERENCE_KEYS/.test(storage) &&
+  /Production browser-only persistence is blocked/.test(storage) &&
+  /export function writeJsonCache/.test(storage)
+
+if(!productionStorageGuard){
+  findings.push(['BLOCKER','Production browser-storage guard is missing. Operational writes must fail closed instead of silently persisting only in the browser.'])
 }
 
 const userAccess=read('src/pages/Studio/UserAccessPage.jsx')

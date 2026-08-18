@@ -1,5 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
+const ALLOWED_ROLES=new Set(['admin','infection_lead','infection_liaison','medical_reviewer','department_user','laboratory'])
+const ALLOWED_STATUSES=new Set(['pending','invited','active','disabled'])
+const ALLOWED_CAPABILITIES=new Set(['hand_hygiene_observer','staff_directory','quality','committees','training','documents','laboratory','lira'])
+
 const corsHeaders={
   'Access-Control-Allow-Origin':'*',
   'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
@@ -17,6 +21,10 @@ Deno.serve(async(req)=>{
   const caller=createClient(url,anonKey,{global:{headers:{Authorization:authHeader}}})
   const admin=createClient(url,serviceKey,{auth:{autoRefreshToken:false,persistSession:false}})
 
+  if(!authHeader.toLowerCase().startsWith('bearer ')) return json({error:'Unauthorized'},401)
+  const { data:{user:callerUser},error:callerError }=await caller.auth.getUser()
+  if(callerError||!callerUser) return json({error:'Unauthorized'},401)
+
   const { data:isAdmin, error:adminError }=await caller.rpc('is_app_admin')
   if(adminError || !isAdmin) return json({error:'Forbidden'},403)
 
@@ -31,7 +39,12 @@ Deno.serve(async(req)=>{
   const employeeId=body.employeeId||null
   const scopeMode=['own','selected','all'].includes(body.scopeMode)?body.scopeMode:'own'
   const capabilities=Array.isArray(body.capabilities)?body.capabilities:[]
-  const departmentIds=Array.isArray(body.departmentIds)?body.departmentIds:[]
+  const departmentIds=uniqueStrings(body.departmentIds)
+
+  if(!ALLOWED_ROLES.has(role)) return json({error:'Unsupported role'},400)
+  if(!validCapabilities(capabilities)) return json({error:'Unsupported capability'},400)
+  const scopeError=await validateTenantLinks(admin,organizationId,employeeId,departmentIds)
+  if(scopeError) return json({error:scopeError},400)
 
   if(!email || !username || !displayName) return json({error:'email, username and displayName are required'},400)
   if(scopeMode==='selected' && !departmentIds.length) return json({error:'Selected department scope requires at least one department'},400)
@@ -76,6 +89,29 @@ Deno.serve(async(req)=>{
 
   return json({ok:true,userId},201)
 })
+
+
+async function validateTenantLinks(admin:any,organizationId:string,employeeId:string|null,departmentIds:string[]){
+  if(employeeId){
+    const {data,error}=await admin.from('employees').select('id').eq('id',employeeId).eq('organization_id',organizationId).maybeSingle()
+    if(error) return error.message
+    if(!data) return 'Linked employee was not found in the current organization.'
+  }
+  if(departmentIds.length){
+    const {data,error}=await admin.from('departments').select('id').eq('organization_id',organizationId).in('id',departmentIds)
+    if(error) return error.message
+    if((data||[]).length!==departmentIds.length) return 'One or more departments are outside the current organization.'
+  }
+  return ''
+}
+
+function uniqueStrings(value:unknown){
+  return [...new Set((Array.isArray(value)?value:[]).map(String).map(x=>x.trim()).filter(Boolean))]
+}
+
+function validCapabilities(value:unknown){
+  return Array.isArray(value)&&value.every(item=>ALLOWED_CAPABILITIES.has(String(item)))
+}
 
 function json(body:unknown,status=200){
   return new Response(JSON.stringify(body),{

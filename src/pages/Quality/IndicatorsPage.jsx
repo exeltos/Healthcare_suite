@@ -35,7 +35,7 @@ import {
 import { normalizeText, selectedRows, sortRows, uniqueSortedValues } from '../../core/utils/entityList'
 import { downloadCsv, printRows } from '../../core/utils/listExport'
 import { INDICATORS_EVENT, loadCustomIndicators, loadIndicatorsSnapshot } from '../../services/indicatorsService'
-import { hydrateIndicatorBackend, saveCustomIndicatorsBackend, updateIndicatorSettingBackend } from '../../services/backend/indicatorBackendService'
+import { hydrateIndicatorBackend, loadIndicatorDefinitionHistory, saveCustomIndicatorsBackend, updateIndicatorSettingBackend } from '../../services/backend/indicatorBackendService'
 import { INDICATOR_SOURCE_EVENT } from '../../services/indicatorSourceDataService'
 import { createCapaFromSourceAsync } from '../../services/qualityWorkflowService'
 import { useI18n } from '../../i18n'
@@ -97,6 +97,7 @@ export default function IndicatorsPage({ managementMode = false }) {
   const [direction, setDirection] = useState('higher')
   const [notes, setNotes] = useState('')
   const [management, setManagement] = useState({ name:'', category:'', source:'', formula:'', unit:'', frequency:'', recipient:'', description:'', numeratorDefinition:'', denominatorDefinition:'', exclusions:'', owner:'', benchmark:'', warningThreshold:'', governanceVersion:'1.0' })
+  const [definitionHistory,setDefinitionHistory]=useState([])
 
   const range = useMemo(() => ({ from: dateFrom, to: dateTo }), [dateFrom, dateTo])
 
@@ -150,6 +151,7 @@ export default function IndicatorsPage({ managementMode = false }) {
 
   function openIndicator(row) {
     setActive(row)
+    if(managementMode)loadIndicatorDefinitionHistory(row.id).then(setDefinitionHistory).catch(()=>setDefinitionHistory([]))
     setTarget(row.target ?? '')
     setDirection(row.direction || 'higher')
     setNotes(row.notes || '')
@@ -190,6 +192,7 @@ export default function IndicatorsPage({ managementMode = false }) {
     const next=loadIndicatorsSnapshot(range)
     setRows(next)
     setActive(next.find((row)=>row.id===active.id)||null)
+    if(managementMode)loadIndicatorDefinitionHistory(active.id).then(setDefinitionHistory).catch(()=>{})
     notifyAction(L('Οι ρυθμίσεις του δείκτη αποθηκεύτηκαν.','Indicator settings saved.'))
   }
 
@@ -235,6 +238,9 @@ export default function IndicatorsPage({ managementMode = false }) {
                 <FormField label={L('Benchmark / αναφορά','Benchmark / reference')}><input value={management.benchmark} onChange={e=>setManagement({...management,benchmark:e.target.value})}/></FormField>
                 <FormField label={L('Όριο προειδοποίησης','Warning threshold')}><input inputMode="decimal" value={management.warningThreshold} onChange={e=>setManagement({...management,warningThreshold:e.target.value})}/></FormField>
               </FormGrid>
+            </FormSection>
+            <FormSection title={L('Ιστορικό ορισμού','Definition history')} description={L('Αμετάβλητο provenance των εκδόσεων και αλλαγών του ορισμού του δείκτη.','Immutable provenance of indicator definition versions and changes.')}>
+              <div className="indicator-definition-history">{definitionHistory.length?definitionHistory.map(item=><div className="indicator-definition-history__row" key={item.history_id}><div><strong>{L('Έκδοση','Version')} {item.definition_version||'—'}</strong><small>{item.change_type} · {item.changed_at?new Date(item.changed_at).toLocaleString(language==='en'?'en-GB':'el-GR'):'—'}</small></div><span>{item.settings?.owner||item.settings?.source||'—'}</span></div>):<p className="indicator-no-trend">{L('Δεν υπάρχει ακόμη προηγούμενο ιστορικό ορισμού.','No previous definition history yet.')}</p>}</div>
             </FormSection></>
           : <><FormSection title={L('Τρέχουσα εικόνα','Current view')}><FormGrid columns={2}><div className="indicator-readonly"><span>{L('Κατηγορία','Category')}</span><strong>{active.category}</strong></div><div className="indicator-readonly"><span>{L('Πηγή δεδομένων','Data source')}</span><strong>{active.source}</strong></div><div className="indicator-readonly"><span>{L('Συχνότητα αναφοράς','Reporting frequency')}</span><strong>{active.frequency}</strong></div><div className="indicator-readonly"><span>{L('Αποδέκτης','Recipient')}</span><strong>{active.recipient}</strong></div></FormGrid></FormSection><FormSection title={L('Υπολογισμός','Calculation')} description={L("Η τιμή παράγεται αυτόματα από τις διαθέσιμες καταχωρήσεις της επιλεγμένης περιόδου.","The value is calculated automatically from available records in the selected period.")}><div className="indicator-formula">{active.formula}</div>{active.metric?.numerator != null && <div className="indicator-source-summary"><span>{L('Αριθμητής','Numerator')}</span><strong>{active.metric.numerator}</strong>{active.metric.denominator != null && <><span>{L('Παρονομαστής','Denominator')}</span><strong>{active.metric.denominator}</strong></>}</div>}</FormSection></>}
         <FormSection title={L('Στοιχεία που χρησιμοποιήθηκαν','Inputs used')} description={L("Σύνοψη των καταχωρήσεων που συμμετέχουν στον συγκεκριμένο υπολογισμό.","Summary of records used in this calculation.")}><div className="indicator-input-grid">{(active.metric?.inputs || []).length ? active.metric.inputs.map((item) => <div className="indicator-input-card" key={`${item.label}-${item.value}`}><span>{item.label}</span><strong>{item.value ?? '—'}</strong>{item.detail && <small>{item.detail}</small>}</div>) : <p className="indicator-no-trend">{L("Δεν υπάρχουν ακόμη διαθέσιμα στοιχεία για αυτή την περίοδο.","No data available for this period yet.")}</p>}</div></FormSection>

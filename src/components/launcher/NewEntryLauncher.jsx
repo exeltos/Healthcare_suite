@@ -28,6 +28,7 @@ import { EnvironmentEntryFlow, WhoEntryFlow } from './NewEntryLauncher.flows'
 import { useI18n } from '../../i18n'
 import './NewEntryLauncher.css'
 import { canPerformModuleAction, MODULES } from '../../services/accessControlService'
+import { loadAllEmployees, EMPLOYEES_EVENT } from '../../services/employeesService'
 
 export default function NewEntryLauncher({ user, open, onClose, initialTypeId = '' }) {
   const { language } = useI18n()
@@ -41,6 +42,7 @@ export default function NewEntryLauncher({ user, open, onClose, initialTypeId = 
   const [newPatient, setNewPatient] = useState(emptyNewPatient)
   const [entry, setEntry] = useState(emptyEntry)
   const [savedMessage, setSavedMessage] = useState('')
+  const [savingEntry, setSavingEntry] = useState(false)
   const [masterData, setMasterData] = useState(loadMasterData)
   const [patientRegistry, setPatientRegistry] = useState(
     loadPatientRegistry,
@@ -48,6 +50,7 @@ export default function NewEntryLauncher({ user, open, onClose, initialTypeId = 
   const [patientSourceConfig, setPatientSourceConfig] = useState(
     loadPatientSourceConfig,
   )
+  const [employeeRegistry,setEmployeeRegistry]=useState(loadAllEmployees)
 
   const [whoSession, setWhoSession] = useState(createWhoSession)
   const [whoObservations, setWhoObservations] = useState([])
@@ -70,10 +73,12 @@ export default function NewEntryLauncher({ user, open, onClose, initialTypeId = 
     APP_EVENTS.MASTER_DATA_UPDATED,
     APP_EVENTS.PATIENT_REGISTRY_UPDATED,
     APP_EVENTS.PATIENT_CONFIG_UPDATED,
+    EMPLOYEES_EVENT,
   ], () => {
     setMasterData(loadMasterData())
     setPatientRegistry(loadPatientRegistry())
     setPatientSourceConfig(loadPatientSourceConfig())
+    setEmployeeRegistry(loadAllEmployees())
   }, { includeStorage: true })
 
   const entryModule = {
@@ -124,6 +129,15 @@ export default function NewEntryLauncher({ user, open, onClose, initialTypeId = 
     [masterData],
   )
 
+  const employeeOptions = useMemo(
+    () => employeeRegistry
+      .filter(item => item.status !== 'Ανενεργό')
+      .map(item => ({ id:item.id, name:[item.firstName,item.lastName].filter(Boolean).join(' ') || item.fullName || item.employeeCode || '', department:item.department || '', professionalCategory:item.professionalCategory || '' }))
+      .filter(item => item.name)
+      .sort((a,b)=>a.name.localeCompare(b.name,'el')),
+    [employeeRegistry],
+  )
+
   const environmentPointOptions = useMemo(
     () => activeMasterItems(masterData, 'environment-points'),
     [masterData],
@@ -141,6 +155,7 @@ export default function NewEntryLauncher({ user, open, onClose, initialTypeId = 
     setNewPatient(emptyNewPatient)
     setEntry(emptyEntry)
     setSavedMessage('')
+    setSavingEntry(false)
     setWhoSession(createWhoSession())
     setWhoObservations([])
     setWhoObservation(emptyWhoObservation)
@@ -168,7 +183,7 @@ export default function NewEntryLauncher({ user, open, onClose, initialTypeId = 
     ]
 
     if (directWithoutPatientTypes.includes(typeId)) {
-      const today = new Date().toLocaleDateString(language === 'en' ? 'en-GB' : 'el-GR')
+      const today = new Date().toISOString().slice(0,10)
 
       setMode('without-patient')
       setEntry((current) => ({
@@ -261,17 +276,44 @@ export default function NewEntryLauncher({ user, open, onClose, initialTypeId = 
 
 
   async function saveEntry(event) {
-    event.preventDefault()
-    const result = await persistNewEntry({
-      selectedType, mode, selectedPatient, availableCases, selectedCaseId, createNewCase,
-      newPatient, entry, whoSession, whoObservations, environmentSession, environmentSamples,
-    })
-    if (!result.ok) {
-      if (result.error) notifyAction(result.error)
-      return
+    event?.preventDefault?.()
+    if (savingEntry) return
+    const draftWhoReady = Boolean(
+      String(whoObservation?.professionalCode || '').trim()
+      && whoObservation?.moment
+      && whoObservation?.action
+    )
+    const isWho = selectedType?.id === 'hand-hygiene' || initialTypeId === 'hand-hygiene'
+    const effectiveWhoObservations = isWho && draftWhoReady
+      ? [...whoObservations, { ...whoObservation, id: whoObservation.id || `WHO-OBS-${Date.now()}` }]
+      : whoObservations
+
+    setSavingEntry(true)
+    try {
+      const result = await persistNewEntry({
+        selectedType, mode, selectedPatient, availableCases, selectedCaseId, createNewCase,
+        newPatient, entry, whoSession, whoObservations: effectiveWhoObservations, environmentSession, environmentSamples,
+      })
+      if (!result.ok) {
+        if (result.error) notifyAction(result.error)
+        return
+      }
+      if (result.patientRegistryChanged) setPatientRegistry(loadPatientRegistry())
+
+      if (isWho) {
+        notifyAction(L('Η συνεδρία WHO αποθηκεύτηκε επιτυχώς.','WHO session saved successfully.'))
+        resetAndClose()
+        return
+      }
+
+      notifyAction(L('Η καταχώρηση αποθηκεύτηκε επιτυχώς.','Entry saved successfully.'))
+      setSavedMessage(L('Η καταχώρηση αποθηκεύτηκε επιτυχώς.','Entry saved successfully.'))
+    } catch (error) {
+      console.error('New entry save failed', error)
+      notifyAction(error?.message || L('Η αποθήκευση απέτυχε.','Save failed.'))
+    } finally {
+      setSavingEntry(false)
     }
-    if (result.patientRegistryChanged) setPatientRegistry(loadPatientRegistry())
-    setSavedMessage('Η καταχώρηση αποθηκεύτηκε επιτυχώς.')
   }
 
   const modeLabel =
@@ -587,6 +629,7 @@ export default function NewEntryLauncher({ user, open, onClose, initialTypeId = 
               setWhoObservations={setWhoObservations}
               departmentOptions={departmentOptions}
               professionalCategoryOptions={professionalCategoryOptions}
+              employeeOptions={employeeOptions}
               savedMessage={savedMessage}
               onSubmit={saveEntry}
             />
@@ -736,9 +779,17 @@ export default function NewEntryLauncher({ user, open, onClose, initialTypeId = 
               setStep(1)
             }}
             primaryLabel={L('Αποθήκευση συνεδρίας WHO','Save WHO session')}
-            primaryType="submit"
-            form="hand-hygiene-entry-form"
-            primaryDisabled={whoObservations.length === 0}
+            primaryType="button"
+            onPrimary={() => saveEntry()}
+            saving={savingEntry}
+            primaryDisabled={
+              whoObservations.length === 0
+              && !(
+                String(whoObservation?.professionalCode || '').trim()
+                && whoObservation?.moment
+                && whoObservation?.action
+              )
+            }
           />
         )}
 
