@@ -11,7 +11,7 @@ import { clearProductionLocalOperationalCache } from '../../data/productionDataB
 import { authenticateUser, requestRecovery } from '../../services/auth'
 import { IS_DEMO, IS_PRODUCTION } from '../../core/runtime'
 
-const BUILD_VERSION = '0.12.0-rc.113'
+const BUILD_VERSION = '0.12.0-rc.114'
 
 export default function LoginPage() {
   const [view, setView] = useState('welcome')
@@ -49,7 +49,7 @@ export default function LoginPage() {
       removeSessionValue('healthcare-suite.demo')
       writeSessionValue('healthcare-suite.session',authenticated.session)
       writeSessionValue('healthcare-suite.user', JSON.stringify(authenticated.user))
-      navigate(APP_ROUTES.DASHBOARD, { replace: true })
+      navigate(authenticated.user?.platformOwner?APP_ROUTES.PLATFORM:APP_ROUTES.DASHBOARD, { replace: true })
     } catch (error) {
       if(error?.code==='AUTH_NOT_CONFIGURED') {
         setMessage(t('login.productionAuthRequired'))

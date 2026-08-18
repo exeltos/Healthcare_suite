@@ -48,7 +48,7 @@ export async function authenticateUser({ username, password }) {
     }
     const { error:activationError }=await client.rpc('activate_my_profile')
     if(activationError) throw activationError
-    const context=await fetchProductionUserContext(client)
+    const context=await fetchAnyProductionUserContext(client)
     clearProductionLocalOperationalCache()
     return {
       session:'active',
@@ -86,7 +86,7 @@ export async function validateProductionSession(){
   const { data:{ user }, error }=await client.auth.getUser()
   if(error || !user) return { valid:false, user:null }
   try{
-    const context=await fetchProductionUserContext(client)
+    const context=await fetchAnyProductionUserContext(client)
     clearProductionLocalOperationalCache()
     return {
       valid:true,
@@ -146,6 +146,16 @@ export function isSessionAllowed({ session, user } = {}) {
   if(session!=='active') return false
   if(IS_DEMO) return true
   return Boolean(user && user.authSource==='production-provider')
+}
+
+async function fetchAnyProductionUserContext(client){
+  try{return await fetchProductionUserContext(client)}catch(profileError){
+    const {data,error}=await client.rpc('get_platform_owner_context')
+    if(error)throw profileError
+    const row=Array.isArray(data)?data[0]:data
+    if(!row?.user_id)throw profileError
+    return {authUserId:row.user_id,employeeId:'',organizationId:'',name:row.display_name||row.email,displayName:row.display_name||row.email,username:row.email,email:row.email,initials:initialsOf(row.display_name||row.email),role:'platform_owner',status:'active',department:'',professionalCategory:'',scopeMode:'all',scopeDepartments:[],capabilities:[],moduleAccess:{},lastLogin:null,platformOwner:true}
+  }
 }
 
 async function fetchProductionUserContext(client){

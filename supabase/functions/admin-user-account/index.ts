@@ -58,7 +58,9 @@ async function createAccount({body,organizationId,admin}:any){
   if(!email||!username||!displayName) return json({error:'email, username and displayName are required'},400)
   if(scopeMode==='selected'&&!departmentIds.length) return json({error:'Selected department scope requires at least one department'},400)
 
+  const base=String(Deno.env.get('APP_BASE_URL')||'').replace(/\/$/,'')
   const { data:invited,error:inviteError }=await admin.auth.admin.inviteUserByEmail(email,{
+    redirectTo:base?`${base}/reset-password`:undefined,
     data:{display_name:displayName,username},
   })
   if(inviteError) return json({error:inviteError.message},400)
