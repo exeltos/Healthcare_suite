@@ -8,6 +8,7 @@ import { loadRoleConfig, ROLE_DEFINITIONS } from '../../services/userAccountsSer
 import { loadRoleConfiguration, saveRoleConfiguration } from '../../services/backend/roleConfigurationBackendService'
 import { useI18n } from '../../i18n'
 import { accessLevelLabel, moduleLabel, roleDefinitionPresentation } from './studioPresentation'
+import { MODULES, PROTECTED_ROLE_RULES } from '../../services/accessControlService'
 import './RolePermissionsPage.css'
 
 const LEVELS=[
@@ -56,12 +57,17 @@ export default function RolePermissionsPage() {
   }
 
   async function save(){
-    const saved=await saveRoleConfiguration(draft)
-    setRows(saved)
-    setEditingRole(null)
-    const roleName=roleDefinitionPresentation(role,language).label
-    setFeedback(language==='en'?`Permissions for “${roleName}” were saved.`:`Τα δικαιώματα του ρόλου «${roleName}» αποθηκεύτηκαν.`)
-    notifyAction(L('Τα δικαιώματα αποθηκεύτηκαν.','Permissions saved.'))
+    try{
+      const saved=await saveRoleConfiguration(draft)
+      setRows(saved)
+      setEditingRole(null)
+      const roleName=roleDefinitionPresentation(role,language).label
+      setFeedback(language==='en'?`Permissions for “${roleName}” were saved.`:`Τα δικαιώματα του ρόλου «${roleName}» αποθηκεύτηκαν.`)
+      notifyAction(L('Τα δικαιώματα αποθηκεύτηκαν.','Permissions saved.'))
+    }catch(error){
+      console.error('Role permission save failed',error)
+      notifyAction(L('Η αποθήκευση δικαιωμάτων απέτυχε. Ελέγξτε τους προστατευμένους κανόνες πρόσβασης.','Permission save failed. Check protected access rules.'))
+    }
   }
 
   return <PageChrome
@@ -75,7 +81,7 @@ export default function RolePermissionsPage() {
   >
     <div className="role-summary">
       <ShieldCheck size={18}/>
-      <span>{L('Οι βασικοί ρόλοι είναι προκαθορισμένοι ώστε να διατηρείται καθαρή και ελεγχόμενη πρόσβαση. Τα δικαιώματα κάθε ρόλου μπορούν να προσαρμοστούν από εδώ.','Base roles are predefined to keep access clear and controlled. Permissions for each role can be adjusted here.')}</span>
+      <span>{L('Οι βασικοί ρόλοι είναι προκαθορισμένοι ώστε να διατηρείται καθαρή και ελεγχόμενη πρόσβαση. Τα δικαιώματα κάθε ρόλου μπορούν να προσαρμοστούν από εδώ. Η πρόσβαση στο Κέντρο Διαχείρισης είναι προστατευμένος κανόνας: μόνο ο Διαχειριστής έχει πρόσβαση και δεν μπορεί να αφαιρεθεί από εδώ.','Base roles are predefined to keep access clear and controlled. Permissions for each role can be adjusted here. Management Center access is protected: only the Administrator can access it and this rule cannot be removed here.')}</span>
     </div>
 
     {feedback&&<div className="role-success">{feedback}</div>}
@@ -122,7 +128,7 @@ export default function RolePermissionsPage() {
               <th>{moduleLabel(row.module,language)}</th>
               {ROLE_DEFINITIONS.map(item=><td key={item.id}>
                 {editingRole===item.id
-                  ? <PermissionSelect value={row[item.id]||'Χωρίς πρόσβαση'} language={language} onChange={value=>change(row.module,value)}/>
+                  ? <PermissionSelect value={row[item.id]||'Χωρίς πρόσβαση'} language={language} disabled={Boolean(PROTECTED_ROLE_RULES[row.module]?.[item.id])} onChange={value=>change(row.module,value)}/>
                   : <span className={(row[item.id]||'Χωρίς πρόσβαση')==='Χωρίς πρόσβαση'?'role-none':''}>{accessLevelLabel(row[item.id]||'Χωρίς πρόσβαση',language)}</span>}
               </td>)}
             </tr>)}
@@ -133,9 +139,9 @@ export default function RolePermissionsPage() {
   </PageChrome>
 }
 
-function PermissionSelect({value,onChange,language}){
+function PermissionSelect({value,onChange,language,disabled=false}){
   const options=LEVELS.includes(value)?LEVELS:[value,...LEVELS]
-  return <select className="role-permission-select" value={value} onChange={e=>onChange(e.target.value)}>
+  return <select className="role-permission-select" value={value} disabled={disabled} title={disabled?(language==='en'?'Protected platform-security rule':'Προστατευμένος κανόνας ασφάλειας πλατφόρμας'):undefined} onChange={e=>onChange(e.target.value)}>
     {options.map(option=><option key={option} value={option}>{accessLevelLabel(option,language)}</option>)}
   </select>
 }

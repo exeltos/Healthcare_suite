@@ -50,7 +50,7 @@ export default function CapaPage(){
     notifyAction(L('Η CAPA δεν μπορεί να κλείσει πριν επιβεβαιωθεί ως αποτελεσματική. Μεταφέρθηκε σε «Σε επαλήθευση».','CAPA cannot close before effectiveness is confirmed. It was moved to Verification.'))
   }
   if(record.effectivenessStatus==='Αποτελεσματική')record.status='Ολοκληρωμένη'
-  await saveQualityCapa(record);setRows(await loadQualityCapa());close()
+  await saveQualityCapa({...record,...(record.status==='Ολοκληρωμένη'?{closedAt:record.closedAt||new Date().toISOString(),closureVerified:true}:{})});setRows(await loadQualityCapa());close()
 }
  async function remove(){if(!editing)return;const reason=promptAction(L('Σύντομος λόγος ακύρωσης της CAPA:','Short reason for cancelling this CAPA:'));if(reason===null)return;if(!String(reason).trim()){notifyAction(L('Χρειάζεται ένας σύντομος λόγος ακύρωσης.','A short cancellation reason is required.'));return}await deleteQualityCapa(editing.id,String(reason).trim());setRows(await loadQualityCapa());close()}
  async function createFollowUp(){if(!editing)return;const record=await saveQualityCapa({source:editing.source||editing.id,sourceType:editing.sourceType||'CAPA',parentId:editing.id,title:`Επανεξέταση: ${editing.title}`,department:editing.department,owner:editing.owner,priority:editing.priority,description:`Νέα ενέργεια μετά από μη αποτελεσματική CAPA ${editing.id}`,rootCause:editing.rootCause,status:'Ανοικτή',progress:0});setRows(await loadQualityCapa());notifyAction(`${L('Δημιουργήθηκε','Created')} ${record.id}`)}

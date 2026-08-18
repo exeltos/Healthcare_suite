@@ -14,3 +14,13 @@
 .org-document-review-cell{display:flex;flex-direction:column;gap:2px}.org-document-review-cell small{font-size:.68rem;font-weight:700}.org-document-review-cell small.is-due{color:var(--warning-text,var(--warning))}.org-document-review-cell small.is-overdue{color:var(--danger)}
 .org-document-version{border:1px solid var(--border-subtle,#dfe7e5);border-radius:11px;background:var(--surface);overflow:hidden}.org-document-version__summary{width:100%;display:grid;grid-template-columns:minmax(220px,1fr) minmax(180px,.8fr) auto;gap:12px;align-items:center;padding:11px 12px;border:0;background:transparent;text-align:left;color:inherit;cursor:pointer}.org-document-version__summary:hover{background:var(--surface-subtle)}.org-document-version__detail{padding:0 12px 12px;border-top:1px solid var(--border);background:var(--surface-subtle)}.org-document-version__meta{display:flex;flex-wrap:wrap;gap:8px 18px;padding:10px 0;font-size:.73rem;color:var(--text-muted)}.org-document-version__meta strong{color:var(--text-soft)}
 @media(max-width:800px){.org-document-governance-banner{align-items:flex-start}.org-document-version__summary{grid-template-columns:1fr auto}.org-document-version__summary>.org-muted{grid-column:1 / -1}}
+
+/* rc.95 — finalized committee minutes remain fixed while decision actions keep
+   a small operational closed-loop status control. */
+.org-finalized-actions{display:grid;gap:8px;margin-top:10px}
+.org-finalized-action{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface-soft)}
+.org-finalized-action__copy{min-width:0;display:grid;gap:2px}
+.org-finalized-action__copy strong{font-size:.9rem}
+.org-finalized-action__copy small{font-size:.78rem;color:var(--text-muted)}
+.org-finalized-action select{min-width:145px}
+@media(max-width:760px){.org-finalized-action{align-items:stretch;flex-direction:column}.org-finalized-action select{width:100%}}

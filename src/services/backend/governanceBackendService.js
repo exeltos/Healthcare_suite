@@ -13,6 +13,7 @@ const DEFAULT_NOTIFICATION_POLICIES=[
   {policy_key:'overdue_capa',enabled:true,severity:'danger',escalation_after_hours:24,settings:{recipientRoles:['admin','infection_control_lead']}},
   {policy_key:'document_review_overdue',enabled:true,severity:'warning',escalation_after_hours:24,settings:{recipientRoles:['admin']}},
   {policy_key:'competency_followup',enabled:true,severity:'warning',escalation_after_hours:24,settings:{recipientRoles:['admin']}},
+  {policy_key:'committee_action_overdue',enabled:true,severity:'warning',escalation_after_hours:24,settings:{closedLoop:true,recipientRoles:['admin','infection_control_lead']}},
 ]
 const DEFAULT_RETENTION=[
   {policy_key:'clinical',record_category:'Clinical records',retention_years:20,disposition:'archive',owner:'DPO / Medical Service',legal_basis:'Confirm against applicable law and organization policy.',active:true},

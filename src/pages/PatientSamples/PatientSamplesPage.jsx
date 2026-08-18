@@ -22,10 +22,9 @@ import DynamicFormRenderer from '../../components/forms/DynamicFormRenderer'
 import { getTemplatesForContext } from '../../services/formTemplatesService'
 import HybridPatientSelector from '../../components/core/HybridPatientSelector/HybridPatientSelector'
 import {
-  deletePatientSample,
   loadPatientSamples,
-  savePatientSamples,
 } from '../../services/patientSamplesService'
+import { deleteClinicalPatientSample, loadClinicalPatientSamples, saveClinicalPatientSample } from '../../services/backend/clinicalDirectoryService'
 
 import { Button, PageHeader, StatCard } from '../../components/core'
 
@@ -93,6 +92,7 @@ function activeItems(masterData, key) {
 export default function PatientSamplesPage() {
   const [masterData, setMasterData] = useState(loadMasterData)
   const [records, setRecords] = useState(loadSamples)
+  useEffect(()=>{loadClinicalPatientSamples().then(setRecords).catch(()=>{})},[])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('Όλα')
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -185,11 +185,6 @@ export default function PatientSamplesPage() {
     return { total, pending, positive, screening }
   }, [records])
 
-  function persist(nextRecords) {
-    const savedRecords = savePatientSamples(nextRecords)
-    setRecords(savedRecords)
-  }
-
   function openNewRecord() {
     setSelectedRecord(null)
     setFormData({
@@ -218,7 +213,7 @@ export default function PatientSamplesPage() {
     setQuestionnaireErrors({})
   }
 
-  function saveRecord(event) {
+  async function saveRecord(event) {
     event.preventDefault()
 
     if (
@@ -270,24 +265,18 @@ export default function PatientSamplesPage() {
       updatedAt: new Date().toISOString(),
     }
 
-    const nextRecords = selectedRecord
-      ? records.map((record) =>
-          record.id === selectedRecord.id ? nextRecord : record,
-        )
-      : [nextRecord, ...records]
-
-    persist(nextRecords)
-
+    await saveClinicalPatientSample(nextRecord)
+    setRecords(await loadClinicalPatientSamples())
     closeDrawer()
   }
 
-  function deleteRecord(recordId) {
+  async function deleteRecord(recordId) {
     if (!confirmAction('Να διαγραφεί το δείγμα ασθενούς;')) {
       return
     }
 
-    const nextRecords = deletePatientSample(recordId)
-    setRecords(nextRecords)
+    await deleteClinicalPatientSample(recordId)
+    setRecords(await loadClinicalPatientSamples())
     closeDrawer()
   }
 

@@ -13,6 +13,7 @@ import { IS_PRODUCTION, SESSION_IDLE_MS } from '../../core/runtime'
 import { isSupabaseConfigured, requireSupabase } from '../../integrations/supabase'
 import { writeSessionValue } from '../../core/storage'
 import { canViewModule, moduleForPath } from '../../services/accessControlService'
+import { hydrateProductionOperationalMirrors } from '../../services/backend/productionHydrationService'
 
 const SESSION_KEY='healthcare-suite.session'
 export default function AppLayout() {
@@ -20,6 +21,7 @@ export default function AppLayout() {
   let cachedUser=null; try{cachedUser=JSON.parse(readSessionValue('healthcare-suite.user')||'null')}catch{}
   const [user,setUser]=useState(cachedUser)
   const [authState,setAuthState]=useState(IS_PRODUCTION?'checking':'ready')
+  const [dataState,setDataState]=useState(IS_PRODUCTION?'waiting':'ready')
   const [collapsed,setCollapsed]=useState(false),[mobileOpen,setMobileOpen]=useState(false),[launcherOpen,setLauncherOpen]=useState(false),[launcherInitialType,setLauncherInitialType]=useState(''),[goodbye,setGoodbye]=useState(false)
 
   useEffect(()=>{
@@ -49,6 +51,16 @@ export default function AppLayout() {
       })
     return()=>{cancelled=true}
   },[])
+
+  useEffect(()=>{
+    let cancelled=false
+    if(!IS_PRODUCTION||authState!=='ready'||!user||user.demo===true){setDataState('ready');return undefined}
+    setDataState('loading')
+    hydrateProductionOperationalMirrors()
+      .then(()=>{if(!cancelled)setDataState('ready')})
+      .catch(error=>{console.error('Production data hydration failed',error);if(!cancelled)setDataState('ready')})
+    return()=>{cancelled=true}
+  },[authState,user?.id])
 
   // Keep the UI in sync with provider-side sign-out/session expiry.
   useEffect(()=>{
@@ -91,7 +103,7 @@ export default function AppLayout() {
   },[authState])
 
   const session=readSessionValue(SESSION_KEY)
-  if(authState==='checking') return <div className="app-auth-loading"><div className="suite-logo">H</div><span>{t('common.loading')}</span></div>
+  if(authState==='checking'||dataState==='loading') return <div className="app-auth-loading"><div className="suite-logo">H</div><span>{t('common.loading')}</span></div>
   if((authState==='invalid'||!isSessionAllowed({session,user}))&&!goodbye) return <Navigate to="/login" replace/>
   const currentModule=moduleForPath(location.pathname)
   const helpPreview=new URLSearchParams(location.search).get('helpPreview')==='1'

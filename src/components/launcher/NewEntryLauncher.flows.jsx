@@ -138,15 +138,6 @@ export function WhoEntryFlow({
           />
 
           <HybridInput
-            label={L('Αριθμός επαγγελματιών','Number of professionals')}
-            type="number"
-            value={whoSession.professionalCount || ''}
-            onChange={(value) =>
-              setWhoSession((current) => ({ ...current, professionalCount: value }))
-            }
-          />
-
-          <HybridInput
             label={L('Ώρα έναρξης','Start time')}
             type="time"
             value={whoSession.startTime}
@@ -174,7 +165,7 @@ export function WhoEntryFlow({
       >
         <div className="who-observation-grid">
           <label className="hybrid-field">
-            <span>{L('Κωδικός επαγγελματία','Professional identifier')}</span>
+            <span>{L('Αριθμός επαγγελματιών','Professional number')}</span>
             <input
               value={whoObservation.professionalCode}
               placeholder={L('π.χ. 1, 2','e.g. 1, 2')}
@@ -292,7 +283,7 @@ export function WhoEntryFlow({
         </button>
       </EntryFormSection>
 
-      <WhoSummary observations={whoObservations} draftObservation={whoObservation} professionalCount={whoSession.professionalCount} language={language} />
+      <WhoSummary observations={whoObservations} draftObservation={whoObservation} language={language} />
 
       <div className="who-observation-list">
         {whoObservations.map((observation, index) => {

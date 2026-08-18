@@ -98,6 +98,12 @@ export default function DocumentsPage(){
    }
    if(next==='Σε ισχύ'){
      if(!(form.attachments||[]).length){notifyAction(L('Δεν μπορεί να εγκριθεί χωρίς αρχείο.','A document cannot be approved without a file.'));return}
+     const preparer=String(form.preparedBy||'').trim()
+     const submitter=String(form.submittedBy||'').trim()
+     if(actor && (actor===preparer || actor===submitter)){
+       notifyAction(L('Η έγκριση απαιτεί διαφορετικό χρήστη από τον συντάκτη/υποβάλλοντα (διαχωρισμός καθηκόντων).','Approval requires a different user from the preparer/submitter (segregation of duties).'))
+       return
+     }
      const effectiveDate=form.effectiveDate||today
      const reviewDate=form.reviewDate||addMonths(effectiveDate,form.reviewCycleMonths)
      patch={...patch,reviewedBy:actor,reviewedAt:new Date().toISOString(),approvedBy:actor,approvedAt:new Date().toISOString(),effectiveDate,reviewDate}

@@ -50,7 +50,7 @@ export function EnvironmentSummary({ samples }) {
   )
 }
 
-export function WhoSummary({ observations, draftObservation, professionalCount, language: languageProp }) {
+export function WhoSummary({ observations, draftObservation, language: languageProp }) {
   const { language: contextLanguage } = useI18n()
   const language = languageProp || contextLanguage
   const L = (el,en) => language === 'en' ? en : el
@@ -70,7 +70,7 @@ export function WhoSummary({ observations, draftObservation, professionalCount, 
     && draftObservation?.action
   )
   const previewObservations = draftReady ? [...observations, draftObservation] : observations
-  const { opportunities, professionals, handRub, handWash, missed, compliance } = calculateWhoCompliance(previewObservations, professionalCount)
+  const { opportunities, professionals, handRub, handWash, missed, compliance } = calculateWhoCompliance(previewObservations)
 
   return (
     <>

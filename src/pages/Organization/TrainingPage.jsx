@@ -151,11 +151,15 @@ export default function TrainingPage(){
       return
     }
     if(form.status==='Ολοκληρωμένη' && form.competencyRequired){
-      const pending=(form.attendance||[]).filter(x=>['Παρών','Online'].includes(x.status) && !x.competencyResult)
-      if(pending.length){
-        notifyAction(L('Για εκπαίδευση με αξιολόγηση επάρκειας, καταγράψτε αποτέλεσμα για όλους όσοι ολοκλήρωσαν.','For competency-assessed training, record a result for everyone who completed it.'))
-        return
-      }
+      const assessed=(form.attendance||[]).filter(x=>['Παρών','Online'].includes(x.status))
+      const pending=assessed.filter(x=>!x.competencyResult)
+      if(pending.length){notifyAction(L('Για εκπαίδευση με αξιολόγηση επάρκειας, καταγράψτε αποτέλεσμα για όλους όσοι ολοκλήρωσαν.','For competency-assessed training, record a result for everyone who completed it.'));return}
+      const missingEvidence=assessed.filter(x=>!String(x.assessedBy||'').trim()||!x.assessedAt)
+      if(missingEvidence.length){notifyAction(L('Για κάθε αξιολόγηση επάρκειας απαιτούνται αξιολογητής και ημερομηνία αξιολόγησης.','Every competency assessment requires an assessor and assessment date.'));return}
+      const competentWithoutValidity=assessed.filter(x=>x.competencyResult==='Επαρκής'&&!x.competencyValidUntil&&!form.validUntil)
+      if(competentWithoutValidity.length){notifyAction(L('Για αποτέλεσμα «Επαρκής» ορίστε ημερομηνία ισχύος επάρκειας ή γενική ισχύ πιστοποίησης.','For a Competent result, set competency validity or overall certification validity.'));return}
+      const retrainingWithoutPlan=assessed.filter(x=>x.competencyResult==='Χρειάζεται επανεκπαίδευση'&&!String(x.competencyNotes||'').trim())
+      if(retrainingWithoutPlan.length){notifyAction(L('Για όσους χρειάζονται επανεκπαίδευση καταγράψτε σημείωση/σχέδιο επανεκπαίδευσης.','For staff requiring retraining, record a retraining note/plan.'));return}
     }
     try {
       await saveOperationalTraining({...form,id:editing?.id||form.id,durationHours:String(form.durationHours||'')})
@@ -209,7 +213,7 @@ export default function TrainingPage(){
   }
 
   function updateAttendance(id,patch){
-    setForm(c=>({...c,attendance:c.attendance.map(x=>attendeeKey(x)===String(id)?{...x,...patch}:x)}))
+    setForm(c=>({...c,attendance:c.attendance.map(x=>attendeeKey(x)===String(id)?{...x,...patch,...(patch.competencyResult?{competencyStatus:patch.competencyResult==='Επαρκής'?'closed':'retraining_required',competencyUpdatedAt:new Date().toISOString()}: {})}:x)}))
   }
 
   return <PageChrome className="organization-unified-page" header={<PageHeader
@@ -332,7 +336,7 @@ export default function TrainingPage(){
           {form.competencyRequired&&form.attendance.some(att=>['Παρών','Online'].includes(att.status))&&<div className="org-competency-followup">
             <div className="org-competency-followup__title">{L('Στοιχεία αξιολόγησης επάρκειας','Competency assessment details')}</div>
             {form.attendance.filter(att=>['Παρών','Online'].includes(att.status)).map(att=><div className="org-competency-followup__card" key={`competency-${attendeeKey(att)}`}>
-              <div className="org-competency-followup__person"><strong>{att.employeeName}</strong><small>{[att.department,att.professionalCategory].filter(Boolean).join(' · ')}</small></div>
+              <div className="org-competency-followup__person"><strong>{att.employeeName}</strong><small>{[att.department,att.professionalCategory].filter(Boolean).join(' · ')}</small>{att.competencyResult&&<small>{att.competencyResult==='Επαρκής'?L('Closed-loop: επάρκεια τεκμηριωμένη','Closed-loop: competency documented'):L('Open follow-up: απαιτείται επανεκπαίδευση','Open follow-up: retraining required')}</small>}</div>
               <div className="org-competency-followup__fields">
                 <label><span>{L('Αξιολογητής','Assessed by')}</span><input value={att.assessedBy||''} onChange={e=>updateAttendance(attendeeKey(att),{assessedBy:e.target.value})}/></label>
                 <label><span>{L('Ημερομηνία αξιολόγησης','Assessment date')}</span><input type="date" value={(att.assessedAt||'').slice(0,10)} onChange={e=>updateAttendance(attendeeKey(att),{assessedAt:e.target.value})}/></label>

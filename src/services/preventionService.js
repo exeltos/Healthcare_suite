@@ -1,4 +1,5 @@
 import { APP_EVENTS } from '../core/events'
+import { IS_PRODUCTION } from '../core/runtime'
 import {
   antisepticRepository,
   bundlesRepository,
@@ -60,6 +61,23 @@ export function syncPromotedTherapy({ therapy, patient, surveillanceCase }) {
     approval: therapy.approval || 'Εκκρεμεί', doctor: therapy.approvalDoctor || '', approvalDate: therapy.approvalDate || '',
     notes: therapy.approvalNotes || therapy.antibiogramNotes || '',
   })
+}
+
+export async function syncPromotedTherapyAsync(args={}){
+  const local=syncPromotedTherapy(args)
+  const therapy=args?.therapy
+  if(!therapy?.id)return local
+  if(!IS_PRODUCTION)return local
+  const {savePreventionRecord,deletePreventionRecord}=await import('./backend/preventionBackendService')
+  const id=promotedRecordIdForTherapy(therapy.id)
+  if(!therapy.isPromoted){await deletePreventionRecord('promoted_antibiotic',id);return null}
+  return savePreventionRecord('promoted_antibiotic',local)
+}
+export async function deletePromotedAntibioticAsync(id){
+  deletePromotedAntibiotic(id)
+  if(!IS_PRODUCTION)return true
+  const {deletePreventionRecord}=await import('./backend/preventionBackendService')
+  return deletePreventionRecord('promoted_antibiotic',id)
 }
 
 export const loadStaffVaccinations = staffVaccinationsRepository.findAll

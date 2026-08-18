@@ -330,3 +330,71 @@
     padding-right:6px;
   }
 }
+
+
+/* rc.87 — surveillance case workspace scrolling.
+   Case header and case tabs stay fixed; the selected case section
+   (Clinical assessment / Samples / Management) scrolls independently. */
+@media (min-width: 901px) {
+  .pw-page-body:has(> .pw-workspace){
+    height:100%;
+    min-height:0;
+    overflow:hidden !important;
+  }
+  .pw-page-body > .pw-workspace{
+    height:100%;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    overflow:hidden;
+  }
+  .pw-workspace > .pw-case-hero{
+    flex:0 0 auto;
+  }
+  .pw-workspace > .pw-workspace-tabs{
+    flex:0 0 auto;
+    margin-bottom:-18px;
+  }
+  .pw-workspace > .pw-workspace-body{
+    flex:1 1 auto;
+    min-height:0;
+    height:auto;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
+    padding-bottom:34px;
+  }
+
+  /* The case body itself owns vertical scrolling. Do not trap it inside
+     nested Care/Sample/Assessment containers. */
+  .pw-workspace-body > .pw-form-page,
+  .pw-workspace-body > .pw-care-grid,
+  .pw-workspace-body > .pw-panel{
+    height:auto !important;
+    min-height:0;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+  .pw-workspace-body > .pw-care-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-template-rows:auto;
+    align-items:start;
+  }
+  .pw-workspace-body .pw-care-card{
+    height:auto !important;
+    min-height:0;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+  .pw-workspace-body .pw-care-card > .pw-record-list,
+  .pw-workspace-body .pw-panel > .pw-record-list,
+  .pw-workspace-body .pw-tab-body{
+    height:auto !important;
+    min-height:0;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+}

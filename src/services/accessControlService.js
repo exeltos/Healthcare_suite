@@ -39,6 +39,37 @@ const CAPABILITY_BY_MODULE = Object.freeze({
   [MODULES.LIRA]:'lira',
 })
 
+
+export const PROTECTED_ROLE_RULES = Object.freeze({
+  [MODULES.STUDIO]: Object.freeze({
+    admin:'Πλήρης',
+    infection_lead:'Χωρίς πρόσβαση',
+    infection_liaison:'Χωρίς πρόσβαση',
+    medical_reviewer:'Χωρίς πρόσβαση',
+    department_user:'Χωρίς πρόσβαση',
+    laboratory:'Χωρίς πρόσβαση',
+    demo:'Χωρίς πρόσβαση',
+  }),
+})
+
+export function enforceProtectedRoleRules(rows=[]){
+  return (rows||[]).map(row=>{
+    const protectedValues=PROTECTED_ROLE_RULES[row.module]
+    return protectedValues?{...row,...protectedValues}:{...row}
+  })
+}
+
+export function validateProtectedRoleRules(rows=[]){
+  for(const row of rows||[]){
+    const protectedValues=PROTECTED_ROLE_RULES[row.module]
+    if(!protectedValues)continue
+    for(const [role,expected] of Object.entries(protectedValues)){
+      if(row[role]!==expected)throw new Error(`Protected access rule violation: ${row.module} / ${role}`)
+    }
+  }
+  return true
+}
+
 export function defaultModuleAccess(role='department_user'){
   return Object.fromEntries(ROLE_PERMISSION_MATRIX.map(row=>[row.module,row[role]||'Χωρίς πρόσβαση']))
 }

@@ -3,6 +3,7 @@ import { notifyAction } from '../../components/core/feedback/index'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { APP_EVENTS, useAppEvents } from '../../core/events'
+import { PROMOTED_ANTIBIOTICS_EVENT } from '../../services/preventionService'
 import {
   Activity,
   BarChart3,
@@ -122,6 +123,7 @@ export default function IndicatorsPage({ managementMode = false }) {
     APP_EVENTS.EMPLOYEES_UPDATED,
     APP_EVENTS.PATIENT_SAMPLES_UPDATED,
     APP_EVENTS.ISOLATIONS_UPDATED,
+    PROMOTED_ANTIBIOTICS_EVENT,
   ], () => {
     const next = loadIndicatorsSnapshot({ from: dateFrom, to: dateTo })
     setRows(next)

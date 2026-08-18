@@ -1,6 +1,6 @@
 import { IS_PRODUCTION } from '../../core/runtime'
 import { requireSupabase } from '../../integrations/supabase'
-import { loadStaffSamples,loadEnvironmentalSamples,loadWaterRecords,upsertStaffSample,upsertEnvironmentalSample,upsertWaterRecord,deleteStaffSample,deleteEnvironmentalSample,deleteWaterRecord } from '../laboratorySourcesService'
+import { loadStaffSamples,loadEnvironmentalSamples,loadWaterRecords,saveStaffSamples,saveEnvironmentalSamples,saveWaterRecords,upsertStaffSample,upsertEnvironmentalSample,upsertWaterRecord,deleteStaffSample,deleteEnvironmentalSample,deleteWaterRecord } from '../laboratorySourcesService'
 import { loadIsolations,upsertIsolation,deleteIsolation } from '../isolationsService'
 import { loadPatientAttachments,addPatientAttachment,deletePatientAttachment } from '../patientAttachmentsService'
 import { loadNotifiableDiseases,saveNotifiableDiseases } from '../notifiableDiseasesService'
@@ -10,7 +10,14 @@ export async function loadClinicalSourceSamples(){
   const c=requireSupabase()
   const {data,error}=await c.from('laboratory_source_samples').select('*,department:departments(id,name),employee:employees(id,first_name,last_name,employee_code)').order('created_at',{ascending:false})
   if(error)throw error
-  return (data||[]).map(mapSource)
+  const rows=(data||[]).map(mapSource)
+  const staff=rows.filter(row=>row.sourceType==='Προσωπικό')
+  const environment=rows.filter(row=>row.sourceType==='Περιβάλλον')
+  const water=rows.filter(row=>row.sourceType==='Νερό')
+  saveStaffSamples(staff)
+  saveEnvironmentalSamples(environment)
+  saveWaterRecords(water)
+  return rows
 }
 export async function saveClinicalSourceSample(input={}){
   if(!IS_PRODUCTION)return localSaveSource(input)
@@ -30,11 +37,13 @@ export async function saveClinicalSourceSample(input={}){
     data:rest(row,['id','sourceType','department','subjectName','subjectCode','sampleType','sampleReason','collectionDate','collectionTime','receivedDate','resultDate','status','resultStatus','microorganism','resistance','sampleAcceptance','rejectionReason','validatedAt','criticalResult','criticalCommunicatedTo','criticalCommunicatedAt'])}
   const {data,error}=await c.from('laboratory_source_samples').upsert(payload,{onConflict:'id'}).select('*,department:departments(id,name),employee:employees(id,first_name,last_name,employee_code)').single()
   if(error)throw error
-  return mapSource(data)
+  const mapped=mapSource(data)
+  localSaveSource(mapped)
+  return mapped
 }
 export async function deleteClinicalSourceSample(record){
   if(!IS_PRODUCTION)return localDeleteSource(record)
-  const c=requireSupabase();const {error}=await c.from('laboratory_source_samples').delete().eq('id',String(record.id));if(error)throw error;return true
+  const c=requireSupabase();const {error}=await c.from('laboratory_source_samples').delete().eq('id',String(record.id));if(error)throw error;localDeleteSource(record);return true
 }
 
 export async function loadClinicalIsolations(patientId=''){
@@ -42,18 +51,24 @@ export async function loadClinicalIsolations(patientId=''){
   const c=requireSupabase();let q=c.from('patient_isolations').select('*,department:departments(id,name),patient:patients(id,patient_code,first_name,last_name)').order('created_at',{ascending:false})
   if(patientId)q=q.eq('patient_id',String(patientId))
   const {data,error}=await q;if(error)throw error
-  return (data||[]).map(r=>({...r.data,id:r.id,patientId:r.patient_id,clinicalCaseId:r.surveillance_case_id||r.data?.clinicalCaseId||'',patientCode:one(r.patient)?.patient_code||'',patientName:[one(r.patient)?.first_name,one(r.patient)?.last_name].filter(Boolean).join(' '),department:one(r.department)?.name||'',isolationType:r.isolation_type,status:r.status,startDate:r.start_date||'',endDate:r.end_date||'',reason:r.reason||''}))
+  const rows=(data||[]).map(r=>({...r.data,id:r.id,patientId:r.patient_id,clinicalCaseId:r.surveillance_case_id||r.data?.clinicalCaseId||'',patientCode:one(r.patient)?.patient_code||'',patientName:[one(r.patient)?.first_name,one(r.patient)?.last_name].filter(Boolean).join(' '),department:one(r.department)?.name||'',isolationType:r.isolation_type,status:r.status,startDate:r.start_date||'',endDate:r.end_date||'',reason:r.reason||''}))
+  if(!patientId){
+    const current=loadIsolations()
+    for(const item of current)deleteIsolation(item.id)
+    for(const item of rows)upsertIsolation(item)
+  }
+  return rows
 }
 export async function saveClinicalIsolation(input={}){
   if(!IS_PRODUCTION)return upsertIsolation(input)
   const c=requireSupabase(),org=await orgId(c),pid=await patientIdFor(c,input),dep=await departmentId(c,org,input.department)
   const row={...input,id:input.id||`ISO-${Date.now()}`}
   const payload={id:String(row.id),organization_id:org,patient_id:pid,surveillance_case_id:row.clinicalCaseId?String(row.clinicalCaseId):null,department_id:dep,isolation_type:String(row.isolationType||''),status:String(row.status||'Ενεργή'),start_date:date(row.startDate),end_date:date(row.endDate),reason:String(row.reason||''),data:rest(row,['id','patientId','patientCode','patientName','department','isolationType','status','startDate','endDate','reason'])}
-  const {data,error}=await c.from('patient_isolations').upsert(payload,{onConflict:'id'}).select().single();if(error)throw error;return {...row,id:data.id}
+  const {data,error}=await c.from('patient_isolations').upsert(payload,{onConflict:'id'}).select().single();if(error)throw error;const mapped={...row,id:data.id};upsertIsolation(mapped);return mapped
 }
 export async function deleteClinicalIsolation(id){
   if(!IS_PRODUCTION)return deleteIsolation(id)
-  const c=requireSupabase();const {error}=await c.from('patient_isolations').delete().eq('id',String(id));if(error)throw error;return true
+  const c=requireSupabase();const {error}=await c.from('patient_isolations').delete().eq('id',String(id));if(error)throw error;deleteIsolation(id);return true
 }
 
 export async function loadClinicalAttachments(patientId){
@@ -85,18 +100,18 @@ export async function signedClinicalAttachmentUrl(record,expires=300){
 export async function loadClinicalNotifiableDiseases(){
   if(!IS_PRODUCTION)return loadNotifiableDiseases()
   const c=requireSupabase();const {data,error}=await c.from('notifiable_diseases').select('*,department:departments(id,name),patient:patients(id,patient_code,first_name,last_name)').order('created_at',{ascending:false});if(error)throw error
-  return (data||[]).map(mapDisease)
+  const rows=(data||[]).map(mapDisease);saveNotifiableDiseases(rows);return rows
 }
 export async function saveClinicalNotifiableDisease(input={}){
   if(!IS_PRODUCTION){const rows=loadNotifiableDiseases();const row={...input,id:input.id||`YDN-${Date.now()}`};saveNotifiableDiseases([row,...rows.filter(x=>x.id!==row.id)]);return row}
   const c=requireSupabase(),org=await orgId(c),pid=await optionalPatientIdFor(c,input),dep=await departmentId(c,org,input.department)
   const row={...input,id:input.id||`YDN-${Date.now()}`}
   const payload={id:String(row.id),organization_id:org,patient_id:pid,department_id:dep,disease:String(row.disease||''),deadline:String(row.deadline||''),diagnosis_date:date(row.diagnosisDate),declaration_date:date(row.declarationDate),status:String(row.status||'Προς δήλωση'),case_classification:String(row.caseClassification||''),physician:String(row.physician||''),notes:String(row.notes||''),data:rest(row,['id','patientId','patientCode','patientName','department','disease','deadline','diagnosisDate','declarationDate','status','caseClassification','physician','notes'])}
-  const {data,error}=await c.from('notifiable_diseases').upsert(payload,{onConflict:'id'}).select('*,department:departments(id,name),patient:patients(id,patient_code,first_name,last_name)').single();if(error)throw error;return mapDisease(data)
+  const {data,error}=await c.from('notifiable_diseases').upsert(payload,{onConflict:'id'}).select('*,department:departments(id,name),patient:patients(id,patient_code,first_name,last_name)').single();if(error)throw error;const mapped=mapDisease(data);saveNotifiableDiseases([mapped,...loadNotifiableDiseases().filter(x=>String(x.id)!==String(mapped.id))]);return mapped
 }
 export async function deleteClinicalNotifiableDisease(id){
   if(!IS_PRODUCTION){saveNotifiableDiseases(loadNotifiableDiseases().filter(x=>String(x.id)!==String(id)));return true}
-  const c=requireSupabase();const {error}=await c.from('notifiable_diseases').delete().eq('id',String(id));if(error)throw error;return true
+  const c=requireSupabase();const {error}=await c.from('notifiable_diseases').delete().eq('id',String(id));if(error)throw error;saveNotifiableDiseases(loadNotifiableDiseases().filter(x=>String(x.id)!==String(id)));return true
 }
 
 function mapSource(r){const e=one(r.employee),d=one(r.department);return {...r.data,id:r.id,sourceType:r.source_type,employeeId:r.employee_id||'',employeeName:e?[e.first_name,e.last_name].filter(Boolean).join(' '):'',employeeCode:e?.employee_code||'',department:d?.name||'',subjectName:r.subject_name||'',subjectCode:r.subject_code||'',sampleType:r.sample_type||'',sampleReason:r.sample_reason||'',collectionDate:r.collection_date||'',collectionTime:String(r.collection_time||'').slice(0,5),receivedDate:r.received_date||'',resultDate:r.result_date||'',status:r.status||'',resultStatus:r.status||'',microorganism:r.microorganism||'',resistance:r.resistance||'',sampleAcceptance:r.sample_acceptance||'Αποδεκτό',rejectionReason:r.rejection_reason||'',validatedAt:r.validated_at||'',validatedBy:r.data?.validatedBy||'',criticalResult:Boolean(r.critical_result),criticalCommunicatedTo:r.critical_communicated_to||'',criticalCommunicatedAt:r.critical_communicated_at||'',criticalCommunicatedBy:r.data?.criticalCommunicatedBy||''}}

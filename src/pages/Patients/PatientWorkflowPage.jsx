@@ -22,7 +22,7 @@ import { deleteClinicalInfection, deleteClinicalPatient, deleteClinicalPatientSa
 import { closeClinicalSurveillanceEpisode, deletePatientSampleWithClinicalWorkflowAsync, savePatientSampleWithClinicalWorkflowAsync } from '../../services/clinicalWorkflowService'
 import { SURVEILLANCE_CASE_STATUS, getPatientCases } from '../../services/surveillanceCasesService'
 import { EODY_DISEASES } from '../../services/notifiableDiseasesService'
-import { promotedRecordIdForTherapy, syncPromotedTherapy, deletePromotedAntibiotic, loadPromotedAntibiotics, PROMOTED_ANTIBIOTICS_EVENT } from '../../services/preventionService'
+import { promotedRecordIdForTherapy, deletePromotedAntibioticAsync, loadPromotedAntibiotics, PROMOTED_ANTIBIOTICS_EVENT } from '../../services/preventionService'
 import { deleteClinicalAttachment, deleteClinicalIsolation, deleteClinicalNotifiableDisease, loadClinicalAttachments, loadClinicalIsolations, loadClinicalNotifiableDiseases, saveClinicalIsolation, saveClinicalNotifiableDisease, uploadClinicalAttachment } from '../../services/backend/clinicalSupportBackendService'
 import {
   CLINICAL_ASSESSMENT_OPTIONS,
@@ -190,7 +190,7 @@ export default function PatientWorkflowPage() {
     for (const surveillanceCase of cases) {
       for (const therapy of getTherapies(surveillanceCase)) {
         if (therapy?.id) {
-          await deletePromotedAntibiotic(promotedRecordIdForTherapy(surveillanceCase.id, therapy.id))
+          await deletePromotedAntibioticAsync(promotedRecordIdForTherapy(therapy.id))
         }
       }
       await deleteClinicalSurveillanceCase(surveillanceCase.id)

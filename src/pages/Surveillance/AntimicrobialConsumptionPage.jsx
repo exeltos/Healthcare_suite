@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BarChart3, Calculator, Download, Pill, Plus, Printer, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Button, Drawer, EntityCell, EntitySummary, FormActions, FormField, FormGrid, FormSection, ListWorkspace, PageChrome, PageHeader, StatCard } from '../../components/core'
@@ -6,7 +6,8 @@ import { confirmAction, notifyAction } from '../../components/core/feedback'
 import { normalizeText, selectedRows, sortRows } from '../../core/utils/entityList'
 import { downloadCsv, printRows } from '../../core/utils/listExport'
 import { activeMasterItems, masterNames } from '../../services/masterDataService'
-import { loadAntibioticDDD, saveAntibioticDDD, loadDailyCensus } from '../../services/indicatorSourceDataService'
+import { loadAntibioticDDD, loadDailyCensus } from '../../services/indicatorSourceDataService'
+import { hydrateIndicatorBackend, saveIndicatorSourceBackend } from '../../services/backend/indicatorBackendService'
 import { APP_ROUTES } from '../../config/routes'
 import { useI18n } from '../../i18n'
 import './AntimicrobialSurveillance.css'
@@ -22,7 +23,8 @@ function fmt(v,d=1){return new Intl.NumberFormat('el-GR',{maximumFractionDigits:
 
 export default function AntimicrobialConsumptionPage(){
  const {language}=useI18n(); const L=(el,en)=>language==='en'?en:el; const navigate=useNavigate()
- const [records,setRecords]=useState(loadAntibioticDDD); const [search,setSearch]=useState(''); const [department,setDepartment]=useState(''); const [sort,setSort]=useState({key:'date',direction:'desc'}); const [selectedKeys,setSelectedKeys]=useState([]); const [open,setOpen]=useState(false); const [editing,setEditing]=useState(null); const [form,setForm]=useState(EMPTY)
+ const [records,setRecords]=useState(loadAntibioticDDD)
+ useEffect(()=>{hydrateIndicatorBackend().then(data=>setRecords(data.antibioticDDD||[])).catch(()=>{})},[]); const [search,setSearch]=useState(''); const [department,setDepartment]=useState(''); const [sort,setSort]=useState({key:'date',direction:'desc'}); const [selectedKeys,setSelectedKeys]=useState([]); const [open,setOpen]=useState(false); const [editing,setEditing]=useState(null); const [form,setForm]=useState(EMPTY)
  const departments=masterNames('departments'); const drugs=activeMasterItems('antibiotics')
  const filtered=useMemo(()=>{const q=normalizeText(search);return sortRows(records.filter(r=>(!department||r.department===department)&&(!q||normalizeText([r.antibiotic,r.atc,r.department,r.route,r.aware].join(' ')).includes(q))),sort)},[records,search,department,sort])
  const selected=useMemo(()=>selectedRows(filtered,selectedKeys),[filtered,selectedKeys]); const census=loadDailyCensus()
@@ -32,8 +34,8 @@ export default function AntimicrobialConsumptionPage(){
  function close(){setOpen(false);setEditing(null);setForm(EMPTY)}
  function field(k,v){setForm(c=>({...c,[k]:v}))}
  function chooseDrug(name){const d=drugs.find(x=>x.name===name)||{};setForm(c=>({...c,antibiotic:name,atc:d.atc||'',dddGrams:d.dddGrams||'',route:d.dddRoute||c.route||'',aware:d.aware||''}))}
- function save(e){e.preventDefault();if(!form.date||!form.antibiotic||!form.strength||!form.packSize||!form.packages||!form.dddGrams){notifyAction(L('Συμπληρώστε ημερομηνία, αντιμικροβιακό, περιεκτικότητα, μέγεθος/αριθμό συσκευασιών και WHO DDD.','Complete date, antimicrobial, strength, pack size/packages and WHO DDD.'));return}const c=calc(form);const row={...form,id:editing?.id||`AMC-${Date.now()}`,totalGrams:c.totalGrams,ddd:c.ddd,updatedAt:new Date().toISOString()};const next=editing?records.map(x=>x.id===editing.id?row:x):[row,...records];saveAntibioticDDD(next);setRecords(next);close()}
- function remove(){if(!editing||!confirmAction(L('Να διαγραφεί η εγγραφή κατανάλωσης;','Delete this consumption record?')))return;const next=records.filter(x=>x.id!==editing.id);saveAntibioticDDD(next);setRecords(next);close()}
+ async function save(e){e.preventDefault();if(!form.date||!form.antibiotic||!form.strength||!form.packSize||!form.packages||!form.dddGrams){notifyAction(L('Συμπληρώστε ημερομηνία, αντιμικροβιακό, περιεκτικότητα, μέγεθος/αριθμό συσκευασιών και WHO DDD.','Complete date, antimicrobial, strength, pack size/packages and WHO DDD.'));return}const c=calc(form);const row={...form,id:editing?.id||`AMC-${Date.now()}`,totalGrams:c.totalGrams,ddd:c.ddd,updatedAt:new Date().toISOString()};const next=editing?records.map(x=>x.id===editing.id?row:x):[row,...records];await saveIndicatorSourceBackend('antibiotic_ddd',next);setRecords(next);close()}
+ async function remove(){if(!editing||!confirmAction(L('Να διαγραφεί η εγγραφή κατανάλωσης;','Delete this consumption record?')))return;const next=records.filter(x=>x.id!==editing.id);await saveIndicatorSourceBackend('antibiotic_ddd',next);setRecords(next);close()}
  const columns=[{key:'date',label:L('Ημερομηνία','Date'),width:'125px',sortable:true},{key:'antibiotic',label:L('Αντιμικροβιακό','Antimicrobial'),sortable:true,render:r=><EntityCell primary={r.antibiotic} secondary={[r.atc,r.route,r.aware].filter(Boolean).join(' · ')}/>},{key:'department',label:L('Τμήμα','Department'),sortable:true,render:r=>r.department||L('Σύνολο νοσοκομείου','Hospital total')},{key:'packages',label:L('Συσκευασίες','Packages'),width:'120px'},{key:'ddd',label:'DDD',width:'110px',render:r=>fmt(calc(r).ddd,2)},{key:'rate',label:'DDD / 1.000 bed-days',width:'190px',render:r=>{const days=patientDaysFor(census,r.department);return days?fmt(calc(r).ddd/days*1000,2):'—'}}]
  const exportCols=[{label:'Date',value:r=>r.date},{label:'Antimicrobial',value:r=>r.antibiotic},{label:'ATC',value:r=>r.atc},{label:'Route',value:r=>r.route},{label:'Department',value:r=>r.department},{label:'Packages',value:r=>r.packages},{label:'Total grams',value:r=>calc(r).totalGrams},{label:'DDD',value:r=>calc(r).ddd},{label:'AWaRe',value:r=>r.aware}]
  return <PageChrome className="antimicrobial-page" header={<PageHeader title={L('Αντιμικροβιακή Επιτήρηση','Antimicrobial Surveillance')} description={L('Έγκριση περιορισμένης χρήσης και επιτήρηση κατανάλωσης με ATC/DDD.','Restricted-use approval and ATC/DDD consumption surveillance.')} actions={<Button icon={<Plus size={17}/>} onClick={newRow}>{L('Νέα κατανάλωση','New consumption')}</Button>}/> }>

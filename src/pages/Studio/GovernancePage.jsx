@@ -27,6 +27,7 @@ const POLICY_LABELS={
   overdue_capa:['Ληξιπρόθεσμο CAPA','Overdue CAPA'],
   document_review_overdue:['Ληξιπρόθεσμη αναθεώρηση εγγράφου','Overdue document review'],
   competency_followup:['Παρακολούθηση επάρκειας','Competency follow-up'],
+  committee_action_overdue:['Εκπρόθεσμη ενέργεια επιτροπής','Overdue committee action'],
 }
 const EVENT_LABELS={
   profile_activated:['Ενεργοποίηση λογαριασμού','Account activated'],
@@ -76,6 +77,17 @@ export default function GovernancePage(){
     return audit.filter(x=>[x.entity_type,x.entity_id,x.action,x.actor_role,(x.changed_fields||[]).join(' '),x.reason].join(' ').toLowerCase().includes(q))
   },[audit,auditSearch])
 
+  const readiness=useMemo(()=>{
+    const enabledPolicies=policies.filter(row=>row.enabled!==false).length
+    const closedLoop=policies.filter(row=>row.enabled!==false&&row.settings?.closedLoop).length
+    const retentionReady=retention.filter(row=>row.active!==false&&Number(row.retention_years)>0&&String(row.owner||'').trim()).length
+    const continuityReady=Boolean(String(continuity.backup_provider||'').trim()&&String(continuity.backup_frequency||'').trim()&&continuity.rpo_hours!==''&&continuity.rto_hours!=='')
+    const privacyKeys=['controller_name','dpo_owner']
+    const privacyReady=privacyKeys.every(key=>String(privacy[key]||'').trim())&&['processor_contract_confirmed','hosting_region_confirmed','breach_process_confirmed','dsar_process_confirmed','retention_policy_confirmed'].every(key=>privacy[key]===true)
+    const recoveryRecent=tests.some(row=>{const d=new Date(row.tested_at||0);return !Number.isNaN(d.getTime())&&(Date.now()-d.getTime())<=365*86400000&&row.result==='passed'})
+    return {enabledPolicies,closedLoop,retentionReady,continuityReady,privacyReady,recoveryRecent,gaps:gaps.length}
+  },[policies,retention,continuity,privacy,tests,gaps])
+
   async function savePolicy(row){setBusy(true);try{await saveNotificationPolicy(row);setPolicies(await loadNotificationPolicies());notifyAction(L('Η πολιτική αποθηκεύτηκε.','Policy saved.'))}catch(e){setError(e.message)}finally{setBusy(false)}}
   async function saveRetention(row){setBusy(true);try{await saveRetentionPolicy(row);setRetention(await loadRetentionPolicies());notifyAction(L('Η πολιτική διατήρησης αποθηκεύτηκε.','Retention policy saved.'))}catch(e){setError(e.message)}finally{setBusy(false)}}
   async function saveContinuity(){setBusy(true);try{await saveContinuityProfile(continuity);setContinuity(await loadContinuityProfile());notifyAction(L('Το προφίλ συνέχειας λειτουργίας αποθηκεύτηκε.','Continuity profile saved.'))}catch(e){setError(e.message)}finally{setBusy(false)}}
@@ -91,6 +103,12 @@ export default function GovernancePage(){
       <Button size="sm" variant="secondary" icon={<RefreshCw size={15}/>} onClick={reload} disabled={busy}>{L('Ανανέωση','Refresh')}</Button>
     </div>
     {error&&<div className="gov-error">{error}</div>}
+    <div className="gov-readiness" aria-label={L('Σύνοψη ετοιμότητας governance','Governance readiness summary')}>
+      <article><span>{L('Πολιτικές ειδοποίησης','Notification policies')}</span><strong>{readiness.enabledPolicies}/{policies.length||0}</strong><small>{readiness.closedLoop} closed-loop</small></article>
+      <article><span>{L('Πολιτικές διατήρησης','Retention policies')}</span><strong>{readiness.retentionReady}/{retention.length||0}</strong><small>{L('με υπεύθυνο και διάρκεια','with owner and duration')}</small></article>
+      <article className={readiness.continuityReady&&readiness.recoveryRecent?'is-ready':'needs-attention'}><span>{L('Backup / ανάκτηση','Backup / recovery')}</span><strong>{readiness.continuityReady&&readiness.recoveryRecent?L('Έτοιμο','Ready'):L('Έλεγχος','Review')}</strong><small>{readiness.recoveryRecent?L('restore test ≤ 12 μήνες','restore test ≤ 12 months'):L('απαιτείται πρόσφατο restore test','recent restore test required')}</small></article>
+      <article className={readiness.privacyReady?'is-ready':'needs-attention'}><span>Privacy</span><strong>{readiness.privacyReady?L('Τεκμηριωμένο','Documented'):L('Εκκρεμεί','Pending')}</strong><small>{readiness.gaps} {L('κενά επάρκειας','competency gaps')}</small></article>
+    </div>
 
     {tab==='audit'&&<section className="gov-panel">
       <div className="gov-panel__head"><div><h2>{L('Αμετάβλητο Audit Trail','Immutable Audit Trail')}</h2><p>{L('Ποιος άλλαξε τι, πότε και σε ποια εγγραφή. Το ιστορικό είναι μόνο για ανάγνωση.','Who changed what, when and on which record. History is read-only.')}</p></div><input value={auditSearch} onChange={e=>setAuditSearch(e.target.value)} placeholder={L('Αναζήτηση οντότητας, ενέργειας, ρόλου…','Search entity, action, role…')}/></div>

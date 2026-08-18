@@ -715,3 +715,46 @@ html{font-size:calc(16px * var(--access-text-scale,1))}
   .topbar-actions{padding-right:58px}
   .topbar-actions > .header-popover-wrap:last-child{right:10px}
 }
+
+
+/* rc.93 P2 — interaction affordance contract.
+   Every control that can be activated shows the hand cursor.
+   Text-entry controls keep the text cursor; disabled controls never imply action. */
+button:not(:disabled),
+a[href],
+[role="button"]:not([aria-disabled="true"]),
+.is-clickable,
+.core-data-table tbody tr.is-clickable,
+.core-record-row[role="button"],
+.core-timeline__item--clickable,
+.fd-card--clickable,
+.studio-card--clickable,
+.quality-workflow-card--action,
+.ua-row[role="button"],
+summary,
+select:not(:disabled),
+label[for],
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="file"]:not(:disabled),
+input[type="range"]:not(:disabled),
+input[type="color"]:not(:disabled),
+input[type="date"]:not(:disabled),
+input[type="time"]:not(:disabled),
+input[type="datetime-local"]:not(:disabled) {
+  cursor:pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+select:disabled,
+input:disabled {
+  cursor:not-allowed;
+}
+
+/* Native picker icons must communicate that they open a picker. */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor:pointer;
+}

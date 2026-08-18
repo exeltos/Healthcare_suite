@@ -74,8 +74,12 @@ export default function IncidentsPage(){
     if(!editing)return
     const activeCapa=related.capa.filter(item=>!['Ολοκληρωμένη','Ακυρωμένη'].includes(item.status))
     if(activeCapa.length){notifyAction(L('Το συμβάν δεν μπορεί να κλείσει όσο υπάρχει ενεργή CAPA. Ολοκληρώστε πρώτα την ενέργεια και την επαλήθευση.','The incident cannot close while an active CAPA exists. Complete the action and verification first.'));return}
+    const ineffectiveCapa=related.capa.filter(item=>item.status==='Ολοκληρωμένη'&&item.effectivenessStatus!=='Αποτελεσματική')
+    if(ineffectiveCapa.length){notifyAction(L('Το συμβάν δεν μπορεί να κλείσει όταν σχετική CAPA δεν έχει επαληθευτεί ως αποτελεσματική.','The incident cannot close while a related CAPA has not been verified as effective.'));return}
+    if(!String(form.owner||'').trim()){notifyAction(L('Ορίστε υπεύθυνο διερεύνησης πριν το κλείσιμο.','Assign an investigation owner before closure.'));return}
     if(['Σοβαρή βλάβη','Θάνατος'].includes(form.outcome)&&!String(form.rootCause||'').trim()){notifyAction(L('Για σοβαρό συμβάν χρειάζεται συμπέρασμα διερεύνησης πριν το κλείσιμο.','A severe incident requires an investigation conclusion before closure.'));return}
-    const updated={...form,status:'Κλειστό',closedAt:new Date().toISOString()}
+    if(['Σοβαρή βλάβη','Θάνατος'].includes(form.outcome)&&!String(form.lessonsLearned||'').trim()){notifyAction(L('Για σοβαρό συμβάν καταγράψτε διδάγματα/ενέργειες πρόληψης υποτροπής πριν το κλείσιμο.','For a severe incident, document lessons learned / recurrence-prevention actions before closure.'));return}
+    const updated={...form,status:'Κλειστό',closedAt:new Date().toISOString(),closureVerified:true}
     await saveQualityIncident({...editing,...updated});setRows(await loadQualityIncidents());close()
   }
 

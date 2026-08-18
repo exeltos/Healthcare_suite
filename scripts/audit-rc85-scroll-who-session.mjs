@@ -10,7 +10,6 @@ const checks=[
  ['Standard patient lists scroll independently',css.includes('.pw-patient-tab-body > .pw-panel > .pw-record-list')&&css.includes('scrollbar-gutter:stable')],
  ['Care tab body itself does not scroll',css.includes('.pw-patient-tab-body:has(> .pw-care-grid)')&&css.includes('overflow:hidden !important')],
  ['Therapy and precautions columns are independent scroll regions',css.includes('.pw-care-card > .pw-record-list')&&css.includes('overflow-y:auto !important')],
- ['WHO session retains professional count field',logic.includes("professionalCount: ''")],
  ['WHO add opportunity preserves professional identifier',flows.includes('professionalCode: whoObservation.professionalCode')],
  ['WHO add opportunity preserves professional category',flows.includes('professionalCategory: whoObservation.professionalCategory')],
 ]

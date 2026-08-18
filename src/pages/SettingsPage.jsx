@@ -2,10 +2,9 @@ import { confirmAction, notifyAction } from '../components/core/feedback/index'
 import { useEffect, useMemo, useState } from 'react'
 import { Archive, Pencil } from 'lucide-react'
 import { loadMasterData } from '../services/masterDataService'
-import { hydrateMasterDataBackend, saveMasterDataBackend } from '../services/backend/configurationBackendService'
+import { hydrateMasterDataBackend, hydratePatientSourceConfigBackend, saveMasterDataBackend, savePatientSourceConfigBackend } from '../services/backend/configurationBackendService'
 import {
   loadPatientSourceConfig,
-  savePatientSourceConfig,
 } from '../services/patientService'
 
 import { masterDataSections } from '../config/masterDataSections'
@@ -33,11 +32,12 @@ export default function SettingsPage({ embedded = false }) {
 
   useEffect(()=>{
     let active=true
-    Promise.all([hydrateMasterDataBackend(),loadDirectoryDepartments()])
-      .then(([libraries,departments])=>{
+    Promise.all([hydrateMasterDataBackend(),loadDirectoryDepartments(),hydratePatientSourceConfigBackend()])
+      .then(([libraries,departments,patientConfig])=>{
         if(!active)return
         const visible=Object.fromEntries(masterDataSections.map(section=>[section.id,Array.isArray(libraries[section.id])?libraries[section.id]:section.initialItems]))
         setMasterData({...visible,departments})
+        setPatientSourceConfig(patientConfig)
       })
       .catch(()=>{})
     return()=>{active=false}
@@ -228,8 +228,8 @@ export default function SettingsPage({ embedded = false }) {
           <span>{L('Τρόπος λειτουργίας','Mode')}</span>
           <select
             value={patientSourceConfig.sourceMode}
-            onChange={(event) => {
-              const nextConfig = savePatientSourceConfig({
+            onChange={async(event) => {
+              const nextConfig = await savePatientSourceConfigBackend({
                 ...patientSourceConfig,
                 sourceMode: event.target.value,
               })
@@ -247,8 +247,8 @@ export default function SettingsPage({ embedded = false }) {
           <input
             type="checkbox"
             checked={patientSourceConfig.allowManualCreation}
-            onChange={(event) => {
-              const nextConfig = savePatientSourceConfig({
+            onChange={async(event) => {
+              const nextConfig = await savePatientSourceConfigBackend({
                 ...patientSourceConfig,
                 allowManualCreation: event.target.checked,
               })

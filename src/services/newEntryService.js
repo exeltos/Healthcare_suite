@@ -1,9 +1,5 @@
-import { upsertPatient } from './patientService'
-import { upsertPatientSample } from './patientSamplesService'
-import { upsertInfection } from './infectionsService'
-import { upsertStaffSample } from './laboratorySourcesService'
-import { upsertEnvironmentalSample } from './laboratorySourcesService'
-import { upsertWaterRecord } from './laboratorySourcesService'
+import { saveClinicalPatient, saveClinicalPatientSample, saveClinicalInfection, saveClinicalSurveillanceCase } from './backend/clinicalDirectoryService'
+import { saveClinicalSourceSample } from './backend/clinicalSupportBackendService'
 import { savePreventionRecord } from './backend/preventionBackendService'
 import { calculateEnvironmentStats, calculateWhoCompliance } from '../core/utils/observationMetrics'
 import { hybridEntriesRepository } from '../repositories/hybridEntriesRepository'
@@ -28,8 +24,8 @@ export async function persistNewEntry({
   }
 
   if (selectedType.id === 'hand-hygiene') {
-    if (!whoSession.date || !whoSession.department || !whoSession.observer || Number(whoSession.professionalCount) <= 0 || whoObservations.length === 0) {
-      return { ok: false, error: 'Συμπληρώστε ημερομηνία, τμήμα, παρατηρητή, αριθμό επαγγελματιών και τουλάχιστον μία ευκαιρία.' }
+    if (!whoSession.date || !whoSession.department || !whoSession.observer || whoObservations.length === 0) {
+      return { ok: false, error: 'Συμπληρώστε ημερομηνία, τμήμα, παρατηρητή και τουλάχιστον μία ευκαιρία.' }
     }
   } else if (selectedType.id === 'environment') {
     if (!environmentSession.date || !environmentSession.department || !environmentSession.observer || environmentSamples.length === 0) {
@@ -57,7 +53,7 @@ export async function persistNewEntry({
   }
 
   if (mode === 'new-patient') {
-    patientData = upsertPatient({
+    patientData = await saveClinicalPatient({
       ...newPatient,
       id: `patient-${Date.now()}`,
       status: 'Νοσηλεύεται',
@@ -76,7 +72,18 @@ export async function persistNewEntry({
     }
   }
 
-  const whoStats = calculateWhoCompliance(whoObservations, whoSession.professionalCount)
+  if (clinicalCaseData && (createNewCase || mode === 'new-patient') && patientData?.id) {
+    clinicalCaseData = await saveClinicalSurveillanceCase({
+      ...clinicalCaseData,
+      patientId: patientData.id,
+      patientKey: patientData.id,
+      patientCode: patientData.patientCode || '',
+      reason: entry.title || clinicalCaseData.reason || '',
+      startDate: clinicalCaseData.admissionDate || entry.date,
+    })
+  }
+
+  const whoStats = calculateWhoCompliance(whoObservations)
   const environmentStats = calculateEnvironmentStats(environmentSamples)
   const payload = {
     id: `ENTRY-${Date.now()}`,
@@ -104,7 +111,6 @@ export async function persistNewEntry({
       department: whoSession.department,
       date: whoSession.date,
       observer: whoSession.observer,
-      professionalCount: Number(whoSession.professionalCount) || 0,
       startTime: whoSession.startTime,
       endTime: whoSession.endTime,
       observations: whoObservations,
@@ -114,8 +120,8 @@ export async function persistNewEntry({
   }
 
   if (selectedType.id === 'infection') {
-    upsertInfection({
-      patientName, patientCode, department,
+    await saveClinicalInfection({
+      patientId: patientData?.id || '', patientName, patientCode, department,
       admissionDate: clinicalCaseData?.admissionDate || patientData?.admissionDate || '',
       infectionDate: entry.date,
       onsetDate: entry.date,
@@ -127,8 +133,8 @@ export async function persistNewEntry({
   }
 
   if (selectedType.id === 'culture' || selectedType.id === 'screening') {
-    upsertPatientSample({
-      patientName, patientCode, department,
+    await saveClinicalPatientSample({
+      patientId: patientData?.id || '', patientName, patientCode, department,
       admissionDate: clinicalCaseData?.admissionDate || patientData?.admissionDate || '',
       sampleType: entry.title,
       sampleReason: selectedType.id === 'screening' ? 'Screening' : 'Καλλιέργεια',
@@ -139,7 +145,7 @@ export async function persistNewEntry({
   }
 
   if (selectedType.id === 'staff') {
-    upsertStaffSample({
+    await saveClinicalSourceSample({
       sourceType: 'Προσωπικό',
       staffName: entry.title,
       subjectName: entry.title,
@@ -152,8 +158,8 @@ export async function persistNewEntry({
   }
 
   if (selectedType.id === 'environment') {
-    environmentSamples.forEach((sample) => {
-      upsertEnvironmentalSample({
+    for (const sample of environmentSamples) {
+      await saveClinicalSourceSample({
         sourceType: 'Περιβάλλον',
         subjectName: sample.samplingPoint,
         samplingPoint: sample.samplingPoint,
@@ -169,11 +175,11 @@ export async function persistNewEntry({
         collector: environmentSession.observer,
         notes: sample.notes,
       })
-    })
+    }
   }
 
   if (selectedType.id === 'water') {
-    upsertWaterRecord({
+    await saveClinicalSourceSample({
       sourceType: 'Νερό',
       samplingPoint: entry.title,
       subjectName: entry.title,

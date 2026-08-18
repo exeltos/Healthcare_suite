@@ -222,6 +222,40 @@ export default function CommitteesPage(){
     setMeeting(c=>({...c,actions:(c.actions||[]).filter(a=>a.id!==id)}))
   }
 
+  async function updateFinalizedAction(meetingId,actionId,patch){
+    if(!editing)return
+    const now=new Date().toISOString()
+    const meetings=(form.meetings||[]).map(mt=>{
+      if(mt.id!==meetingId)return mt
+      return {
+        ...mt,
+        actions:(mt.actions||[]).map(action=>{
+          if(action.id!==actionId)return action
+          const next={...action,...patch,updatedAt:now}
+          if(patch.status==='Ολοκληρωμένη' && action.status!=='Ολοκληρωμένη'){
+            next.completedAt=now
+            next.completedBy=L('Τρέχων χρήστης','Current user')
+          }else if(patch.status && patch.status!=='Ολοκληρωμένη'){
+            next.completedAt=''
+            next.completedBy=''
+          }
+          return next
+        }),
+      }
+    })
+    const saved={...form,meetings}
+    try{
+      await saveOperationalCommittee(saved)
+      setForm(saved)
+      setEditing(saved)
+      setRows(await loadOperationalCommittees())
+      notifyAction(L('Η ενέργεια ενημερώθηκε.','Action updated.'))
+    }catch(error){
+      console.error('Committee action update failed',error)
+      notifyAction(L('Η ενημέρωση της ενέργειας απέτυχε.','Action could not be updated.'))
+    }
+  }
+
   function addMeeting(){
     if(!meeting.date){
       notifyAction(L('Συμπληρώστε ημερομηνία συνεδρίασης.','Enter meeting date.'))
@@ -236,11 +270,17 @@ export default function CommitteesPage(){
       notifyAction(L('Συμπληρώστε σύντομα πρακτικά της συνεδρίασης.','Add brief meeting minutes.'))
       return
     }
+    const decisionActions=(meeting.actions||[]).filter(a=>String(a.title||'').trim())
+    const incompleteActions=decisionActions.filter(a=>!String(a.owner||'').trim()||!a.dueDate)
+    if(incompleteActions.length){
+      notifyAction(L('Κάθε ενέργεια απόφασης χρειάζεται υπεύθυνο και προθεσμία πριν οριστικοποιηθεί η συνεδρίαση.','Every decision action needs an owner and due date before the meeting is finalized.'))
+      return
+    }
     const item={
       ...meeting,
       id:`meeting-${Date.now()}`,
       title:meeting.title||`${L('Συνεδρίαση','Meeting')} ${displayDate(meeting.date,language)}`,
-      actions:(meeting.actions||[]).filter(a=>String(a.title||'').trim()),
+      actions:decisionActions,
       status:'Οριστικοποιημένη',
       finalizedAt:new Date().toISOString(),
       finalizedBy:L('Τρέχων χρήστης','Current user'),
@@ -378,7 +418,7 @@ export default function CommitteesPage(){
 
           <FormSection
             title={`${L('Ενέργειες αποφάσεων','Decision actions')} (${(meeting.actions||[]).length})`}
-            description={L('Προαιρετικά μετατρέψτε αποφάσεις σε συγκεκριμένες ενέργειες με υπεύθυνο και προθεσμία.','Optionally convert decisions into specific actions with an owner and due date.')}
+            description={L('Μετατρέψτε όσες αποφάσεις απαιτούν παρακολούθηση σε ενέργειες. Κάθε καταχωρημένη ενέργεια χρειάζεται υπεύθυνο και προθεσμία.','Convert decisions that require follow-up into actions. Every recorded action requires an owner and due date.')}
           >
             {(meeting.actions||[]).map(action=><div className="org-stack-row" key={action.id}>
               <input aria-label={L('Ενέργεια','Action')} placeholder={L('Ενέργεια','Action')} value={action.title||''} onChange={e=>updateAction(action.id,{title:e.target.value})}/>
@@ -403,6 +443,22 @@ export default function CommitteesPage(){
                   {displayDate(mt.date,language)} · {(mt.presentIds||[]).length} {L('παρόντες','present')} · {(mt.attachments||[]).length} {L('αρχεία','files')} · {(mt.actions||[]).length} {L('ενέργειες','actions')}
                 </small>
                 {mt.decisions&&<p>{mt.decisions}</p>}
+                {(mt.actions||[]).length>0&&<div className="org-finalized-actions">
+                  {(mt.actions||[]).map(action=><div className="org-finalized-action" key={action.id}>
+                    <div className="org-finalized-action__copy">
+                      <strong>{action.title}</strong>
+                      <small>{[action.owner,action.dueDate?`${L('έως','due')} ${displayDate(action.dueDate,language)}`:''].filter(Boolean).join(' · ')}</small>
+                      {action.completedAt&&<small>{L('Ολοκληρώθηκε','Completed')} {new Date(action.completedAt).toLocaleString(language==='en'?'en-GB':'el-GR')} {action.completedBy?`· ${action.completedBy}`:''}</small>}
+                    </div>
+                    <select
+                      aria-label={L('Κατάσταση ενέργειας','Action status')}
+                      value={action.status||'Ανοικτή'}
+                      onChange={e=>updateFinalizedAction(mt.id,action.id,{status:e.target.value})}
+                    >
+                      {ACTION_STATUSES.map(x=><option key={x} value={x}>{committeeDisplayValue(x,language)}</option>)}
+                    </select>
+                  </div>)}
+                </div>}
               </div>
               <Badge tone="success">{L('Οριστικοποιημένη','Finalized')}</Badge>
             </div>):<div className="org-empty">{L('Δεν υπάρχουν συνεδριάσεις.','No meetings recorded.')}</div>}

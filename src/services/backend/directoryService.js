@@ -256,7 +256,7 @@ async function createProductionUserAccount(input){
   const {data:linkedEmployee,error:employeeError}=await client.from('employees').select('id,department_id,status').eq('organization_id',organizationId).eq('id',String(input.employeeId)).maybeSingle()
   if(employeeError)throw employeeError
   if(!linkedEmployee)throw new Error('The linked employee was not found in this organization.')
-  const {data:existingAccount,error:existingError}=await client.from('user_accounts').select('user_id').eq('organization_id',organizationId).eq('employee_id',String(input.employeeId)).limit(1)
+  const {data:existingAccount,error:existingError}=await client.from('user_profiles').select('user_id').eq('organization_id',organizationId).eq('employee_id',String(input.employeeId)).limit(1)
   if(existingError)throw existingError
   if(existingAccount?.length)throw new Error('This employee already has an access account.')
   const { data,error }=await client.functions.invoke('admin-user-account',{

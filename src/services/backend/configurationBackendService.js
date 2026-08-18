@@ -5,6 +5,7 @@ import { loadFormResponses,saveFormResponses } from '../formResponsesService'
 import { loadMasterData,saveMasterData } from '../masterDataService'
 import { writeJsonCache } from '../../core/storage'
 import { loadStudioRows,saveStudioRows,studioModules } from '../studioConfigService'
+import { loadPatientSourceConfig, savePatientSourceConfig } from '../patientService'
 
 export async function hydrateFormsBackend(){
  if(!IS_PRODUCTION)return {templates:loadFormTemplates(),responses:loadFormResponses()}
@@ -48,6 +49,29 @@ export async function saveMasterDataBackend(next={}){
  const {error:del}=await c.from('master_data_libraries').delete().eq('organization_id',org);if(del)throw del
  if(rows.length){const {error}=await c.from('master_data_libraries').insert(rows);if(error)throw error}writeJsonCache('limoxisMasterData',next);return next
 }
+export async function hydratePatientSourceConfigBackend(){
+ if(!IS_PRODUCTION)return loadPatientSourceConfig()
+ const c=requireSupabase(),org=await orgId(c)
+ const {data,error}=await c.from('master_data_libraries').select('rows').eq('organization_id',org).eq('library_key','patient-source-config').maybeSingle()
+ if(error)throw error
+ const row=Array.isArray(data?.rows)?data.rows[0]:null
+ const config={...loadPatientSourceConfig(),...(row&&typeof row==='object'?row:{})}
+ savePatientSourceConfig(config)
+ return config
+}
+export async function savePatientSourceConfigBackend(config={}){
+ const next={...loadPatientSourceConfig(),...config}
+ if(!IS_PRODUCTION)return savePatientSourceConfig(next)
+ const c=requireSupabase(),org=await orgId(c)
+ const {error}=await c.from('master_data_libraries').upsert(
+   {organization_id:org,library_key:'patient-source-config',rows:[next]},
+   {onConflict:'organization_id,library_key'}
+ )
+ if(error)throw error
+ savePatientSourceConfig(next)
+ return next
+}
+
 export async function hydrateStudioBackend(){
  if(!IS_PRODUCTION)return Object.fromEntries(Object.keys(studioModules).map(k=>[k,loadStudioRows(k)]))
  const c=requireSupabase(),org=await orgId(c);const {data,error}=await c.from('studio_configuration').select('module_key,rows').eq('organization_id',org);if(error)throw error
