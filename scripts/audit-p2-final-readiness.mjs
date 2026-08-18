@@ -19,8 +19,8 @@ const governance=read('src/services/backend/governanceBackendService.js')
 const lira=read('src/pages/Lira/LiraPage.jsx')
 const indicators=read('src/pages/Quality/IndicatorsPage.jsx')
 const checks=[
- ['Release version is rc.106',pkg.version==='0.12.0-rc.106'],
- ['Help version follows release',help.includes("HELP_VERSION = '0.12.0-rc.106'")],
+ ['Release version is rc.107',pkg.version==='0.12.0-rc.107'],
+ ['Help version follows release',help.includes("HELP_VERSION = '0.12.0-rc.107'")],
  ['Production authorization comes from server RPC',auth.includes("client.rpc('get_my_module_access')")],
  ['Department scoping remains centralized',access.includes('filterRowsByDepartmentScope')&&access.includes('canAccessDepartment')],
  ['Management Center is protected for Administrator',access.includes('PROTECTED_ROLE_RULES')&&access.includes("admin:'Πλήρης'")],
