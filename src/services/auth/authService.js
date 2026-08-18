@@ -119,7 +119,16 @@ export async function requestRecovery({ username }) {
     }
     const redirectTo=AUTH_REDIRECT_URL || (typeof window!=='undefined'?`${window.location.origin}/reset-password`:'')
     const { error }=await client.auth.resetPasswordForEmail(cleanUsername,redirectTo?{redirectTo}:undefined)
-    if(error) throw error
+    if(error){
+      const message=String(error.message||'').toLowerCase()
+      const status=Number(error.status||0)
+      if(status===429 || message.includes('rate limit')){
+        const rateError=new Error('Password recovery rate limit exceeded.')
+        rateError.code='RECOVERY_RATE_LIMIT'
+        throw rateError
+      }
+      throw error
+    }
     return { ok:true, demo:false }
   }
   return { ok:true, demo:true }

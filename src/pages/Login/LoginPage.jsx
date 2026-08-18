@@ -11,7 +11,7 @@ import { clearProductionLocalOperationalCache } from '../../data/productionDataB
 import { authenticateUser, requestRecovery } from '../../services/auth'
 import { IS_DEMO, IS_PRODUCTION } from '../../core/runtime'
 
-const BUILD_VERSION = '0.12.0-rc.111'
+const BUILD_VERSION = '0.12.0-rc.113'
 
 export default function LoginPage() {
   const [view, setView] = useState('welcome')
@@ -88,6 +88,10 @@ export default function LoginPage() {
       }
       if (error?.code === 'EMAIL_REQUIRED') {
         setMessage(t('login.productionEmailRequired'))
+        return
+      }
+      if (error?.code === 'RECOVERY_RATE_LIMIT') {
+        setMessage(t('login.recoveryRateLimit'))
         return
       }
       if (IS_PRODUCTION && error?.message) {
