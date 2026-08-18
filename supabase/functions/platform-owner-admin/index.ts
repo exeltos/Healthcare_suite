@@ -58,7 +58,10 @@ Deno.serve(async(req)=>{
   return json({error:'Unsupported action'},400)
 })
 function appRedirect(path:string){const base=String(Deno.env.get('APP_BASE_URL')||'').replace(/\/$/,'');return base?`${base}${path}`:undefined}
-function slugify(v:string){return String(v).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
+function slugify(v:string){
+  const greek:Record<string,string>={α:'a',β:'v',γ:'g',δ:'d',ε:'e',ζ:'z',η:'i',θ:'th',ι:'i',κ:'k',λ:'l',μ:'m',ν:'n',ξ:'x',ο:'o',π:'p',ρ:'r',σ:'s',ς:'s',τ:'t',υ:'y',φ:'f',χ:'ch',ψ:'ps',ω:'o'}
+  return String(v).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').split('').map(ch=>greek[ch]??ch).join('').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,64)
+}
 function json(body:unknown,status=200){return new Response(JSON.stringify(body),{status,headers:{...corsHeaders,'Content-Type':'application/json'}})}
 
 function requireEnv(name:string){const value=String(Deno.env.get(name)||'').trim();if(!value)throw new Error(`${name} is not configured.`);return value}
