@@ -1,0 +1,298 @@
+.core-filter-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 14px);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(15, 23, 42, .04));
+}
+
+.core-filter-bar--compact { padding: var(--space-3, 12px); }
+.core-filter-bar--sticky { position: sticky; top: 0; z-index: var(--z-sticky, 20); }
+
+.core-filter-bar__main,
+.core-filter-bar__actions {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3, 12px);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.core-filter-bar__main { flex: 1 1 auto; }
+.core-filter-bar__actions { justify-content: flex-end; }
+.core-filter-bar__search { flex: 1 1 280px; min-width: min(280px, 100%); max-width: 480px; }
+
+.core-filter-bar__count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 var(--space-3, 12px);
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-strong, #174f8a);
+  font-size: var(--text-sm, 13px);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.core-filter-group {
+  display: grid;
+  gap: var(--space-1, 4px);
+  min-width: 150px;
+}
+
+.core-filter-group__label {
+  color: var(--muted);
+  font-size: var(--text-xs, 12px);
+  font-weight: 700;
+}
+
+.core-filter-group > select,
+.core-filter-group > input {
+  min-height: 40px;
+  padding: 0 var(--space-3, 12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 10px);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.core-filter-group > select:focus,
+.core-filter-group > input:focus {
+  outline: 3px solid var(--primary-focus, rgba(37, 99, 235, .16));
+  border-color: var(--primary);
+}
+
+@media (max-width: 860px) {
+  .core-filter-bar,
+  .core-filter-bar__main,
+  .core-filter-bar__actions { width: 100%; }
+  .core-filter-bar { align-items: stretch; }
+  .core-filter-bar__actions { justify-content: flex-start; }
+  .core-filter-group { flex: 1 1 180px; }
+}
+
+
+.core-filter-bar--equal-controls .core-filter-bar__main > select,
+.core-filter-bar--equal-controls .core-filter-bar__main > input,
+.core-filter-bar--equal-controls .core-filter-group {
+  flex: 1 1 220px;
+  width: 220px;
+  min-width: 180px;
+  max-width: 260px;
+}
+
+.core-filter-bar--equal-controls .core-filter-bar__main > select,
+.core-filter-bar--equal-controls .core-filter-bar__main > input {
+  min-height: 42px;
+  padding: 0 38px 0 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 10px);
+  background-color: var(--surface);
+  color: var(--text);
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.core-filter-bar--equal-controls .core-filter-bar__main > input[type="date"] {
+  min-width: 170px;
+  padding-right: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.core-filter-bar--equal-controls .core-filter-bar__search {
+  flex: 2 1 440px;
+  max-width: none;
+}
+
+@media (max-width: 860px) {
+  .core-filter-bar--equal-controls .core-filter-bar__main > select,
+  .core-filter-bar--equal-controls .core-filter-bar__main > input,
+  .core-filter-bar--equal-controls .core-filter-group {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (min-width: 1080px) {
+  .core-list-workspace__filters .core-filter-bar__main {
+    flex-wrap: nowrap;
+  }
+  .core-list-workspace__filters .core-filter-bar__search {
+    flex: 1 1 360px;
+    min-width: 260px;
+  }
+  .core-list-workspace__filters.core-filter-bar--equal-controls .core-filter-bar__main > select,
+  .core-list-workspace__filters.core-filter-bar--equal-controls .core-filter-bar__main > input {
+    flex: 0 1 220px;
+    width: 220px;
+    min-width: 170px;
+    max-width: 230px;
+  }
+}
+
+/* Shared compact date-range filter. Use this instead of placing two date inputs
+   directly in list filter rows. */
+.core-date-range-filter {
+  position: relative;
+  flex: 0 0 205px;
+  min-width: 185px;
+  max-width: 240px;
+}
+
+.core-date-range-filter__trigger {
+  width: 100%;
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 10px);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.core-date-range-filter__trigger:hover {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+}
+
+.core-date-range-filter__trigger:focus-visible {
+  outline: 3px solid var(--primary-focus, rgba(8, 125, 134, .16));
+  border-color: var(--primary);
+}
+
+.core-date-range-filter.is-active .core-date-range-filter__trigger {
+  border-color: color-mix(in srgb, var(--primary) 54%, var(--border));
+  background: color-mix(in srgb, var(--primary-soft) 48%, var(--surface));
+}
+
+.core-date-range-filter__trigger svg:first-child { color: var(--primary); }
+.core-date-range-filter__trigger-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-size: .86rem;
+  font-weight: 650;
+}
+
+.core-date-range-filter__popover {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(390px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 18px 44px rgba(15, 50, 59, .16);
+}
+
+.core-date-range-filter__popover-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.core-date-range-filter__popover-header > div { display: grid; gap: 2px; }
+.core-date-range-filter__popover-header strong { font-size: .94rem; color: var(--text); }
+.core-date-range-filter__popover-header span { font-size: .76rem; color: var(--muted); }
+.core-date-range-filter__close {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.core-date-range-filter__close:hover { background: var(--surface-muted); color: var(--text); }
+
+.core-date-range-filter__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.core-date-range-filter__fields label { display: grid; gap: 6px; min-width: 0; }
+.core-date-range-filter__fields label > span {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.core-date-range-filter__fields input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: .82rem;
+  font-variant-numeric: tabular-nums;
+  box-sizing: border-box;
+}
+.core-date-range-filter__fields input:focus {
+  outline: 3px solid var(--primary-focus, rgba(8, 125, 134, .16));
+  border-color: var(--primary);
+}
+
+.core-date-range-filter__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.core-date-range-filter__clear,
+.core-date-range-filter__apply {
+  min-height: 36px;
+  padding: 0 13px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.core-date-range-filter__clear {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+.core-date-range-filter__clear:disabled { opacity: .45; cursor: default; }
+.core-date-range-filter__apply {
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: var(--surface);
+}
+
+@media (max-width: 860px) {
+  .core-date-range-filter {
+    flex: 1 1 220px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .core-date-range-filter { flex-basis: 100%; width: 100%; }
+  .core-date-range-filter__popover { left: 0; right: auto; }
+  .core-date-range-filter__fields { grid-template-columns: 1fr; }
+}

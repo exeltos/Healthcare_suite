@@ -1,0 +1,13 @@
+.core-dialog-backdrop { position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; padding: var(--space-4); background: rgba(13, 35, 41, .46); backdrop-filter: blur(2px); }
+.core-dialog { width: min(520px, 100%); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-lg); outline: none; animation: core-dialog-in .18s ease-out; }
+.core-dialog__content { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: var(--space-4); padding: var(--space-5); }
+.core-dialog__icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--info-dark); background: var(--info-soft); font-weight: 800; }
+.core-dialog--warning .core-dialog__icon { color: var(--warning-dark); background: var(--warning-soft); }
+.core-dialog--danger .core-dialog__icon { color: var(--danger-dark); background: var(--danger-soft); }
+.core-dialog h2 { margin: 2px 0 0; color: var(--text); font-size: 1.25rem; }
+.core-dialog p { margin: var(--space-2) 0 0; color: var(--text-soft); line-height: 1.55; }
+.core-dialog__body { margin-top: var(--space-4); }
+.core-dialog__footer { display: flex; justify-content: flex-end; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-top: 1px solid var(--border); background: var(--surface-subtle); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+@keyframes core-dialog-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+@media (max-width: 520px) { .core-dialog__content { grid-template-columns: 1fr; padding: var(--space-4); } .core-dialog__footer { padding: var(--space-3) var(--space-4); } }
+@media (prefers-reduced-motion: reduce) { .core-dialog { animation: none; } }

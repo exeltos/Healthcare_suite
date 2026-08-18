@@ -1,0 +1,14 @@
+.lds-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--surface) 0%, #fdfefe 100%);
+}
+.lds-card::before { content:""; position:absolute; inset:0 auto 0 0; width:3px; background:transparent; transition:background .18s ease; }
+.lds-card--surface, .lds-card--flat, .lds-card--interactive { padding: var(--space-5); }
+.lds-card--surface { box-shadow: var(--shadow-soft); }
+.lds-card--flat { box-shadow: none; }
+.lds-card--interactive { box-shadow: var(--shadow-soft); transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.lds-card--interactive:hover { transform: translateY(-3px); border-color: color-mix(in srgb,var(--primary) 32%,var(--border)); box-shadow: var(--shadow-hover); }
+.lds-card--interactive:hover::before { background: var(--primary); }

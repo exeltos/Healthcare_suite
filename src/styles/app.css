@@ -1,0 +1,760 @@
+.app-shell {
+  height: 100vh;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-rows: var(--topbar-height) minmax(0, 1fr) var(--footer-height);
+  overflow: hidden;
+}
+
+/* The navigation rail is a full-height application frame: it spans
+   continuously from the top edge to the bottom edge, independently of
+   the header and footer in the workspace column. */
+.app-shell > .sidebar {
+  grid-column: 1;
+  grid-row: 1 / -1;
+}
+
+.app-shell > .topbar {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.app-shell > .content-area {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.app-shell > footer {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.sidebar-collapsed {
+  grid-template-columns: var(--sidebar-collapsed) minmax(0, 1fr);
+}
+
+/* HEADER */
+
+.topbar {
+  position: relative;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: 0 22px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.topbar-left,
+.topbar-actions,
+.suite-brand,
+.user-profile {
+  display: flex;
+  align-items: center;
+}
+
+.topbar-left,
+.topbar-actions {
+  gap: 12px;
+}
+
+.suite-brand {
+  gap: 11px;
+}
+
+.suite-logo,
+.avatar {
+  display: grid;
+  place-items: center;
+  color: var(--surface);
+  background: var(--primary);
+  font-weight: 800;
+}
+
+.suite-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+}
+
+.suite-brand > div:last-child,
+.user-profile > div:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.suite-brand span,
+.user-profile span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.topbar-actions {
+  justify-self: end;
+}
+
+.icon-button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.user-profile {
+  gap: 10px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+
+/* Sidebar component styles live in components/layout/Sidebar.css. */
+
+/* MAIN CONTENT */
+
+/* Studio Master Data follows the normal content-area page scrolling.
+   Inner library/menu lists may still scroll independently when needed. */
+
+.content-area {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.page {
+  padding: 30px;
+}
+
+.page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.page-heading h1 {
+  margin: 0;
+}
+
+.page-heading p {
+  color: var(--muted);
+}
+
+.eyebrow {
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* DASHBOARD */
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+
+/* KPI cards use the shared components/core/StatCard component. */
+
+/* PATIENTS PAGE */
+
+.patients-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 30px;
+  overflow: hidden;
+}
+
+.patients-page-header,
+.patients-toolbar,
+.patients-filters,
+
+.patients-table-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.patients-table-wrapper {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.patients-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* FOOTER */
+
+.footer {
+  position: relative;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+/* NEW ENTRY */
+
+.new-entry-topbar-button,
+.dashboard-new-entry-button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid var(--primary);
+  border-radius: 10px;
+  color: var(--surface);
+  background: var(--primary);
+  font-weight: 700;
+}
+
+.new-entry-topbar-button:hover,
+.dashboard-new-entry-button:hover {
+  background: var(--primary-dark);
+}
+
+.dashboard-new-entry-button {
+  min-height: 44px;
+  padding: 0 17px;
+}
+
+.mobile-only {
+  display: none;
+}
+
+/* TABLET */
+
+@media (max-width: 930px) {
+  .new-entry-label {
+    display: none;
+  }
+
+  .new-entry-topbar-button {
+    width: 40px;
+    padding: 0;
+  }
+}
+
+/* MOBILE */
+
+@media (max-width: 760px) {
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: grid;
+  }
+
+  .app-shell,
+  .app-shell.sidebar-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--topbar-height) minmax(0, 1fr) var(--footer-height);
+  }
+
+  .app-shell > .topbar,
+  .app-shell > .content-area,
+  .app-shell > footer {
+    grid-column: 1;
+  }
+
+  .app-shell > .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    width: var(--sidebar-width);
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: var(--shadow);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+ .content-area {
+    overflow-y: auto;
+  }
+
+  .patients-page {
+    height: auto;
+    min-height: 100%;
+    padding: 20px;
+    overflow: visible;
+  }
+
+  .patients-table-card {
+    overflow: visible;
+  }
+
+  .patients-table-wrapper {
+    max-height: none;
+    overflow: auto;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .global-search {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .page-heading {
+    flex-direction: column;
+  }
+}
+/* STEP 35 — GLOBAL VISUAL CORE REFACTOR */
+.content-area {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(10,111,120,.045), transparent 28%),
+    var(--background);
+}
+
+.topbar {
+  border-bottom-color: rgba(196, 215, 218, .9);
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 1px 0 rgba(10, 74, 82, .025), 0 8px 24px rgba(16, 65, 73, .035);
+  backdrop-filter: blur(12px);
+}
+
+.global-search input,
+input[type="text"], input[type="search"], input[type="email"], input[type="number"],
+input[type="date"], input[type="time"], input[type="datetime-local"], select, textarea {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+.global-search input:hover,
+input:hover, select:hover, textarea:hover { border-color: var(--border-strong); }
+.global-search input:focus,
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  outline: 0;
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.icon-button {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  box-shadow: var(--shadow-xs);
+  transition: transform .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+.icon-button:hover { transform: translateY(-1px); border-color: var(--primary); color: var(--primary); box-shadow: var(--shadow-soft); }
+
+.page, .page-content { padding-top: 26px; }
+.page-heading h1 { color: var(--text); letter-spacing: -.025em; }
+.page-heading p { line-height: 1.6; }
+
+/* broad compatibility for legacy surfaces */
+[class*="card"], [class*="Card"], [class*="panel"], [class*="Panel"], [class*="tile"], [class*="Tile"] {
+  border-color: var(--border);
+}
+
+button, [role="button"] { transition: transform .16s ease, box-shadow .16s ease, background .16s ease, border-color .16s ease, color .16s ease; }
+button:active:not(:disabled), [role="button"]:active { transform: translateY(0) scale(.985); }
+
+table { border-collapse: separate; border-spacing: 0; }
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  color: var(--text-soft);
+  background: #f6fafb;
+  border-bottom-color: var(--border-strong);
+  font-size: .76rem;
+  letter-spacing: .025em;
+  text-transform: uppercase;
+}
+tbody tr { transition: background .14s ease; }
+tbody tr:hover { background: var(--primary-softer); }
+td { border-bottom-color: var(--border); }
+
+.content-area::-webkit-scrollbar, .sidebar-nav::-webkit-scrollbar { width: 8px; height: 8px; }
+.content-area::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: rgba(75,106,113,.28); background-clip: padding-box; }
+.content-area::-webkit-scrollbar-thumb:hover { background: rgba(75,106,113,.42); background-clip: padding-box; }
+
+
+/* v0.5.33 — shared native control normalization */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  min-width: 0;
+  min-height: var(--control-height);
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: .78;
+}
+
+/* Header utilities: Studio + notifications */
+.icon-button{display:grid;place-items:center;position:relative;cursor:pointer;color:var(--text-secondary,#40504b)}
+.notification-center{position:relative}
+.notification-trigger{position:relative}
+.notification-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 4px;border:2px solid var(--surface);border-radius:999px;background:#d94f4f;color:var(--surface);font-size:9px;font-weight:800;line-height:1}
+.notification-panel{position:absolute;top:46px;right:0;width:min(390px,calc(100vw - 24px));max-height:520px;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:0 18px 45px rgba(7,47,60,.18);z-index:80}
+.notification-panel__head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border-bottom:1px solid var(--border);background:#fbfdfc}.notification-panel__head>div{display:flex;flex-direction:column;gap:2px}.notification-panel__head strong{font-size:.84rem}.notification-panel__head span{color:var(--muted);font-size:.68rem}.notification-panel__head button{display:inline-flex;align-items:center;gap:5px;padding:6px 8px;border:0;border-radius:8px;background:transparent;color:var(--primary);font-size:.68rem;font-weight:700;cursor:pointer}.notification-panel__head button:hover{background:var(--primary-softer)}
+.notification-list{overflow:auto;padding:6px}.notification-item{width:100%;display:grid;grid-template-columns:34px minmax(0,1fr) 8px;gap:9px;align-items:center;padding:9px 8px;border:0;border-radius:10px;background:transparent;text-align:left;cursor:pointer}.notification-item:hover{background:var(--surface-subtle)}.notification-item.is-unread{background:var(--primary-softer)}.notification-item__icon{width:32px;height:32px;display:grid;place-items:center;border-radius:9px;background:#eef4f2;color:var(--primary)}.notification-item.tone-warning .notification-item__icon{background:var(--surface)5df;color:#a56a00}.notification-item.tone-danger .notification-item__icon{background:var(--surface)0f0;color:#ba3f3f}.notification-item__copy{display:flex;flex-direction:column;gap:2px;min-width:0}.notification-item__copy strong{font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.notification-item__copy small{color:var(--muted);font-size:.67rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.notification-unread-dot{width:7px;height:7px;border-radius:50%;background:var(--primary)}.notification-empty{display:flex;align-items:center;justify-content:center;gap:8px;padding:28px 16px;color:var(--muted);font-size:.72rem}
+@media(max-width:620px){.notification-panel{position:fixed;top:calc(var(--topbar-height) - 2px);right:8px;left:8px;width:auto}.user-copy{display:none}}
+
+
+/* SINGLE NAVIGATION TOGGLE — defensive guard */
+.topbar-left > .app-navigation-toggle {
+  flex: 0 0 auto;
+}
+/* Never allow a second navigation-style icon button before the brand. */
+.topbar-left > .app-navigation-toggle ~ .app-navigation-toggle,
+.topbar-left > .icon-button + .icon-button:not(.notification-trigger) {
+  display: none !important;
+}
+
+/* Healthcare Suite header controls */
+html{font-size:calc(16px * var(--access-text-scale,1))}
+.header-popover-wrap{position:relative}
+.user-profile-button{border:0;background:transparent;cursor:pointer;color:inherit;font:inherit;text-align:left}
+.header-popover{position:absolute;top:calc(100% + 10px);right:0;z-index:80;width:250px;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:0 18px 45px rgba(3,40,51,.16)}
+.accessibility-popover{display:grid;gap:10px}.accessibility-popover>strong{padding:4px 3px 8px;border-bottom:1px solid var(--border)}
+.access-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.access-stepper{display:flex;align-items:center;gap:6px}.access-stepper button{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--border);border-radius:8px;background:var(--surface)}.access-stepper b{min-width:44px;text-align:center;font-size:.78rem}
+.access-option,.access-reset,.user-popover button{width:100%;min-height:38px;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:0 10px;border:0;border-radius:9px;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer}.access-option:hover,.access-reset:hover,.user-popover button:hover{background:var(--surface-subtle)}.access-reset{justify-content:flex-start;color:var(--muted);border-top:1px solid var(--border);border-radius:0;padding-top:8px}
+.user-popover{width:210px}.user-popover button{justify-content:flex-start}.user-popover .logout-menu-item{color:#b42332}
+.logout-goodbye{min-height:100vh;display:grid;place-items:center;background:#f4f8fa;text-align:center}.logout-goodbye>div{display:grid;justify-items:center;gap:12px;padding:38px}.logout-goodbye h2{margin:5px 0 0}.logout-goodbye p{margin:0;color:var(--muted)}
+.access-high-contrast{filter:contrast(1.14)}
+.access-reduced-motion *, .access-reduced-motion *::before, .access-reduced-motion *::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+@media(max-width:760px){.user-copy{display:none}.header-popover{position:fixed;top:calc(var(--topbar-height) + 8px);right:10px;left:10px;width:auto}.topbar{padding:0 10px}.topbar-actions{gap:6px}}
+
+/* User profile drawer */
+.profile-overlay{position:fixed;inset:var(--topbar-height) 0 var(--footer-height) 0;z-index:88;background:rgba(17,43,51,.18);backdrop-filter:blur(2px);display:flex;justify-content:flex-end}
+.profile-drawer{width:min(470px,100vw);height:100%;background:var(--surface);border-left:1px solid var(--border);box-shadow:-16px 0 42px rgba(18,48,58,.12);display:flex;flex-direction:column;overflow:hidden}
+.profile-drawer__header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:24px;border-bottom:1px solid var(--border)}
+.profile-drawer__identity{display:flex;gap:14px;align-items:center;min-width:0}.profile-drawer__avatar{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;background:var(--primary);color:var(--surface);font-weight:800;font-size:16px;flex:0 0 auto}
+.profile-drawer__eyebrow{display:block;color:var(--primary);font-size:11px;font-weight:800;letter-spacing:.09em}.profile-drawer__identity h2{margin:3px 0 1px;font-size:21px}.profile-drawer__identity p{margin:0;color:var(--muted);font-size:13px}
+.profile-demo-note{margin:18px 22px 0;padding:12px 14px;border:1px solid #d7e7e8;border-radius:12px;background:#f3f9f9;display:flex;gap:10px}.profile-demo-note svg{color:var(--primary);flex:0 0 auto}.profile-demo-note div{display:grid;gap:2px}.profile-demo-note span{color:var(--muted);font-size:12px;line-height:1.4}
+.profile-drawer__body{padding:18px 22px 26px;overflow-y:auto;display:grid;gap:16px}.profile-section{border:1px solid var(--border);border-radius:15px;padding:5px 15px 9px}.profile-section h3{margin:11px 0 7px;font-size:14px}.profile-row{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--border)}.profile-row__icon{width:28px;height:28px;border-radius:8px;background:#f2f7f8;display:grid;place-items:center;color:var(--primary);flex:0 0 auto}.profile-row div{display:grid;gap:1px;min-width:0}.profile-row small,.profile-capabilities>span{font-size:11px;color:var(--muted)}.profile-row strong{font-size:13px;font-weight:700;overflow-wrap:anywhere}
+.profile-capabilities{border-top:1px solid var(--border);padding:10px 0 4px;display:grid;gap:7px}.profile-capabilities div{display:flex;gap:6px;flex-wrap:wrap}.profile-capabilities b{font-size:11px;padding:5px 8px;border-radius:999px;background:#edf6f6;color:#075f66}.profile-capabilities em{font-size:12px;color:var(--muted);font-style:normal}
+.profile-readonly-note{display:flex;gap:9px;padding:11px 13px;border-radius:11px;background:#f7f9fa;color:var(--muted);font-size:11px;line-height:1.45}.profile-readonly-note svg{flex:0 0 auto}
+@media(max-width:760px){.profile-overlay{inset:var(--topbar-height) 0 0}.profile-drawer{width:100%}.profile-drawer__header{padding:18px}.profile-drawer__body{padding:14px 16px 22px}}
+
+
+/* Release candidate — language-stable header geometry.
+   EL/EN labels must never shift the right-side controls. */
+.topbar-actions > .header-popover-wrap:last-child{
+  flex:0 0 248px;
+  width:248px;
+}
+.user-profile-button{
+  width:100%;
+  min-width:0;
+  padding-left:12px;
+}
+.user-profile-button .avatar{
+  flex:0 0 38px;
+}
+.user-profile-button .user-copy{
+  flex:1 1 auto;
+  min-width:0;
+  width:170px;
+  overflow:hidden;
+}
+.user-profile-button .user-copy strong,
+.user-profile-button .user-copy span{
+  display:block;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.user-profile-button > svg{
+  flex:0 0 15px;
+}
+@media(max-width:760px){
+  .topbar-actions > .header-popover-wrap:last-child{
+    flex:0 0 auto;
+    width:auto;
+  }
+  .user-profile-button{
+    width:auto;
+    padding-left:8px;
+  }
+}
+
+/* Help Center live preview mode: render the real page without app chrome. */
+.help-preview-shell{min-height:100vh;background:var(--app-bg,var(--surface-subtle));overflow:hidden}
+.help-preview-content{min-height:100vh;width:100%;padding:24px!important;margin:0!important;overflow:visible!important}
+.help-preview-shell .page-shell,.help-preview-shell .page-container{max-width:none}
+
+
+/* v0.12.0-rc.17 — compact application header, aligned with the denser
+   SurgiTrack geometry while preserving Healthcare Suite visual identity. */
+.topbar{
+  grid-template-columns:auto minmax(0,1fr);
+  gap:16px;
+  min-height:var(--topbar-height);
+  padding:0 18px;
+}
+.topbar-left,.topbar-actions{gap:8px}
+.topbar-left{min-width:0}
+.suite-brand{gap:9px;min-width:0}
+.suite-logo{
+  width:34px;
+  height:34px;
+  flex:0 0 34px;
+  border-radius:9px;
+  font-size:13px;
+}
+.suite-brand>div:last-child{min-width:0}
+.suite-brand strong{
+  display:block;
+  font-size:14px;
+  line-height:1.08;
+  letter-spacing:-.012em;
+  white-space:nowrap;
+}
+.suite-brand span{
+  margin-top:2px;
+  font-size:10px;
+  line-height:1.05;
+  white-space:nowrap;
+}
+.topbar .icon-button,
+.topbar .notification-trigger{
+  width:34px;
+  height:34px;
+  min-width:34px;
+  min-height:34px;
+  border-radius:9px;
+  box-shadow:none;
+}
+.topbar .icon-button svg,
+.topbar .notification-trigger svg{width:17px;height:17px}
+.topbar .language-switcher{
+  gap:2px;
+  padding:2px;
+  min-height:38px;
+  border-radius:10px;
+  box-shadow:none;
+}
+.topbar .language-switcher.compact button{
+  min-width:34px;
+  width:34px;
+  min-height:32px;
+  height:32px;
+  padding:0;
+  border-radius:8px;
+  font-size:11px;
+  line-height:1;
+  font-weight:700;
+}
+.topbar-actions>.header-popover-wrap:last-child{
+  flex:0 0 214px;
+  width:214px;
+}
+.user-profile{
+  gap:8px;
+  min-height:36px;
+  padding-left:9px;
+}
+.user-profile-button{height:36px}
+.user-profile-button .avatar{
+  width:34px;
+  height:34px;
+  flex:0 0 34px;
+  font-size:11px;
+}
+.user-profile-button .user-copy{width:140px}
+.user-profile-button .user-copy strong{
+  font-size:12px;
+  line-height:1.08;
+}
+.user-profile-button .user-copy span{
+  margin-top:2px;
+  font-size:10px;
+  line-height:1.08;
+}
+.user-profile-button>svg{width:14px;height:14px;flex-basis:14px}
+.notification-badge{
+  top:-4px;
+  right:-4px;
+  min-width:16px;
+  height:16px;
+  border-width:2px;
+  font-size:8px;
+}
+@media(max-width:1050px){
+  .topbar{padding:0 14px;gap:12px}
+  .suite-brand span{display:none}
+  .topbar-actions>.header-popover-wrap:last-child{flex-basis:178px;width:178px}
+  .user-profile-button .user-copy{width:106px}
+}
+@media(max-width:760px){
+  .topbar{padding:0 10px;gap:8px}
+  .topbar-actions{gap:5px}
+  .suite-logo{width:32px;height:32px;flex-basis:32px}
+  .suite-brand strong{font-size:13px}
+  .topbar-actions>.header-popover-wrap:last-child{flex:0 0 auto;width:auto}
+  .user-profile-button{width:auto;padding-left:6px}
+  .user-profile-button .avatar{width:32px;height:32px;flex-basis:32px}
+}
+
+
+/* rc.17 — single language toggle, same interaction as SurgiTrack. */
+.topbar .language-toggle{width:42px;height:34px;min-width:42px;min-height:34px;display:inline-grid;place-items:center;padding:0;border:1px solid var(--border);border-radius:9px;background:var(--surface,var(--surface));color:var(--text);font:inherit;font-size:11px;font-weight:800;line-height:1;cursor:pointer;box-shadow:none;transition:border-color .16s ease,background-color .16s ease,color .16s ease}
+.topbar .language-toggle:hover{border-color:rgba(11,107,117,.35);background:var(--primary-soft,#eef7f7);color:var(--primary)}
+
+/* rc.43 — compact account control: identity details live in the profile popover/drawer. */
+.topbar-actions .user-profile-button--compact{
+  width:auto;
+  min-width:52px;
+  height:42px;
+  padding:3px 6px 3px 4px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface);
+  box-shadow:none;
+}
+.topbar-actions .user-profile-button--compact > span{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.topbar-actions .user-profile-button--compact .avatar{
+  width:34px;
+  height:34px;
+  font-size:.7rem;
+  flex:0 0 34px;
+  margin:0;
+}
+.topbar-actions .user-profile-button--compact:hover{
+  border-color:var(--primary);
+  background:var(--primary-softer);
+}
+.topbar-actions .user-profile-button--compact svg{
+  flex:0 0 auto;
+  color:var(--muted);
+}
+
+.topbar-actions .user-profile.user-profile-button--compact{
+  padding-left:4px;
+  border-left:1px solid var(--border);
+  gap:0;
+}
+
+
+
+/* rc.47 — physical right-edge anchor for the account control. */
+.topbar{
+  position:relative;
+}
+.topbar-actions{
+  justify-self:stretch;
+  min-width:0;
+  justify-content:flex-end;
+  padding-right:66px;
+}
+.topbar-actions > .header-popover-wrap:last-child{
+  position:absolute;
+  top:50%;
+  right:18px;
+  transform:translateY(-50%);
+  width:auto;
+  margin:0;
+  z-index:2;
+}
+@media(max-width:760px){
+  .topbar-actions{padding-right:58px}
+  .topbar-actions > .header-popover-wrap:last-child{right:10px}
+}
+
+
+/* rc.93 P2 — interaction affordance contract.
+   Every control that can be activated shows the hand cursor.
+   Text-entry controls keep the text cursor; disabled controls never imply action. */
+button:not(:disabled),
+a[href],
+[role="button"]:not([aria-disabled="true"]),
+.is-clickable,
+.core-data-table tbody tr.is-clickable,
+.core-record-row[role="button"],
+.core-timeline__item--clickable,
+.fd-card--clickable,
+.studio-card--clickable,
+.quality-workflow-card--action,
+.ua-row[role="button"],
+summary,
+select:not(:disabled),
+label[for],
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="file"]:not(:disabled),
+input[type="range"]:not(:disabled),
+input[type="color"]:not(:disabled),
+input[type="date"]:not(:disabled),
+input[type="time"]:not(:disabled),
+input[type="datetime-local"]:not(:disabled) {
+  cursor:pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+select:disabled,
+input:disabled {
+  cursor:not-allowed;
+}
+
+/* Native picker icons must communicate that they open a picker. */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor:pointer;
+}

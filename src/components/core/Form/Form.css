@@ -1,0 +1,2 @@
+.core-form { display: flex; flex-direction: column; min-width: 0; gap: var(--space-5); }
+.core-form[aria-busy='true'] { pointer-events: none; opacity: .72; }
