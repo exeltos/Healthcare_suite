@@ -6,7 +6,7 @@ import { APP_ROUTES } from '../../config/routes'
 import { useI18n } from '../../i18n'
 import './LoginPage.css'
 
-const BUILD_VERSION='0.12.0-rc.114'
+const BUILD_VERSION='0.12.0-rc.115'
 
 export default function ResetPasswordPage(){
   const {language}=useI18n()

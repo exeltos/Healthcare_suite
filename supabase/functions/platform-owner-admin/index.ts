@@ -4,11 +4,15 @@ const corsHeaders={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Heade
 Deno.serve(async(req)=>{
   if(req.method==='OPTIONS')return new Response('ok',{headers:corsHeaders})
   if(req.method!=='POST')return json({error:'Method not allowed'},405)
-  const url=Deno.env.get('SUPABASE_URL')!,anon=Deno.env.get('SUPABASE_ANON_KEY')!,service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const url=requireEnv('SUPABASE_URL')
+  const publishable=readNamedKey('SUPABASE_PUBLISHABLE_KEYS') || Deno.env.get('SUPABASE_ANON_KEY') || ''
+  const secret=readNamedKey('SUPABASE_SECRET_KEYS') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+  if(!publishable)return json({error:'Supabase publishable key is not available in the Edge Function environment.'},500)
+  if(!secret)return json({error:'Supabase secret key is not available in the Edge Function environment.'},500)
   const authHeader=req.headers.get('Authorization')||''
   if(!authHeader.toLowerCase().startsWith('bearer '))return json({error:'Unauthorized'},401)
-  const caller=createClient(url,anon,{global:{headers:{Authorization:authHeader}}})
-  const admin=createClient(url,service,{auth:{autoRefreshToken:false,persistSession:false}})
+  const caller=createClient(url,publishable,{global:{headers:{Authorization:authHeader}},auth:{autoRefreshToken:false,persistSession:false}})
+  const admin=createClient(url,secret,{auth:{autoRefreshToken:false,persistSession:false}})
   const {data:{user},error:userError}=await caller.auth.getUser()
   if(userError||!user)return json({error:'Unauthorized'},401)
   const {data:isOwner,error:ownerError}=await caller.rpc('is_platform_owner')
@@ -56,3 +60,6 @@ Deno.serve(async(req)=>{
 function appRedirect(path:string){const base=String(Deno.env.get('APP_BASE_URL')||'').replace(/\/$/,'');return base?`${base}${path}`:undefined}
 function slugify(v:string){return String(v).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
 function json(body:unknown,status=200){return new Response(JSON.stringify(body),{status,headers:{...corsHeaders,'Content-Type':'application/json'}})}
+
+function requireEnv(name:string){const value=String(Deno.env.get(name)||'').trim();if(!value)throw new Error(`${name} is not configured.`);return value}
+function readNamedKey(name:string,keyName='default'){const raw=String(Deno.env.get(name)||'').trim();if(!raw)return '';try{const parsed=JSON.parse(raw);if(parsed&&typeof parsed==='object')return String(parsed[keyName]||'').trim()}catch{}return ''}
