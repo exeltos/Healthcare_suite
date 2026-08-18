@@ -65,6 +65,37 @@ export default function LoginPage() {
     }
   }
 
+  async function handleRecoverySubmit(event) {
+    event.preventDefault()
+    setMessage('')
+    const form = new FormData(event.currentTarget)
+    const recoveryEmail = String(form.get('recoveryEmail') || '').trim()
+
+    if (!recoveryEmail) {
+      setMessage(IS_PRODUCTION ? t('login.productionEmailRequired') : t('login.missingCredentials'))
+      return
+    }
+
+    try {
+      await requestRecovery({ username: recoveryEmail })
+      setMessage(IS_PRODUCTION ? t('login.recoverySentProduction') : t('login.recoverySentDemo'))
+    } catch (error) {
+      if (error?.code === 'AUTH_NOT_CONFIGURED') {
+        setMessage(t('login.productionRecoveryRequired'))
+        return
+      }
+      if (error?.code === 'EMAIL_REQUIRED') {
+        setMessage(t('login.productionEmailRequired'))
+        return
+      }
+      if (IS_PRODUCTION && error?.message) {
+        setMessage(error.message)
+        return
+      }
+      setMessage(t('login.productionRecoveryRequired'))
+    }
+  }
+
   return (
     <main className="login-page-shell">
       <section className="login-main-card"><div className="login-index-language">
@@ -93,7 +124,7 @@ export default function LoginPage() {
               <form className="login-form-grid" onSubmit={handleSubmit}><label className="login-form-group"><span>{IS_PRODUCTION?t('login.email'):t('login.username')}</span><input name="username" type={IS_PRODUCTION?'email':'text'} autoComplete={IS_PRODUCTION?'email':'username'}/></label><label className="login-form-group"><span>{t('login.password')}</span><div className="login-input-wrapper"><input name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password"/><button type="button" aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')} onClick={() => setShowPassword(v => !v)}>{showPassword ? '🙈' : '👁'}</button></div></label>{message && <div className="login-form-message">{message}</div>}<button type="button" className="login-forgot-link" onClick={() => { setMessage(''); setView('forgot') }}>{t('login.forgotPassword')}</button><button className="login-primary-button" type="submit">{t('login.signIn')}</button></form>
             </section>
           ) : (
-            <section className="login-auth-view"><button type="button" className="login-back-button" onClick={() => { setMessage(''); setView('login') }}>{t('login.back')}</button><header className="login-auth-header"><h2>{t('login.forgotTitle')}</h2><p>{t('login.forgotText')}</p></header><form className="login-form-grid" onSubmit={async(e)=>{e.preventDefault();const username=String(new FormData(e.currentTarget).get('recovery')||'').trim();try{await requestRecovery({username});setMessage(IS_PRODUCTION?t('login.recoverySentProduction'):t('login.recoverySentDemo'))}catch(error){setMessage(error?.code==='AUTH_NOT_CONFIGURED'?t('login.productionRecoveryRequired'):error?.code==='EMAIL_REQUIRED'?t('login.productionEmailRequired'):t('login.missingCredentials'))}}}><label className="login-form-group"><span>{IS_PRODUCTION?t('login.email'):t('login.username')}</span><input required name="recovery" type={IS_PRODUCTION?'email':'text'} autoComplete={IS_PRODUCTION?'email':'username'}/></label>{message&&<div className="login-form-message">{message}</div>}<button className="login-primary-button" type="submit">{t('login.sendRecovery')}</button></form></section>
+            <section className="login-auth-view"><button type="button" className="login-back-button" onClick={() => { setMessage(''); setView('login') }}>{t('login.back')}</button><header className="login-auth-header"><h2>{t('login.forgotTitle')}</h2><p>{t('login.forgotText')}</p></header><form className="login-form-grid" onSubmit={handleRecoverySubmit}><label className="login-form-group"><span>{IS_PRODUCTION?t('login.email'):t('login.username')}</span><input required name="recoveryEmail" type={IS_PRODUCTION?'email':'text'} autoComplete={IS_PRODUCTION?'email':'username'}/></label>{message&&<div className="login-form-message">{message}</div>}<button className="login-primary-button" type="submit">{t('login.sendRecovery')}</button></form></section>
           )}
         </div></section>
       </section>
