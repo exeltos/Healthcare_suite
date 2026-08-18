@@ -1,3 +1,0 @@
-.core-view-switcher { display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-subtle); }
-.core-view-switcher button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 11px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); }
-.core-view-switcher button.is-active { background: var(--surface); color: var(--primary-dark); box-shadow: var(--shadow-xs); font-weight: var(--font-weight-semibold); }

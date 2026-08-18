@@ -1,2 +1,0 @@
-import './Alert.css'
-export default function Alert({ tone = 'info', title, children, actions, className = '' }) { return <div className={`lds-alert lds-alert--${tone} ${className}`} role={tone === 'danger' ? 'alert' : 'status'}><div className="lds-alert__body">{title && <strong>{title}</strong>}{children && <div>{children}</div>}</div>{actions && <div className="lds-alert__actions">{actions}</div>}</div> }
