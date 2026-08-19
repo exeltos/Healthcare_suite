@@ -52,6 +52,25 @@ const CoreShowcasePage = lazy(() => import('./pages/Core/CoreShowcasePage'))
 const NotifiableDiseasesPage = lazy(() => import('./pages/Records/NotifiableDiseasesPage'))
 const SurveillanceControlsPage = lazy(() => import('./pages/Surveillance/SurveillanceControlsPage'))
 
+function authLinkTarget(location){
+  const hashParams=new URLSearchParams(String(location.hash||'').replace(/^#/,'') )
+  const searchParams=new URLSearchParams(location.search)
+  const type=String(hashParams.get('type')||searchParams.get('type')||'').toLowerCase()
+  const hasImplicitSession=Boolean(hashParams.get('access_token')&&hashParams.get('refresh_token'))
+  const hasPkceCode=Boolean(searchParams.get('code'))
+  const hasTokenHash=Boolean(searchParams.get('token_hash'))
+  if(type==='invite'||type==='recovery'||hasImplicitSession||hasPkceCode||hasTokenHash){
+    return {pathname:APP_ROUTES.RESET_PASSWORD,search:location.search,hash:location.hash}
+  }
+  return null
+}
+
+function LoginEntry(){
+  const location=useLocation()
+  const target=authLinkTarget(location)
+  return target?<Navigate to={target} replace />:<LoginPage />
+}
+
 function RootEntry(){
   const location=useLocation()
   const params=new URLSearchParams(location.search)
@@ -67,6 +86,8 @@ function RootEntry(){
     return <Navigate to={`${helpRoute}?${next.toString()}`} replace />
   }
 
+  const target=authLinkTarget(location)
+  if(target)return <Navigate to={target} replace />
   return <LoginPage />
 }
 
@@ -76,7 +97,7 @@ export default function App() {
     <Suspense fallback={<div className="route-loading" role="status" aria-live="polite">{t('common.loading')}</div>}>
       <Routes>
       <Route path={APP_ROUTES.ROOT} element={<RootEntry />} />
-      <Route path={APP_ROUTES.LOGIN} element={<LoginPage />} />
+      <Route path={APP_ROUTES.LOGIN} element={<LoginEntry />} />
       <Route path={APP_ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
       <Route path={APP_ROUTES.PLATFORM} element={<PlatformOwnerPage />} />
 
