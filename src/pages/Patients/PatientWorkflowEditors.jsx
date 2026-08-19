@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useI18n } from '../../i18n'
 import { notifyAction } from '../../components/core/feedback/index'
 import { previewAttachment } from '../../core/files/attachmentPreview'
@@ -66,17 +67,42 @@ export function SampleEditor({ form, setForm, samples, save, cancel, files, uplo
   </div></form>
 }
 
-export function IsolationEditor({ form, setForm, save, cancel }) {
+export function IsolationEditor({ form, setForm, save, cancel, files = [], upload, deleteAttachment }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
-  return <form className="pw-editor compact" onSubmit={save}><div className="pw-form-grid compact"><Field label={L("Τύπος", "Type")}><LibraryField hideLabel libraryKey="isolation-types" value={form.isolationType} allowManual placeholder={L("Επιλογή", "Select")} getOptionLabel={(item) => patientDisplayValue(item.name, language)} onChange={(v) => setForm((x) => ({ ...x, isolationType: v }))} /></Field><Field label={L("Παθογόνο", "Pathogen")}><LibraryField hideLabel libraryKey="microorganisms" value={form.pathogen} allowManual placeholder={L("Επιλογή", "Select")} onChange={(v) => setForm((x) => ({ ...x, pathogen: v }))} /></Field><Field label={L("Έναρξη", "Start")}><Input type="date" value={form.startDate} onChange={(v) => setForm((x) => ({ ...x, startDate: v }))} /></Field><Field label={L("Λήξη", "End")}><Input type="date" value={form.endDate} onChange={(v) => setForm((x) => ({ ...x, endDate: v }))} /></Field><Field label={L("Κατάσταση", "Status")}><Select value={form.status} onChange={(v) => setForm((x) => ({ ...x, status: v }))}><option value="Ενεργή">{L("Ενεργή", "Active")}</option><option value="Ολοκληρωμένη">{L("Ολοκληρωμένη", "Completed")}</option><option value="Ακυρωμένη">{L("Ακυρωμένη", "Cancelled")}</option></Select></Field></div><div className="pw-form-actions"><Button variant="secondary" type="button" onClick={cancel}>{L('Ακύρωση', 'Cancel')}</Button><Button type="submit">{L('Αποθήκευση', 'Save')}</Button></div></form>
+  return <form className="pw-editor compact" onSubmit={save}>
+    <div className="pw-form-grid compact">
+      <Field label={L("Τύπος", "Type")}><LibraryField hideLabel libraryKey="isolation-types" value={form.isolationType} allowManual placeholder={L("Επιλογή", "Select")} getOptionLabel={(item) => patientDisplayValue(item.name, language)} onChange={(v) => setForm((x) => ({ ...x, isolationType: v }))} /></Field>
+      <Field label={L("Παθογόνο", "Pathogen")}><LibraryField hideLabel libraryKey="microorganisms" value={form.pathogen} allowManual placeholder={L("Επιλογή", "Select")} onChange={(v) => setForm((x) => ({ ...x, pathogen: v }))} /></Field>
+      <Field label={L("Έναρξη", "Start")}><Input type="date" value={form.startDate} onChange={(v) => setForm((x) => ({ ...x, startDate: v }))} /></Field>
+      <Field label={L("Λήξη", "End")}><Input type="date" value={form.endDate} onChange={(v) => setForm((x) => ({ ...x, endDate: v }))} /></Field>
+      <Field label={L("Κατάσταση", "Status")}><Select value={form.status} onChange={(v) => setForm((x) => ({ ...x, status: v }))}><option value="Ενεργή">{L("Ενεργή", "Active")}</option><option value="Ολοκληρωμένη">{L("Ολοκληρωμένη", "Completed")}</option><option value="Ακυρωμένη">{L("Ακυρωμένη", "Cancelled")}</option></Select></Field>
+      <Field label={L("Επισύναψη", "Attachment")}><div className="pw-inline-attachment-field">{form.id ? <AttachmentTools files={files} upload={upload} deleteAttachment={deleteAttachment} /> : <span>{L('Αποθηκεύστε πρώτα την απομόνωση για να προσθέσετε αρχείο.', 'Save the isolation first to add a file.')}</span>}</div></Field>
+    </div>
+    <div className="pw-form-actions"><Button variant="secondary" type="button" onClick={cancel}>{L('Ακύρωση', 'Cancel')}</Button><Button type="submit">{L('Αποθήκευση', 'Save')}</Button></div>
+  </form>
 }
+
+const ATTACHMENT_DESTINATIONS = [
+  ['patient-records','Γενικά αρχεία ασθενούς','General patient files'],
+  ['questionnaire','Κλινική αξιολόγηση','Clinical assessment'],
+  ['sample','Δείγματα / Εργαστήριο','Samples / Laboratory'],
+  ['isolation','Απομόνωση','Isolation'],
+  ['treatment','Αντιμικροβιακή αγωγή','Antimicrobial therapy'],
+  ['review','Επανεκτίμηση','Reassessment'],
+]
 
 export function FileLibrary({ files, onUpload, onDelete }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
+  const [adding, setAdding] = useState(false)
+  const [destination, setDestination] = useState('patient-records')
   const sorted = [...files].sort((a, b) => String(b.uploadedAt || b.createdAt || b.id).localeCompare(String(a.uploadedAt || a.createdAt || a.id)))
-  return <div><div className="pw-library-head"><div><small>{L('ΑΡΧΕΙΟ', 'FILES')}</small><h3>{L('Επισυναπτόμενα', 'Attachments')}</h3></div><Button variant="secondary" size="sm" icon={<Paperclip size={14} />} onClick={onUpload}>{L('Νέα επισύναψη', 'New attachment')}</Button></div>{!sorted.length ? <EmptyState icon={<FileText size={24} />} title={L("Δεν υπάρχουν αρχεία", "No files")} text={L("Τα αρχεία από όλες τις ενότητες συγκεντρώνονται εδώ.", "Files from all patient sections are collected here.")} /> : <div className="pw-file-list">{sorted.map((file) => <div key={file.id} className="pw-file-row"><div className="pw-file-icon"><FileText size={17} /></div><div className="pw-file-copy"><b>{file.name}</b><span>{attachmentSectionLabel(file.step, language)}{file.size ? ` · ${formatFileSize(file.size)}` : ''}</span></div><div className="pw-icon-actions"><IconButton label={L("Προβολή", "View")} icon={<Eye size={15} />} onClick={() => { if (!previewAttachment(file)) notifyAction(language === 'en' ? `No preview content is available: ${file.name}` : `Δεν υπάρχει διαθέσιμο περιεχόμενο για προβολή: ${file.name}`) }} /><IconButton danger label={L("Διαγραφή", "Delete")} icon={<Trash2 size={15} />} onClick={() => onDelete(file.id)} /></div></div>)}</div>}</div>
+  return <div className="pw-file-library">
+    <div className="pw-library-head"><div><small>{L('ΑΡΧΕΙΟ', 'FILES')}</small><h3>{L('Επισυναπτόμενα', 'Attachments')}</h3><p>{L('Όλα τα αρχεία του ασθενούς σε ένα σημείο, με σαφή ένδειξη προέλευσης.', 'All patient files in one place with a clear source label.')}</p></div><Button variant="secondary" size="sm" icon={<Paperclip size={14} />} onClick={() => setAdding((v) => !v)}>{L('Νέα επισύναψη', 'New attachment')}</Button></div>
+    {adding && <div className="pw-file-upload-card"><Field label={L('Το αρχείο αφορά', 'File relates to')}><Select value={destination} onChange={setDestination}>{ATTACHMENT_DESTINATIONS.map(([value, el, en]) => <option key={value} value={value}>{language === 'en' ? en : el}</option>)}</Select></Field><div><Button variant="secondary" type="button" onClick={() => setAdding(false)}>{L('Ακύρωση','Cancel')}</Button><Button type="button" icon={<Paperclip size={14} />} onClick={() => { onUpload?.({ step: destination }); setAdding(false) }}>{L('Επιλογή αρχείου','Choose file')}</Button></div></div>}
+    {!sorted.length ? <EmptyState icon={<FileText size={24} />} title={L("Δεν υπάρχουν αρχεία", "No files")} text={L("Τα αρχεία από όλες τις ενότητες συγκεντρώνονται εδώ.", "Files from all patient sections are collected here.")} /> : <div className="pw-file-list">{sorted.map((file) => <div key={file.id} className="pw-file-row"><div className="pw-file-icon"><FileText size={17} /></div><div className="pw-file-copy"><b>{file.name}</b><span><strong>{attachmentSectionLabel(file.step, language)}</strong>{file.createdAt || file.uploadedAt ? ` · ${formatDate(String(file.createdAt || file.uploadedAt).slice(0,10))}` : ''}{file.size ? ` · ${formatFileSize(file.size)}` : ''}{file.type ? ` · ${file.type.split('/').pop()?.toUpperCase() || file.type}` : ''}</span></div><div className="pw-icon-actions"><IconButton label={L("Προβολή", "View")} icon={<Eye size={15} />} onClick={() => { if (!previewAttachment(file)) notifyAction(language === 'en' ? `No preview content is available: ${file.name}` : `Δεν υπάρχει διαθέσιμο περιεχόμενο για προβολή: ${file.name}`) }} /><IconButton danger label={L("Διαγραφή", "Delete")} icon={<Trash2 size={15} />} onClick={() => onDelete(file.id)} /></div></div>)}</div>}
+  </div>
 }
 export function AttachmentTools({ files = [], upload, deleteAttachment, readOnly = false }) {
   const { language } = useI18n()
@@ -90,5 +116,24 @@ export function Tab({ active, onClick, icon, label, count }) { return <button ty
 export function IconButton({ label, icon, onClick, danger = false }) { return <button type="button" className={`pw-icon-button ${danger ? 'danger' : ''}`} onClick={onClick} title={label} aria-label={label}>{icon}</button> }
 export function EmptyState({ icon, title, text }) { return <div className="pw-empty">{icon}<b>{title}</b><span>{text}</span></div> }
 export function Field({ label, children, wide = false }) { return <label className={`pw-field ${wide ? 'wide' : ''}`}><span>{label}</span>{children}</label> }
-export function Input({ value, onChange, ...props }) { return <input value={value || ''} onChange={(event) => onChange(event.target.value)} {...props} /> }
+function toGreekDate(value='') {
+  const match=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : String(value||'')
+}
+function toIsoDate(value='') {
+  const text=String(value||'').trim()
+  if(!text)return ''
+  const match=text.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/)
+  if(!match)return null
+  const day=match[1].padStart(2,'0'),month=match[2].padStart(2,'0'),year=match[3]
+  const iso=`${year}-${month}-${day}`
+  const probe=new Date(`${iso}T12:00:00`)
+  return Number.isNaN(probe.getTime()) || probe.getFullYear()!==Number(year) || probe.getMonth()+1!==Number(month) || probe.getDate()!==Number(day) ? null : iso
+}
+function LocalizedDateInput({ value, onChange, disabled, ...props }) {
+  const [text,setText]=useState(()=>toGreekDate(value))
+  useEffect(()=>setText(toGreekDate(value)),[value])
+  return <input {...props} disabled={disabled} type="text" inputMode="numeric" placeholder="ηη/μμ/εεεε" value={text} onChange={(event)=>{const next=event.target.value.replace(/[^0-9\/.-]/g,'').slice(0,10);setText(next);const iso=toIsoDate(next);if(iso!==null)onChange?.(iso)}} onBlur={()=>{const iso=toIsoDate(text);if(iso===null)setText(toGreekDate(value));else setText(toGreekDate(iso))}} />
+}
+export function Input({ value, onChange, type, ...props }) { return type === 'date' ? <LocalizedDateInput value={value} onChange={onChange} {...props} /> : <input type={type} value={value || ''} onChange={(event) => onChange(event.target.value)} {...props} /> }
 export function Select({ value, onChange, children, ...props }) { return <select value={value || ''} onChange={(event) => onChange(event.target.value)} {...props}>{children}</select> }

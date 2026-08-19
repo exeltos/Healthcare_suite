@@ -74,7 +74,14 @@ export async function deleteClinicalIsolation(id){
 export async function loadClinicalAttachments(patientId){
   if(!IS_PRODUCTION)return loadPatientAttachments().filter(x=>String(x.patientKey)===String(patientId))
   const c=requireSupabase();const {data,error}=await c.from('patient_attachments').select('*').eq('patient_id',String(patientId)).order('created_at',{ascending:false});if(error)throw error
-  return (data||[]).map(r=>({...r.data,id:r.id,patientKey:r.patient_id,name:r.file_name,type:r.mime_type||'',size:r.file_size||0,category:r.category||'',notes:r.notes||'',storagePath:r.storage_path||'',createdAt:r.created_at}))
+  return Promise.all((data||[]).map(async r=>{
+    let previewUrl=''
+    if(r.storage_path){
+      const {data:signed}=await c.storage.from('patientattachments').createSignedUrl(r.storage_path,900)
+      previewUrl=signed?.signedUrl||''
+    }
+    return {...r.data,id:r.id,patientKey:r.patient_id,name:r.file_name,type:r.mime_type||'',size:r.file_size||0,category:r.category||'',notes:r.notes||'',storagePath:r.storage_path||'',previewUrl,createdAt:r.created_at,uploadedAt:r.created_at}
+  }))
 }
 export async function uploadClinicalAttachment(patientId,file,meta={}){
   if(!IS_PRODUCTION)return addPatientAttachment({...meta,patientKey:patientId,name:file?.name||meta.name,type:file?.type||meta.type,size:file?.size||meta.size})

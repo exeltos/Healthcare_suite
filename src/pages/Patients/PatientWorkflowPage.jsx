@@ -358,11 +358,12 @@ export default function PatientWorkflowPage() {
       notifyAction(L('Η λήξη της απομόνωσης δεν μπορεί να προηγείται της έναρξης.', 'Isolation end date cannot be before its start date.'))
       return
     }
-    const normalizedIsolation = isolationForm.endDate && isolationForm.status === 'Ενεργή'
-      ? { ...isolationForm, status: 'Ολοκληρωμένη' }
-      : isolationForm
-    await saveClinicalIsolation({ ...normalizedIsolation, id: normalizedIsolation.id || `ISO-${Date.now()}`, patientId: patient.id, patientName: patient.fullName, patientCode: patient.patientCode, department: patient.department, clinicalCaseId: activeCase.id })
-    setIsolationForm(null); await refreshAll(activeCase.id)
+    if (isolationForm.status === 'Ολοκληρωμένη' && !isolationForm.endDate) {
+      notifyAction(L('Για ολοκληρωμένη απομόνωση συμπληρώστε ημερομηνία λήξης.', 'Enter an end date before completing the isolation.'))
+      return
+    }
+    const savedIsolation = await saveClinicalIsolation({ ...isolationForm, id: isolationForm.id || `ISO-${Date.now()}`, patientId: patient.id, patientName: patient.fullName, patientCode: patient.patientCode, department: patient.department, clinicalCaseId: activeCase.id })
+    setIsolationForm(savedIsolation); await refreshAll(activeCase.id)
   }
   async function removeCase(id) {
     if (activeCase && isClosedSurveillanceCase(activeCase)) return
@@ -425,7 +426,7 @@ export default function PatientWorkflowPage() {
         createCase={createCase} createSample={() => navigate(routeFor.laboratoryNewWorkspace(), { state: { prefillPatient: { id: patient.id, fullName: patient.fullName, patientCode: patient.patientCode, department: patient.department, room: patient.room, admissionDate: patient.admissionDate }, returnContext: { path: routeFor.patientWorkflow(patient.id), label: L('Πίσω στα δείγματα ασθενούς', 'Back to patient samples'), patientTab: 'samples' } } })} openCase={openCase} openCaseRecord={openCaseRecord}
         initialTab={location.state?.patientTab || 'summary'} highlightedSampleId={location.state?.highlightedSampleId || ''}
         openLaboratorySample={(sample) => navigate(routeFor.laboratoryRecordWorkspace(encodeURIComponent('Ασθενής'), encodeURIComponent(sample.id)), { state: { returnContext: { path: routeFor.patientWorkflow(patient.id), label: L('Πίσω στα δείγματα ασθενούς', 'Back to patient samples'), patientTab: 'samples', highlightedSampleId: sample.id } } })}
-        upload={() => requestAttachment({ step: 'patient-records' })} deleteAttachment={async (id) => { if (!confirmAction('Να διαγραφεί το συνημμένο αρχείο;')) return; const item=attachments.find((x)=>String(x.id)===String(id)); if(item) await deleteClinicalAttachment(item); await refreshAll() }}
+        upload={(target = { step: 'patient-records' }) => requestAttachment(target)} deleteAttachment={async (id) => { if (!confirmAction('Να διαγραφεί το συνημμένο αρχείο;')) return; const item=attachments.find((x)=>String(x.id)===String(id)); if(item) await deleteClinicalAttachment(item); await refreshAll() }}
         saveNotifiable={saveNotifiableRecord} deleteNotifiable={removeNotifiableRecord}
       />}
       {screen === 'workspace' && activeCase && <CaseWorkspace

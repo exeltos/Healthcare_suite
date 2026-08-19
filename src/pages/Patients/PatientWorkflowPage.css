@@ -409,3 +409,19 @@
   font-weight:700;
   color:var(--text-muted);
 }
+
+
+/* rc.124 — patient attachments, isolation attachment field and explicit DD/MM/YYYY inputs */
+.pw-library-head p{margin:4px 0 0;color:var(--muted);font-size:.73rem}
+.pw-file-library{display:grid;gap:12px}
+.pw-file-upload-card{display:grid;grid-template-columns:minmax(260px,1fr) auto;align-items:end;gap:12px;padding:13px 14px;border:1px solid color-mix(in srgb,var(--primary) 24%,var(--border));border-radius:11px;background:color-mix(in srgb,var(--primary-soft) 55%,var(--surface))}
+.pw-file-upload-card>div:last-child{display:flex;justify-content:flex-end;gap:8px;padding-bottom:1px}
+.pw-file-row{min-height:64px;padding:12px 14px;cursor:default}
+.pw-file-copy b{font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pw-file-copy span{display:flex;align-items:center;gap:4px;flex-wrap:wrap;line-height:1.35}
+.pw-file-copy span strong{color:var(--primary);font-weight:700}
+.pw-inline-attachment-field{min-height:41px;display:flex;align-items:center;padding:5px 7px;border:1px dashed var(--border);border-radius:9px;background:var(--surface)}
+.pw-inline-attachment-field>span{font-size:.72rem;color:var(--muted);line-height:1.35}
+.pw-inline-attachment-field .pw-attachment-tools{justify-content:flex-start;width:100%}
+.pw-field input[inputmode="numeric"]{font-variant-numeric:tabular-nums;letter-spacing:.01em}
+@media(max-width:720px){.pw-file-upload-card{grid-template-columns:1fr}.pw-file-upload-card>div:last-child{justify-content:flex-start}}

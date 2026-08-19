@@ -8,9 +8,8 @@ export function readFileAsDataUrl(file) {
 }
 
 export function previewAttachment(file) {
-  if (!file?.data) return false
-  const preview = window.open('', '_blank', 'noopener,noreferrer')
-  if (!preview) return false
-  preview.location.href = file.data
-  return true
+  const target = file?.previewUrl || file?.signedUrl || file?.url || file?.data || ''
+  if (!target) return false
+  const preview = window.open(target, '_blank', 'noopener,noreferrer')
+  return Boolean(preview)
 }

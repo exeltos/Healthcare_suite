@@ -36,7 +36,7 @@ export function I18nProvider({ children }) {
   }, [language])
 
   useEffect(() => {
-    document.documentElement.lang = language
+    document.documentElement.lang = language === 'en' ? 'en' : 'el-GR'
   }, [language])
 
   const value = useMemo(() => ({ language, setLanguage, t, supportedLanguages: SUPPORTED }), [language, setLanguage, t])

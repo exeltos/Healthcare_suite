@@ -30,7 +30,7 @@ export function parseLocalDate(value) {
 export function formatDate(value, fallback = '—') {
   if (!value) return fallback
   const date = parseLocalDate(value)
-  return date ? date.toLocaleDateString('el-GR') : String(value)
+  return date ? date.toLocaleDateString('el-GR',{day:'2-digit',month:'2-digit',year:'numeric'}) : String(value)
 }
 
 export function formatDateTime(date, time = '', fallback = '—') {
