@@ -26,7 +26,7 @@ export async function loadPreventionRecords(type){
 export async function savePreventionRecord(type,input={}){
  const d=defs[type];if(!d)throw new Error('Unknown prevention record type.')
  if(!IS_PRODUCTION){const row={...input,id:input.id||`${type}-${Date.now()}`};d.save([row,...d.load().filter(x=>x.id!==row.id)]);return row}
- const c=requireSupabase(),org=await orgId(c),dep=await departmentId(c,org,input.department),row={...input,id:input.id||`${type}-${Date.now()}`}
+ const c=requireSupabase(),org=await orgId(c),resolvedDepartment=await departmentId(c,org,input.department),dep=type==='staff_vaccination'?null:resolvedDepartment,row={...input,id:input.id||`${type}-${Date.now()}`}
  if(type==='staff_vaccination'&&row.employeeId){
    const {data:employee,error:employeeError}=await c.from('employees').select('id,status').eq('organization_id',org).eq('id',String(row.employeeId)).maybeSingle()
    if(employeeError)throw employeeError
@@ -41,7 +41,10 @@ export async function savePreventionRecord(type,input={}){
  }
  const payload={id:String(row.id),organization_id:org,record_type:type,department_id:dep,employee_id:row.employeeId?String(row.employeeId):null,patient_id:row.patientId?String(row.patientId):null,record_date:date(row.date||row.observationDate||row.startDate),status:String(row.status||row.approval||''),data:row}
  const {data,error}=await c.from('prevention_records').upsert(payload,{onConflict:'id'}).select('*,department:departments(id,name)').single();if(error)throw error
- await loadPreventionRecords(type);return {...row,id:data.id}
+ const {data:verified,error:verifyError}=await c.from('prevention_records').select('id,record_type,employee_id,record_date,data').eq('organization_id',org).eq('id',String(data.id)).eq('record_type',type).maybeSingle();if(verifyError)throw verifyError
+ if(!verified)throw new Error('Supabase write could not be verified.')
+ if(type==='staff_vaccination'&&row.employeeId&&String(verified.employee_id||'')!==String(row.employeeId))throw new Error('Supabase vaccination verification failed for the employee link.')
+ await loadPreventionRecords(type);return {...row,id:verified.id,_persisted:true}
 }
 export async function deletePreventionRecord(type,id){
  const d=defs[type];if(!d)throw new Error('Unknown prevention record type.')

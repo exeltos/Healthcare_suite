@@ -80,3 +80,24 @@
 .ew-grid .core-control:focus{outline:2px solid color-mix(in srgb,var(--primary) 18%,transparent);border-color:var(--primary);box-shadow:none}
 .ew-grid .library-field,.ew-grid .ew-field,.ew-grid .core-field{min-width:0}
 .ew-vaccine-form .ew-grid--three,.ew-profile .ew-grid--three{align-items:start}
+
+/* rc.131 — Employee dates use the exact same visual control as employee text/select fields. */
+.ew-field .ew-date-input{
+  box-sizing:border-box;
+  width:100%;
+  height:42px;
+  min-height:42px;
+  padding:0 11px;
+  border:1px solid var(--border);
+  border-radius:9px;
+  background:var(--surface);
+  color:var(--text);
+  font:inherit;
+  font-size:inherit;
+  font-weight:inherit;
+  line-height:1.2;
+  font-variant-numeric:tabular-nums;
+}
+.ew-field .ew-date-input::placeholder{color:#91a0a5;font:inherit}
+.ew-field .ew-date-input:focus{outline:2px solid color-mix(in srgb,var(--primary) 18%,transparent);border-color:var(--primary);box-shadow:none}
+.ew-field .ew-date-input:disabled{background:#f6f8f9;color:#4e6472;cursor:default}
