@@ -14,7 +14,7 @@ import { loadCommittees, loadTraining, ORGANIZATION_EVENT } from '../../services
 import { loadUserAccounts, USER_ACCOUNTS_EVENT } from '../../services/userAccountsService'
 import { useI18n } from '../../i18n'
 import { employeeDisplayValue } from './employeePresentation'
-import { EmployeeHealthTab, ProfileTab, ListTab, formatDate, hasProfileData, pickUnsaved, accountStatusLabel } from './EmployeeWorkspaceSections'
+import { EmployeeHealthTab, ProfileTab, ListTab, formatDate, hasProfileData, accountStatusLabel } from './EmployeeWorkspaceSections'
 import './EmployeeWorkspacePage.css'
 
 const TABS = [
@@ -55,18 +55,12 @@ export default function EmployeeWorkspacePage() {
     setOccupationalDraft(null)
   }, [employeeId])
 
-  async function refreshEmployeeDirectory({preserveDraft=true}={}){
-    if(isNewEmployee) return employee
-    const employeeRows=await loadDirectoryEmployees()
-    const next=employeeRows.find((item)=>String(item.id)===String(employeeId))||null
+  function applyEmployeeRows(employeeRows,{preserveDraft=true}={}){
+    const next=(employeeRows||[]).find((item)=>String(item.id)===String(employeeId))||null
     setEmployee(next)
-    setForm((current)=>next
-      ? (preserveDraft?{...next,...pickUnsaved(current,next)}:next)
-      : {})
-    if(next&&hasProfileData(next)) setEditingProfile(false)
-    const userRows=await loadDirectoryUserAccounts()
-    setUserAccount(userRows.find((item)=>String(item.employeeId)===String(employeeId))||null)
-    try{setOccupationalVisitsState(await loadEmployeeOccupationalVisits(employeeId))}catch{}
+    // Never overwrite an open edit form with a background cache refresh.
+    // This was the reason the Edit button appeared to do nothing.
+    if(!(preserveDraft&&editingProfile)) setForm(next||{})
     return next
   }
 
@@ -88,10 +82,16 @@ export default function EmployeeWorkspacePage() {
   },[employeeId,isNewEmployee])
 
   useAppEvents([EMPLOYEES_EVENT, STAFF_VACCINATIONS_EVENT, STAFF_SAMPLES_EVENT, ORGANIZATION_EVENT, USER_ACCOUNTS_EVENT], (event) => {
-    // Refresh only the data domain that actually changed. Reloading the whole directory
-    // for every cache event caused repeated employees/user_profiles/RPC requests.
-    if (event?.type === EMPLOYEES_EVENT || event?.type === USER_ACCOUNTS_EVENT) {
-      refreshEmployeeDirectory().catch(()=>{})
+    // Domain events must never turn into a full directory reload. In particular,
+    // an EMPLOYEES_UPDATED event already carries the fresh rows, so use them directly.
+    // This also keeps an open Edit form open instead of immediately resetting it.
+    if (event?.type === EMPLOYEES_EVENT) {
+      const rows=Array.isArray(event.detail)?event.detail:loadAllEmployees()
+      applyEmployeeRows(rows,{preserveDraft:true})
+    }
+    if (event?.type === USER_ACCOUNTS_EVENT) {
+      const local=loadUserAccounts().find((item)=>String(item.employeeId)===String(employeeId))||null
+      setUserAccount(local)
     }
     if (event?.type === STAFF_VACCINATIONS_EVENT) setVaccinations(loadStaffVaccinations())
     if (event?.type === STAFF_SAMPLES_EVENT) setSamples(loadStaffSamples())

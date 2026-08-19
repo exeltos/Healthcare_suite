@@ -50,11 +50,4 @@
 /* rc.61 — normalize employee field-title typography with the shared form system. */
 .ew-field>span,.ew-detail span{font-family:inherit;font-weight:var(--font-weight-semibold,600);letter-spacing:0}
 
-
-/* rc.128 — employee dates use the exact same boxed control geometry as the rest of the workspace. */
-.ew-grid .core-field{display:flex;flex-direction:column;gap:6px;min-width:0}
-.ew-grid .core-field__label{color:var(--text-soft);font-size:.73rem;font-weight:var(--font-weight-semibold,600);line-height:1.35}
-.ew-grid .core-field .core-control{box-sizing:border-box;width:100%;height:42px;min-height:42px;padding:0 11px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;outline:0}
-.ew-grid .core-field .core-control:hover:not(:disabled){border-color:color-mix(in srgb,var(--primary) 42%,var(--border))}
-.ew-grid .core-field .core-control:focus{border-color:var(--primary);outline:2px solid color-mix(in srgb,var(--primary) 18%,transparent);box-shadow:none}
-.ew-grid .core-field .core-control:disabled{background:#f6f8f9;color:#4e6472}
+/* rc.130 — employee dates use the same ew-field markup and geometry as all other employee inputs. */
