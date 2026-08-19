@@ -14,7 +14,7 @@ export async function loadClinicalPatients(){
     .order('last_name').order('first_name')
   if(error)throw error
   const rows=(data||[]).map(mapPatientFromDb)
-  savePatientRegistry(rows)
+  savePatientRegistry(rows,{emit:false})
   return rows
 }
 
@@ -96,7 +96,7 @@ export async function loadClinicalSurveillanceCases(patientId=''){
   const { data,error }=await query
   if(error)throw error
   const rows=(data||[]).map(mapCaseFromDb)
-  if(!patientId) replaceSurveillanceCases(rows)
+  if(!patientId) replaceSurveillanceCases(rows,{emit:false})
   else mergeCasesIntoCache(rows,patientId)
   return rows
 }
@@ -144,7 +144,7 @@ export async function loadClinicalPatientSamples(patientId=''){
   const { data,error }=await query
   if(error)throw error
   const rows=(data||[]).map(mapSampleFromDb)
-  if(!patientId)savePatientSamples(rows)
+  if(!patientId)savePatientSamples(rows,{emit:false})
   else mergeSamplesIntoCache(rows,patientId)
   return rows
 }
@@ -201,7 +201,7 @@ export async function loadClinicalInfections(patientId=''){
   const { data,error }=await query
   if(error)throw error
   const rows=(data||[]).map(mapInfectionFromDb)
-  if(!patientId)replaceInfections(rows)
+  if(!patientId)replaceInfections(rows,{emit:false})
   else mergeInfectionsIntoCache(rows,patientId)
   return rows
 }
@@ -301,13 +301,13 @@ function mapInfectionFromDb(row={}){
 }
 
 function mergeCasesIntoCache(rows,patientId){
-  replaceSurveillanceCases([...loadSurveillanceCases().filter(x=>String(x.patientKey||x.patientId)!==String(patientId)),...rows])
+  replaceSurveillanceCases([...loadSurveillanceCases().filter(x=>String(x.patientKey||x.patientId)!==String(patientId)),...rows],{emit:false})
 }
 function mergeSamplesIntoCache(rows,patientId){
-  savePatientSamples([...loadPatientSamples().filter(x=>String(x.patientId||'')!==String(patientId)),...rows])
+  savePatientSamples([...loadPatientSamples().filter(x=>String(x.patientId||'')!==String(patientId)),...rows],{emit:false})
 }
 function mergeInfectionsIntoCache(rows,patientId){
-  replaceInfections([...loadInfections().filter(x=>String(x.patientId||'')!==String(patientId)),...rows])
+  replaceInfections([...loadInfections().filter(x=>String(x.patientId||'')!==String(patientId)),...rows],{emit:false})
 }
 async function currentOrganizationId(client){
   const {data,error}=await client.rpc('current_organization_id');if(error)throw error

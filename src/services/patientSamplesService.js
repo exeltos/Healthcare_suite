@@ -37,10 +37,10 @@ export function loadPatientSamples() {
   return mergedSamples
 }
 
-export function savePatientSamples(records = []) {
+export function savePatientSamples(records = [], { emit = true } = {}) {
   const normalizedRecords = (Array.isArray(records) ? records : []).map(normalizePatientSample)
   patientSamplesRepository.replaceAll(normalizedRecords)
-  emitAppEvent(PATIENT_SAMPLES_EVENT, normalizedRecords)
+  if (emit) emitAppEvent(PATIENT_SAMPLES_EVENT, normalizedRecords)
   return normalizedRecords
 }
 

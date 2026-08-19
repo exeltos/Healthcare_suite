@@ -11,7 +11,7 @@ import { clearProductionLocalOperationalCache } from '../../data/productionDataB
 import { authenticateUser, requestRecovery } from '../../services/auth'
 import { IS_DEMO, IS_PRODUCTION } from '../../core/runtime'
 
-const BUILD_VERSION = '0.12.0-rc.120'
+const BUILD_VERSION = '0.12.0-rc.121'
 
 export default function LoginPage() {
   const [view, setView] = useState('welcome')

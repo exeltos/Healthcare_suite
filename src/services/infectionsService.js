@@ -5,7 +5,7 @@ export { INFECTIONS_EVENT }
 export const INFECTION_SAVED_EVENT = APP_EVENTS.INFECTION_SAVED
 
 export function loadInfections() { return infectionsRepository.findAll() }
-export function replaceInfections(rows) { return infectionsRepository.replaceAll(rows) }
+export function replaceInfections(rows, options = {}) { return infectionsRepository.replaceAll(rows, options) }
 export function deleteInfection(id) { return infectionsRepository.remove(id) }
 
 export function saveInfection(input, previous = null) {

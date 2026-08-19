@@ -16,14 +16,14 @@ export function loadSurveillanceCases() {
   return clinicalSupportRepository.loadSurveillanceCases()
 }
 
-function save(rows) {
+function save(rows, { emit = true } = {}) {
   const next = clinicalSupportRepository.saveSurveillanceCases(rows)
-  emitAppEvent(SURVEILLANCE_CASES_EVENT, next)
+  if (emit) emitAppEvent(SURVEILLANCE_CASES_EVENT, next)
   return next
 }
 
-export function replaceSurveillanceCases(rows = []) {
-  return save(Array.isArray(rows) ? rows : [])
+export function replaceSurveillanceCases(rows = [], options = {}) {
+  return save(Array.isArray(rows) ? rows : [], options)
 }
 
 function sampleIsRecheck(sample = {}) {

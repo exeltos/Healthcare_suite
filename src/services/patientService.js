@@ -66,10 +66,10 @@ export function loadPatientRegistry() {
   return combined
 }
 
-export function savePatientRegistry(records = []) {
+export function savePatientRegistry(records = [], { emit = true } = {}) {
   const next = Array.isArray(records) ? records : []
   patientRepository.replaceSaved(next)
-  emitAppEvent(PATIENT_REGISTRY_EVENT, next)
+  if (emit) emitAppEvent(PATIENT_REGISTRY_EVENT, next)
   return next
 }
 

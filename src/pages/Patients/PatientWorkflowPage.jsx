@@ -86,6 +86,7 @@ export default function PatientWorkflowPage() {
   const [attachmentTarget, setAttachmentTarget] = useState(null)
   const [focusedRecord, setFocusedRecord] = useState(null)
   const fileRef = useRef(null)
+  const refreshInFlightRef = useRef(false)
 
   useEffect(() => {
     if (isNewPatient) {
@@ -126,7 +127,7 @@ export default function PatientWorkflowPage() {
   }, [patientId, isNewPatient])
 
   useAppEvents([PROMOTED_ANTIBIOTICS_EVENT, APP_EVENTS.SURVEILLANCE_CASES_UPDATED, APP_EVENTS.PATIENT_SAMPLES_UPDATED], () => {
-    if (patient) refreshAll(activeCase?.id)
+    if (!isNewPatient && patient?.id) refreshAll(activeCase?.id)
   })
 
   async function returnToPatientHome() {
@@ -152,21 +153,27 @@ export default function PatientWorkflowPage() {
   const caseAttachments = activeCase ? attachments.filter((item) => String(item.caseId || '') === String(activeCase.id)) : []
 
   async function refreshAll(nextCaseId = activeCase?.id) {
-    if(!patient)return
-    const [nextCases,nextSamples,nextInfections,nextIsolations,nextAttachments]=await Promise.all([
-      loadClinicalSurveillanceCases(patient.id),
-      loadClinicalPatientSamples(patient.id),
-      loadClinicalInfections(patient.id),
-      loadClinicalIsolations(patient.id),
-      loadClinicalAttachments(patient.id),
-    ])
-    setCases(nextCases)
-    setSamples(nextSamples)
-    setInfections(nextInfections)
-    setIsolations(nextIsolations)
-    setAttachments(nextAttachments)
-    setNotifiableDiseases(await loadClinicalNotifiableDiseases(patient.id))
-    if (nextCaseId) setActiveCase(nextCases.find((item) => String(item.id) === String(nextCaseId)) || null)
+    if(!patient?.id || refreshInFlightRef.current)return
+    refreshInFlightRef.current=true
+    try{
+      const [nextCases,nextSamples,nextInfections,nextIsolations,nextAttachments,nextNotifiable]=await Promise.all([
+        loadClinicalSurveillanceCases(patient.id),
+        loadClinicalPatientSamples(patient.id),
+        loadClinicalInfections(patient.id),
+        loadClinicalIsolations(patient.id),
+        loadClinicalAttachments(patient.id),
+        loadClinicalNotifiableDiseases(patient.id),
+      ])
+      setCases(nextCases)
+      setSamples(nextSamples)
+      setInfections(nextInfections)
+      setIsolations(nextIsolations)
+      setAttachments(nextAttachments)
+      setNotifiableDiseases(nextNotifiable)
+      if (nextCaseId) setActiveCase(nextCases.find((item) => String(item.id) === String(nextCaseId)) || null)
+    }finally{
+      refreshInFlightRef.current=false
+    }
   }
 
   async function savePatient() {

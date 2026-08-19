@@ -19,10 +19,10 @@ export function createCollectionRepository({
     return source.map(normalize)
   }
 
-  function replaceAll(records = []) {
+  function replaceAll(records = [], { emit = true } = {}) {
     const normalized = records.map(normalize)
     writeJson(storageKey, normalized)
-    if (eventName) emitAppEvent(eventName, normalized)
+    if (emit && eventName) emitAppEvent(eventName, normalized)
     afterSave?.(normalized)
     return normalized
   }
