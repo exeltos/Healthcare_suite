@@ -1,6 +1,6 @@
 import { IS_PRODUCTION } from '../../core/runtime'
 import { emitAppEvent, APP_EVENTS } from '../../core/events'
-import { readJsonObject, writeJsonCache } from '../../core/storage'
+import { readJsonArray, readJsonObject, writeJsonCache } from '../../core/storage'
 import { requireSupabase } from '../../integrations/supabase'
 import { loadMasterData, saveMasterData } from '../masterDataService'
 import { loadAllEmployees, saveEmployees, upsertEmployee, deleteEmployee } from '../employeesService'
@@ -362,15 +362,24 @@ function mirrorDepartments(rows){
 
 function mirrorEmployees(rows){
   const master=readJsonObject('limoxisMasterData',{})
+  const current=Array.isArray(master['employees-library'])?master['employees-library']:[]
+  // Production hydration must be idempotent. Emitting EMPLOYEES_UPDATED after every GET
+  // made EmployeeWorkspacePage immediately fetch the same rows again, creating an
+  // unbounded Supabase request loop (ERR_INSUFFICIENT_RESOURCES).
+  if(JSON.stringify(current)===JSON.stringify(rows)) return false
   const next={...master,'employees-library':rows}
   writeJsonCache('limoxisMasterData',next)
   emitAppEvent(APP_EVENTS.MASTER_DATA_UPDATED,next)
   emitAppEvent(APP_EVENTS.EMPLOYEES_UPDATED,rows)
+  return true
 }
 
 function mirrorUsers(rows){
+  const current=readJsonArray('healthcare-suite.user-accounts',[])
+  if(JSON.stringify(current)===JSON.stringify(rows)) return false
   writeJsonCache('healthcare-suite.user-accounts',rows)
   emitAppEvent(USER_ACCOUNTS_EVENT,{entityType:'user-account',source:'supabase-cache'})
+  return true
 }
 
 function mapDepartmentFromDb(row={}){

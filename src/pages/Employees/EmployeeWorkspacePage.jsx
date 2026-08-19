@@ -87,12 +87,18 @@ export default function EmployeeWorkspacePage() {
     return()=>{active=false}
   },[employeeId,isNewEmployee])
 
-  useAppEvents([EMPLOYEES_EVENT, STAFF_VACCINATIONS_EVENT, STAFF_SAMPLES_EVENT, ORGANIZATION_EVENT, USER_ACCOUNTS_EVENT], () => {
-    refreshEmployeeDirectory().catch(()=>{})
-    setVaccinations(loadStaffVaccinations())
-    setSamples(loadStaffSamples())
-    setTraining(loadTraining())
-    setCommittees(loadCommittees())
+  useAppEvents([EMPLOYEES_EVENT, STAFF_VACCINATIONS_EVENT, STAFF_SAMPLES_EVENT, ORGANIZATION_EVENT, USER_ACCOUNTS_EVENT], (event) => {
+    // Refresh only the data domain that actually changed. Reloading the whole directory
+    // for every cache event caused repeated employees/user_profiles/RPC requests.
+    if (event?.type === EMPLOYEES_EVENT || event?.type === USER_ACCOUNTS_EVENT) {
+      refreshEmployeeDirectory().catch(()=>{})
+    }
+    if (event?.type === STAFF_VACCINATIONS_EVENT) setVaccinations(loadStaffVaccinations())
+    if (event?.type === STAFF_SAMPLES_EVENT) setSamples(loadStaffSamples())
+    if (event?.type === ORGANIZATION_EVENT) {
+      setTraining(loadTraining())
+      setCommittees(loadCommittees())
+    }
   })
 
   const employeeVaccinations = useMemo(() => {
