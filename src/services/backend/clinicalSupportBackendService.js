@@ -52,7 +52,12 @@ export async function saveClinicalSourceSample(input={}){
 }
 export async function deleteClinicalSourceSample(record){
   if(!IS_PRODUCTION)return localDeleteSource(record)
-  const c=requireSupabase();const {error}=await c.from('laboratory_source_samples').delete().eq('id',String(record.id));if(error)throw error;localDeleteSource(record);return true
+  const c=requireSupabase(),org=await orgId(c)
+  const {data,error}=await c.from('laboratory_source_samples').delete().eq('organization_id',org).eq('id',String(record.id)).select('id')
+  if(error)throw error
+  if(!data?.length)throw new Error('Η διαγραφή δεν επιβεβαιώθηκε στο Supabase.')
+  localDeleteSource(record)
+  return true
 }
 
 export async function loadClinicalIsolations(patientId=''){

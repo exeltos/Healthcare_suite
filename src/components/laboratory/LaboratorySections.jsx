@@ -152,7 +152,7 @@ export function LaboratorySourceSection({
   </section>
 }
 
-export function LaboratorySampleSection({ form, setForm, isNew, patientSampleOptions = [], laboratoryFieldsLocked = false }) {
+export function LaboratorySampleSection({ form, setForm, isNew, patientSampleOptions = [], laboratoryFieldsLocked = false, sampleFieldsLocked = false }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
 
@@ -166,14 +166,16 @@ export function LaboratorySampleSection({ form, setForm, isNew, patientSampleOpt
       {!isNew ? <TextField label={L('Πηγή', 'Source')} disabled value={laboratoryDisplayValue(form.sourceType, language) || ''} /> : null}
       {!isNew ? <TextField
         label={form.sourceType === 'Προσωπικό' ? L('Εργαζόμενος', 'Staff member') : form.sourceType === 'Ασθενής' ? L('Ασθενής', 'Patient') : L('Σημείο / πηγή', 'Site / source')}
-        disabled
+        disabled={['Ασθενής','Προσωπικό'].includes(form.sourceType) || sampleFieldsLocked}
         value={form.subjectName || ''}
+        onChange={(e) => setForm({ ...form, subjectName: e.target.value })}
       /> : null}
       <LibraryField
         label={L('Είδος δείγματος', 'Sample type')}
         libraryKey="sample-types"
         category={form.sourceType}
         value={form.sampleType}
+        disabled={sampleFieldsLocked}
         allowManual
         getOptionLabel={(item) => laboratoryDisplayValue(item.name, language)}
         onChange={(value) => setForm({ ...form, sampleType: value })}
@@ -181,6 +183,7 @@ export function LaboratorySampleSection({ form, setForm, isNew, patientSampleOpt
       <SelectField
         label={L('Λόγος δείγματος', 'Sample reason')}
         value={form.sampleReason}
+        disabled={sampleFieldsLocked}
         options={laboratoryOptions(['Καλλιέργεια', 'Screening', 'Επανέλεγχος', 'Άλλο'], language)}
         onChange={(e) => {
           const sampleReason = e.target.value
@@ -204,8 +207,8 @@ export function LaboratorySampleSection({ form, setForm, isNew, patientSampleOpt
           : L('Δεν βρέθηκε προηγούμενο δείγμα για τον ασθενή.', 'No previous sample was found for this patient.')}
         onChange={(e) => setForm({ ...form, parentSampleId: e.target.value, isRecheck: true })}
       /> : null}
-      <DateField label={L('Ημερομηνία λήψης', 'Collection date')} value={form.collectionDate} onChange={(e) => setForm({ ...form, collectionDate: e.target.value })} />
-      <TimeField label={L('Ώρα λήψης', 'Collection time')} value={form.collectionTime || ''} onChange={(e) => setForm({ ...form, collectionTime: e.target.value })} />
+      <DateField label={L('Ημερομηνία λήψης', 'Collection date')} disabled={sampleFieldsLocked} value={form.collectionDate} onChange={(e) => setForm({ ...form, collectionDate: e.target.value })} />
+      <TimeField label={L('Ώρα λήψης', 'Collection time')} disabled={sampleFieldsLocked} value={form.collectionTime || ''} onChange={(e) => setForm({ ...form, collectionTime: e.target.value })} />
       <DateField label={L('Ημερομηνία παραλαβής', 'Receipt date')} disabled={laboratoryFieldsLocked} helpText={laboratoryFieldsLocked ? L('Συμπληρώνεται μόνο από το Εργαστήριο.', 'Completed by Laboratory only.') : undefined} value={form.receivedDate} onChange={(e) => setForm({ ...form, receivedDate: e.target.value })} />
       <SelectField
         label={L('Αποδοχή δείγματος', 'Sample acceptance')}
@@ -224,7 +227,7 @@ export function LaboratorySampleSection({ form, setForm, isNew, patientSampleOpt
         fullWidth
       /> : null}
       {form.sourceType === 'Ασθενής' ? <TextField label={L('Τμήμα', 'Department')} disabled value={form.department || ''} /> : null}
-      <TextAreaField fullWidth label={L('Σημειώσεις', 'Notes')} value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+      <TextAreaField fullWidth label={L('Σημειώσεις', 'Notes')} disabled={sampleFieldsLocked} value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
     </div>
   </section>
 }

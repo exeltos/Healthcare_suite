@@ -1,11 +1,11 @@
 import { APP_ROUTES, routeFor } from '../../config/routes'
-import { notifyAction } from '../../components/core/feedback/index'
+import { confirmAction, notifyAction } from '../../components/core/feedback/index'
 import { APP_EVENTS } from '../../core/events'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
 import { required, useCoreForm } from '../../core/forms'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { FileText, FlaskConical, Printer, Save, ShieldCheck } from 'lucide-react'
+import { FileText, FlaskConical, Pencil, Printer, Save, ShieldCheck, Trash2, X } from 'lucide-react'
 
 import { Badge, Button, IconButton, WorkspaceBody, WorkspaceHeader, WorkspaceShell, WorkspaceTabs } from '../../components/core'
 import {
@@ -151,10 +151,14 @@ export default function LaboratoryWorkspacePage() {
   const [employeeMode, setEmployeeMode] = useState('existing')
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
   const [newEmployee, setNewEmployee] = useState(emptyNewEmployee)
+  const [isEditing, setIsEditing] = useState(isNew)
+  const collectionEnvironmentalWorkspace = collectionMode && isEnvironmentalSource
+  const sampleFieldsLocked = collectionEnvironmentalWorkspace && !isNew && !isEditing
 
   useEffect(() => {
     setTab('sample')
-  }, [params.recordId])
+    setIsEditing(isNew)
+  }, [params.recordId, isNew])
 
   async function refreshWorkspaceSources(){
     const [patientRows,employeeRows,labRows]=await Promise.all([
@@ -257,10 +261,10 @@ export default function LaboratoryWorkspacePage() {
   }, [isNew, params.sourceType, params.recordId, location.state, laboratoryRecords, patients, employees])
 
   useEffect(()=>{
-    if(isNew||!record)return
+    if(isNew||!record||isEditing)return
     const found=laboratoryRecords.find((item)=>item.id===record.id&&item.sourceType===record.sourceType)
     if(found){setRecord(found);setForm(normalizeForForm(found))}
-  },[laboratoryRecords,isNew,record?.id,record?.sourceType])
+  },[laboratoryRecords,isNew,record?.id,record?.sourceType,isEditing])
 
   const selectedPatient = useMemo(
     () => patients.find((item) => String(item.id) === String(selectedPatientId)),
@@ -557,8 +561,28 @@ export default function LaboratoryWorkspacePage() {
     }
     setForm(normalizeForForm(saved))
     setRecord({ ...saved, sourceType: payload.sourceType })
+    if (collectionEnvironmentalWorkspace) setIsEditing(false)
     const savedPath = routeFor.laboratoryRecordWorkspace(encodeURIComponent(payload.sourceType), encodeURIComponent(saved.id))
     navigate(collectionMode ? `${savedPath}?mode=collection` : savedPath, { replace: true, state: location.state })
+  }
+
+
+  function cancelCollectionEdit() {
+    if (!record) return
+    setForm(normalizeForForm(record))
+    setIsEditing(false)
+  }
+
+  async function removeCollectionRecord() {
+    if (!record?.id) return
+    if (!confirmAction(L('Να διαγραφεί οριστικά η καταχώρηση δείγματος; Η διαγραφή θα γίνει και από τη βάση δεδομένων.', 'Permanently delete this sample record? It will also be deleted from the database.'))) return
+    try {
+      await deleteLaboratoryRecordAsync(record)
+      notifyAction(L('Η καταχώρηση διαγράφηκε.', 'The record was deleted.'))
+      returnToOrigin()
+    } catch (error) {
+      notifyAction(error?.message || L('Δεν ήταν δυνατή η διαγραφή της καταχώρησης.', 'The record could not be deleted.'))
+    }
   }
 
 
@@ -575,7 +599,16 @@ export default function LaboratoryWorkspacePage() {
         title={record?.id || L('Νέα εργαστηριακή εγγραφή', 'New laboratory record')}
         badges={<><Badge tone={form.status === 'Θετικό' ? 'danger' : form.status === 'Αρνητικό' ? 'success' : 'warning'}>{laboratoryDisplayValue(form.status || 'Εκκρεμεί', language)}</Badge>{form.resistance ? <Badge tone="danger">{form.resistance}</Badge> : null}{form.relatedInfection ? <Badge tone="neutral">Case {form.relatedInfection}</Badge> : null}</>}
         meta={[laboratoryDisplayValue(form.sourceType, language), form.subjectName, laboratoryDisplayValue(form.sampleType, language)].filter(Boolean).join(' · ') || L('Νέα καταχώρηση', 'New record')}
-        actions={<><IconButton label={L("Εκτύπωση εργαστηριακής εγγραφής", "Print laboratory record")} onClick={() => window.print()}><Printer size={17} /></IconButton><Button icon={<Save size={16} />} onClick={save}>{L('Αποθήκευση', 'Save')}</Button></>}
+        actions={<>
+          <IconButton label={L("Εκτύπωση εργαστηριακής εγγραφής", "Print laboratory record")} onClick={() => window.print()}><Printer size={17} /></IconButton>
+          {collectionEnvironmentalWorkspace && !isNew ? (isEditing ? <>
+            <Button variant="secondary" icon={<X size={16} />} onClick={cancelCollectionEdit}>{L('Ακύρωση', 'Cancel')}</Button>
+            <Button icon={<Save size={16} />} onClick={save}>{L('Αποθήκευση', 'Save')}</Button>
+          </> : <>
+            <Button variant="secondary" icon={<Pencil size={16} />} onClick={() => setIsEditing(true)}>{L('Επεξεργασία', 'Edit')}</Button>
+            <IconButton variant="danger" label={L('Διαγραφή καταχώρησης', 'Delete record')} onClick={removeCollectionRecord}><Trash2 size={17} /></IconButton>
+          </>) : <Button icon={<Save size={16} />} onClick={save}>{L('Αποθήκευση', 'Save')}</Button>}
+        </>}
       />
       <WorkspaceTabs items={tabItems.map((item) => ({ ...item, label: language === 'en' ? item.labelEn : item.labelEl }))} value={tab} onChange={setTab} ariaLabel={L("Εργαστηριακή εγγραφή", "Laboratory record")} />
       <WorkspaceBody className="lw-body">
@@ -588,7 +621,7 @@ export default function LaboratoryWorkspacePage() {
             employeeFullName={employeeFullName}
             onSourceChange={(value) => { if (value !== 'Ασθενής') setSelectedPatientId(''); if (value !== 'Προσωπικό') setSelectedEmployeeId('') }}
           /> : null}
-          <LaboratorySampleSection form={form} setForm={setForm} isNew={isNew} patientSampleOptions={patientSampleOptions} laboratoryFieldsLocked={laboratoryFieldsLocked} />
+          <LaboratorySampleSection form={form} setForm={setForm} isNew={isNew} patientSampleOptions={patientSampleOptions} laboratoryFieldsLocked={laboratoryFieldsLocked} sampleFieldsLocked={sampleFieldsLocked} />
         </div>}
         {tab === 'result' && <LaboratoryResultSection form={form} setForm={setForm} normalizeMicroorganismRows={normalizeMicroorganismRows} updateMicroorganism={updateMicroorganism} readOnly={laboratoryFieldsLocked} />}
         {tab === 'antibiogram' && <LaboratoryAntibiogramSection form={form} setForm={setForm} updateAntibiogram={updateAntibiogram} readOnly={laboratoryFieldsLocked} />}
