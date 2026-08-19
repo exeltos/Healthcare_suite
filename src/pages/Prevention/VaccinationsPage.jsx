@@ -133,14 +133,33 @@ export default function VaccinationsPage() {
         return
       }
     }
-    loadPreventionRecords('staff_vaccination').then(setRecords).catch(()=>{})
-    close()
+    try {
+      const refreshed = await loadPreventionRecords('staff_vaccination')
+      setRecords(refreshed)
+      if (editing) {
+        const persisted = refreshed.find((item) => String(item.id) === String(editing.id))
+        if (!persisted) throw new Error(L('Η αποθήκευση δεν επιβεβαιώθηκε από το Supabase.', 'The save could not be verified in Supabase.'))
+      }
+      notifyAction(L('Ο εμβολιασμός αποθηκεύτηκε.', 'Vaccination saved.'))
+      close()
+    } catch (error) {
+      notifyAction(error?.message || L('Η αποθήκευση του εμβολιασμού απέτυχε.', 'Vaccination save failed.'))
+    }
   }
   async function remove() {
     if (!editing || !confirmAction(L('Να διαγραφεί η εγγραφή εμβολιασμού;', 'Delete this vaccination record?'))) return
-    await deletePreventionRecord('staff_vaccination',editing.id)
-    setRecords(await loadPreventionRecords('staff_vaccination'))
-    close()
+    try {
+      await deletePreventionRecord('staff_vaccination',editing.id)
+      const refreshed = await loadPreventionRecords('staff_vaccination')
+      if (refreshed.some((item) => String(item.id) === String(editing.id))) {
+        throw new Error(L('Η διαγραφή δεν επιβεβαιώθηκε από το Supabase.', 'The delete could not be verified in Supabase.'))
+      }
+      setRecords(refreshed)
+      notifyAction(L('Ο εμβολιασμός διαγράφηκε.', 'Vaccination deleted.'))
+      close()
+    } catch (error) {
+      notifyAction(error?.message || L('Η διαγραφή του εμβολιασμού απέτυχε.', 'Vaccination delete failed.'))
+    }
   }
   function printSelected() { printRows({ title: L('Εμβολιασμοί Προσωπικού', 'Staff Vaccinations'), columns: exportColumns, rows: selectedRecords }) }
   function exportSelected() { downloadCsv({ filename: `emvoliasmoi-${new Date().toISOString().slice(0, 10)}.csv`, columns: exportColumns, rows: selectedRecords }) }

@@ -49,7 +49,11 @@ export async function savePreventionRecord(type,input={}){
 export async function deletePreventionRecord(type,id){
  const d=defs[type];if(!d)throw new Error('Unknown prevention record type.')
  if(!IS_PRODUCTION){d.save(d.load().filter(x=>String(x.id)!==String(id)));return true}
- const c=requireSupabase();const {error}=await c.from('prevention_records').delete().eq('id',String(id)).eq('record_type',type);if(error)throw error
+ const c=requireSupabase(),org=await orgId(c)
+ const {data:deleted,error}=await c.from('prevention_records').delete().eq('organization_id',org).eq('id',String(id)).eq('record_type',type).select('id').maybeSingle();if(error)throw error
+ if(!deleted?.id)throw new Error('Supabase delete did not remove a matching prevention record.')
+ const {data:verified,error:verifyError}=await c.from('prevention_records').select('id').eq('organization_id',org).eq('id',String(id)).eq('record_type',type).maybeSingle();if(verifyError)throw verifyError
+ if(verified)throw new Error('Supabase delete could not be verified.')
  await loadPreventionRecords(type);return true
 }
 export async function hydratePreventionBackend(){return Object.fromEntries(await Promise.all(Object.keys(defs).map(async type=>[type,await loadPreventionRecords(type)])))}
