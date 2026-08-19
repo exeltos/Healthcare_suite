@@ -1,6 +1,6 @@
 import { IS_PRODUCTION } from '../../core/runtime'
 import { emitAppEvent, APP_EVENTS } from '../../core/events'
-import { readJsonArray, readJsonObject, writeJsonCache } from '../../core/storage'
+import { readJsonObject, writeJsonCache } from '../../core/storage'
 import { requireSupabase } from '../../integrations/supabase'
 import { loadMasterData, saveMasterData } from '../masterDataService'
 import { loadAllEmployees, saveEmployees, upsertEmployee, deleteEmployee } from '../employeesService'
@@ -80,7 +80,7 @@ export async function saveDirectoryEmployee(input={}){
   if(!IS_PRODUCTION) return upsertEmployee(input)
   const client=requireSupabase()
   const organizationId=await currentOrganizationId(client)
-  const departmentId=await resolveDepartmentId(client,organizationId,input.department)
+  const departmentId=await resolveDepartmentId(client,organizationId,input.department,{requiredWhenNamed:true})
   const payload={
     organization_id:organizationId,
     employee_code:emptyToNull(input.employeeCode),
@@ -92,7 +92,7 @@ export async function saveDirectoryEmployee(input={}){
     department_id:departmentId,
     email:emptyToNull(input.email),
     phone:emptyToNull(input.phone),
-    hire_date:emptyToNull(input.hireDate),
+    hire_date:dateOrNull(input.hireDate,'Hire date'),
     notes:String(input.notes||''),
     status:input.status==='Ανενεργό'?'inactive':'active',
   }
@@ -132,11 +132,9 @@ export async function loadEmployeeOccupationalVisits(employeeId){
     return loadAllEmployees().find(row=>String(row.id)===String(employeeId))?.occupationalVisits||[]
   }
   const client=requireSupabase()
-  const organizationId=await currentOrganizationId(client)
   const { data,error }=await client
     .from('employee_occupational_visits')
     .select('id,employee_id,visit_date,fitness,next_review_date,notes,created_at,updated_at')
-    .eq('organization_id',organizationId)
     .eq('employee_id',employeeId)
     .order('visit_date',{ascending:false})
   if(error) throw error
@@ -324,7 +322,7 @@ async function currentOrganizationId(client){
   return data
 }
 
-async function resolveDepartmentId(client,organizationId,name){
+async function resolveDepartmentId(client,organizationId,name,{requiredWhenNamed=false}={}){
   const clean=String(name||'').trim()
   if(!clean) return null
   const { data,error }=await client
@@ -334,7 +332,9 @@ async function resolveDepartmentId(client,organizationId,name){
     .eq('name',clean)
     .limit(1)
   if(error) throw error
-  return data?.[0]?.id||null
+  const id=data?.[0]?.id||null
+  if(requiredWhenNamed&&!id) throw new Error(`Department not found in Supabase: ${clean}`)
+  return id
 }
 
 function localDepartments(){
@@ -362,24 +362,15 @@ function mirrorDepartments(rows){
 
 function mirrorEmployees(rows){
   const master=readJsonObject('limoxisMasterData',{})
-  const current=Array.isArray(master['employees-library'])?master['employees-library']:[]
-  // Production hydration must be idempotent. Emitting EMPLOYEES_UPDATED after every GET
-  // made EmployeeWorkspacePage immediately fetch the same rows again, creating an
-  // unbounded Supabase request loop (ERR_INSUFFICIENT_RESOURCES).
-  if(JSON.stringify(current)===JSON.stringify(rows)) return false
   const next={...master,'employees-library':rows}
   writeJsonCache('limoxisMasterData',next)
   emitAppEvent(APP_EVENTS.MASTER_DATA_UPDATED,next)
   emitAppEvent(APP_EVENTS.EMPLOYEES_UPDATED,rows)
-  return true
 }
 
 function mirrorUsers(rows){
-  const current=readJsonArray('healthcare-suite.user-accounts',[])
-  if(JSON.stringify(current)===JSON.stringify(rows)) return false
   writeJsonCache('healthcare-suite.user-accounts',rows)
   emitAppEvent(USER_ACCOUNTS_EVENT,{entityType:'user-account',source:'supabase-cache'})
-  return true
 }
 
 function mapDepartmentFromDb(row={}){
@@ -445,4 +436,11 @@ function emptyToNull(value){
 }
 function normalize(value=''){
   return String(value).trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('el-GR')
+}
+
+function dateOrNull(value,label='Date'){
+  const text=String(value??'').trim()
+  if(!text)return null
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(text))throw new Error(`${label} must use YYYY-MM-DD format.`)
+  return text
 }

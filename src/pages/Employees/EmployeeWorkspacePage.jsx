@@ -34,10 +34,11 @@ export default function EmployeeWorkspacePage() {
   const emptyEmployee = {firstName:'',lastName:'',fatherName:'',gender:'',employeeCode:'',department:'',professionalCategory:'',email:'',phone:'',hireDate:'',status:'Ενεργό',notes:'',vaccinations:[]}
   const initialEmployee = isNewEmployee ? emptyEmployee : (loadAllEmployees().find((item) => String(item.id) === String(employeeId)) || null)
   const [employee, setEmployee] = useState(initialEmployee)
-  const [form, setForm] = useState(initialEmployee || emptyEmployee)
+  const [form, setForm] = useState(initialEmployee || {})
   const [tab, setTab] = useState('profile')
-  const [editingProfile, setEditingProfile] = useState(() => isNewEmployee || (employee ? !hasProfileData(employee) : false))
+  const [editingProfile, setEditingProfile] = useState(() => isNewEmployee || !hasProfileData(employee))
   const [vaccinations, setVaccinations] = useState(loadStaffVaccinations)
+  const [healthLoading, setHealthLoading] = useState(false)
   const [samples, setSamples] = useState(loadStaffSamples)
   const [training, setTraining] = useState(loadTraining)
   const [committees, setCommittees] = useState(loadCommittees)
@@ -73,32 +74,37 @@ export default function EmployeeWorkspacePage() {
   useEffect(()=>{
     if(isNewEmployee){ setEmployee({...emptyEmployee}); setForm({...emptyEmployee}); setEditingProfile(true); return }
     let active=true
-    Promise.all([loadDirectoryEmployees(),loadDirectoryUserAccounts(),loadEmployeeOccupationalVisits(employeeId)])
-      .then(([employeeRows,userRows,occupationalRows])=>{
+    setHealthLoading(true)
+    Promise.all([
+      loadDirectoryEmployees(),
+      loadDirectoryUserAccounts(),
+      loadEmployeeOccupationalVisits(employeeId),
+      loadPreventionRecords('staff_vaccination'),
+    ])
+      .then(([employeeRows,userRows,occupationalRows,vaccinationRows])=>{
         if(!active)return
         const next=employeeRows.find((item)=>String(item.id)===String(employeeId))||null
         setEmployee(next)
-        setForm(next||emptyEmployee)
+        setForm(next||{})
         if(next&&hasProfileData(next)) setEditingProfile(false)
         setUserAccount(userRows.find((item)=>String(item.employeeId)===String(employeeId))||null)
         setOccupationalVisitsState(occupationalRows)
+        setVaccinations(vaccinationRows)
       })
-      .catch(()=>{})
+      .catch((error)=>{
+        console.error('Employee workspace hydration failed',error)
+        if(active) notifyAction(String(error?.message||'') || L('Η φόρτωση των δεδομένων προσωπικού από το Supabase απέτυχε.', 'Failed to load staff data from Supabase.'))
+      })
+      .finally(()=>{if(active)setHealthLoading(false)})
     return()=>{active=false}
   },[employeeId,isNewEmployee])
 
-  useAppEvents([EMPLOYEES_EVENT, STAFF_VACCINATIONS_EVENT, STAFF_SAMPLES_EVENT, ORGANIZATION_EVENT, USER_ACCOUNTS_EVENT], (event) => {
-    // Refresh only the data domain that actually changed. Reloading the whole directory
-    // for every cache event caused repeated employees/user_profiles/RPC requests.
-    if (event?.type === EMPLOYEES_EVENT || event?.type === USER_ACCOUNTS_EVENT) {
-      refreshEmployeeDirectory().catch(()=>{})
-    }
-    if (event?.type === STAFF_VACCINATIONS_EVENT) setVaccinations(loadStaffVaccinations())
-    if (event?.type === STAFF_SAMPLES_EVENT) setSamples(loadStaffSamples())
-    if (event?.type === ORGANIZATION_EVENT) {
-      setTraining(loadTraining())
-      setCommittees(loadCommittees())
-    }
+  useAppEvents([EMPLOYEES_EVENT, STAFF_VACCINATIONS_EVENT, STAFF_SAMPLES_EVENT, ORGANIZATION_EVENT, USER_ACCOUNTS_EVENT], () => {
+    refreshEmployeeDirectory().catch(()=>{})
+    setVaccinations(loadStaffVaccinations())
+    setSamples(loadStaffSamples())
+    setTraining(loadTraining())
+    setCommittees(loadCommittees())
   })
 
   const employeeVaccinations = useMemo(() => {
@@ -165,6 +171,7 @@ export default function EmployeeWorkspacePage() {
       return
     }
     try {
+      setHealthLoading(true)
       const saved = await savePreventionRecord('staff_vaccination', {
         ...selectedVaccination,
         employeeId: employee.id,
@@ -172,18 +179,14 @@ export default function EmployeeWorkspacePage() {
         department: employee.department || '',
         professionalCategory: employee.professionalCategory || '',
       })
-      const rows = await loadPreventionRecords('staff_vaccination')
-      if (!rows.some((row) => String(row.id) === String(saved.id) && String(row.employeeId || '') === String(employee.id))) {
-        throw new Error(L('Η εγγραφή δεν επιβεβαιώθηκε μετά την αποθήκευση.', 'The record could not be verified after saving.'))
-      }
-      setVaccinations(rows)
+      setVaccinations(await loadPreventionRecords('staff_vaccination'))
       setLastVaccinationId(saved.id)
       setSelectedVaccination(null)
       notifyAction(L('Ο εμβολιασμός αποθηκεύτηκε.', 'Vaccination saved.'))
-    } catch (error) {
-      console.error('Vaccination save failed', error)
-      notifyAction(String(error?.message || L('Η αποθήκευση του εμβολιασμού απέτυχε.', 'Vaccination save failed.')))
-    }
+    } catch(error) {
+      console.error('Employee vaccination save failed',error)
+      notifyAction(String(error?.message||'') || L('Η αποθήκευση του εμβολιασμού απέτυχε.', 'Vaccination save failed.'))
+    } finally { setHealthLoading(false) }
   }
 
   async function removeVaccinationRecord(id) {
@@ -200,18 +203,15 @@ export default function EmployeeWorkspacePage() {
       return
     }
     try {
-      const saved = await saveEmployeeOccupationalVisit(employee.id,occupationalDraft)
-      const rows = await loadEmployeeOccupationalVisits(employee.id)
-      if (!rows.some((row) => String(row.id) === String(saved.id))) {
-        throw new Error(L('Η εγγραφή δεν επιβεβαιώθηκε μετά την αποθήκευση.', 'The record could not be verified after saving.'))
-      }
-      setOccupationalVisitsState(rows)
+      setHealthLoading(true)
+      await saveEmployeeOccupationalVisit(employee.id,occupationalDraft)
+      setOccupationalVisitsState(await loadEmployeeOccupationalVisits(employee.id))
       setOccupationalDraft(null)
-      notifyAction(L('Η επίσκεψη στον Ιατρό Εργασίας αποθηκεύτηκε.', 'Occupational-health visit saved.'))
-    } catch (error) {
-      console.error('Occupational health save failed', error)
-      notifyAction(String(error?.message || L('Η αποθήκευση της επίσκεψης απέτυχε.', 'Occupational-health save failed.')))
-    }
+      notifyAction(L('Η επίσκεψη στον ιατρό εργασίας αποθηκεύτηκε.', 'Occupational-health visit saved.'))
+    } catch(error) {
+      console.error('Occupational-health save failed',error)
+      notifyAction(String(error?.message||'') || L('Η αποθήκευση της επίσκεψης απέτυχε.', 'Occupational-health visit save failed.'))
+    } finally { setHealthLoading(false) }
   }
 
   async function removeOccupationalVisit(id) {
@@ -271,7 +271,7 @@ export default function EmployeeWorkspacePage() {
 
       <WorkspaceTabs ariaLabel={L('Καρτέλα εργαζομένου', 'Employee record')} value={tab} onChange={setTab} items={tabItems} />
 
-      <WorkspaceBody className="ew-body">
+      <WorkspaceBody className="ew-body" data-health-loading={healthLoading ? 'true' : 'false'}>
         {tab === 'profile' && <ProfileTab language={language} form={form} setForm={setForm} editing={editingProfile} onEdit={() => setEditingProfile(true)} onCancel={() => { if(isNewEmployee){navigate(APP_ROUTES.EMPLOYEES);return} setForm(employee); setEditingProfile(false) }} onSave={save} />}
 
         {tab === 'health' && <EmployeeHealthTab

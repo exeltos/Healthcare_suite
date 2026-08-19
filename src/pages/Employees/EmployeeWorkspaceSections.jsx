@@ -140,8 +140,7 @@ export function formatDate(value, language='el') {
 }
 
 export function hasProfileData(record = {}) {
-  const safe = record && typeof record === 'object' ? record : {}
-  return Boolean(safe.firstName || safe.lastName || safe.employeeCode || safe.professionalCategory || safe.department)
+  return Boolean(record.firstName || record.lastName || record.employeeCode || record.professionalCategory || record.department)
 }
 
 export function pickUnsaved(current, next) {
