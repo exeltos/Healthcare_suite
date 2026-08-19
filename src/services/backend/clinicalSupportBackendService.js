@@ -34,7 +34,7 @@ export async function saveClinicalSourceSample(input={}){
     sample_type:String(row.sampleType||''),sample_reason:String(row.sampleReason||''),collection_date:date(row.collectionDate),
     collection_time:time(row.collectionTime),received_date:date(row.receivedDate),result_date:date(row.resultDate),
     status:String(row.status||row.resultStatus||'Εκκρεμεί'),microorganism:String(row.microorganism||''),resistance:String(row.resistance||''),
-    sample_acceptance:String(row.sampleAcceptance||'Αποδεκτό'),rejection_reason:String(row.rejectionReason||''),
+    sample_acceptance:String(row.sampleAcceptance||((row.sourceType==='Νερό'||row.sourceType==='Περιβάλλον'||row.sourceType==='Επιφάνεια')?'Εκκρεμεί':'Αποδεκτό')),rejection_reason:String(row.rejectionReason||''),
     validated_at:row.validatedAt||null,critical_result:Boolean(row.criticalResult),
     critical_communicated_to:String(row.criticalCommunicatedTo||''),critical_communicated_at:row.criticalCommunicatedAt||null,
     data:rest(row,['id','sourceType','department','subjectName','subjectCode','sampleType','sampleReason','collectionDate','collectionTime','receivedDate','resultDate','status','resultStatus','microorganism','resistance','sampleAcceptance','rejectionReason','validatedAt','criticalResult','criticalCommunicatedTo','criticalCommunicatedAt'])}
