@@ -1,6 +1,6 @@
 import { APP_ROUTES, routeFor } from '../../config/routes'
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppEvents } from '../../core/events'
 import { ChevronRight, FlaskConical, GraduationCap, KeyRound, Printer, Trash2, Users } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -37,6 +37,8 @@ export default function EmployeeWorkspacePage() {
   const [form, setForm] = useState(initialEmployee || {})
   const [tab, setTab] = useState('profile')
   const [editingProfile, setEditingProfile] = useState(() => isNewEmployee || !hasProfileData(employee))
+  const editingProfileRef = useRef(editingProfile)
+  const [profileSaving, setProfileSaving] = useState(false)
   const [vaccinations, setVaccinations] = useState(loadStaffVaccinations)
   const [healthLoading, setHealthLoading] = useState(false)
   const [samples, setSamples] = useState(loadStaffSamples)
@@ -48,6 +50,8 @@ export default function EmployeeWorkspacePage() {
   const [selectedVaccination, setSelectedVaccination] = useState(null)
   const [lastVaccinationId, setLastVaccinationId] = useState('')
   const [occupationalVisitsState,setOccupationalVisitsState]=useState(()=>Array.isArray(employee?.occupationalVisits)?employee.occupationalVisits:[])
+
+  useEffect(() => { editingProfileRef.current = editingProfile }, [editingProfile])
 
   useEffect(() => {
     setTab('profile')
@@ -101,10 +105,16 @@ export default function EmployeeWorkspacePage() {
     return()=>{active=false}
   },[employeeId,isNewEmployee])
 
-  useAppEvents([EMPLOYEES_EVENT, STAFF_VACCINATIONS_EVENT, STAFF_SAMPLES_EVENT, ORGANIZATION_EVENT, USER_ACCOUNTS_EVENT], () => {
-    refreshEmployeeDirectory().catch(()=>{})
-    setVaccinations(loadStaffVaccinations())
-    setSamples(loadStaffSamples())
+  // Keep an active edit draft completely isolated from background directory hydration.
+  // Employee/user-account events may update the record only while the profile is read-only.
+  useAppEvents([EMPLOYEES_EVENT, USER_ACCOUNTS_EVENT], () => {
+    if (!editingProfileRef.current) refreshEmployeeDirectory({ preserveDraft: false }).catch(()=>{})
+  })
+
+  // Domain-specific caches can refresh independently without touching the employee draft.
+  useAppEvents([STAFF_VACCINATIONS_EVENT], () => setVaccinations(loadStaffVaccinations()))
+  useAppEvents([STAFF_SAMPLES_EVENT], () => setSamples(loadStaffSamples()))
+  useAppEvents([ORGANIZATION_EVENT], () => {
     setTraining(loadTraining())
     setCommittees(loadCommittees())
   })
@@ -140,16 +150,19 @@ export default function EmployeeWorkspacePage() {
   }
 
   async function save() {
+    if (profileSaving) return
     if (!String(form.firstName || '').trim() || !String(form.lastName || '').trim()) {
       notifyAction(L('Συμπληρώστε όνομα και επώνυμο.', 'Enter first and last name.'))
       return
     }
     try {
+      setProfileSaving(true)
       const saved = await saveDirectoryEmployee({ ...(isNewEmployee?{}:employee), ...form })
       setEmployee(saved)
       setForm(saved)
+      editingProfileRef.current = false
       setEditingProfile(false)
-      notifyAction(isNewEmployee ? L('Ο εργαζόμενος δημιουργήθηκε και αποθηκεύτηκε στο Supabase.', 'Employee created and saved to Supabase.') : L('Τα στοιχεία του εργαζομένου αποθηκεύτηκαν.', 'Employee details saved.'))
+      notifyAction(isNewEmployee ? L('Ο εργαζόμενος δημιουργήθηκε και αποθηκεύτηκε στο Supabase.', 'Employee created and saved to Supabase.') : L('Τα στοιχεία του εργαζομένου αποθηκεύτηκαν στο Supabase.', 'Employee details saved to Supabase.'))
       if(isNewEmployee){
         navigate(routeFor.employeeWorkspace(saved.id), { replace:true, state:{ createdEmployee:true } })
       }
@@ -157,6 +170,8 @@ export default function EmployeeWorkspacePage() {
       console.error('Employee save failed', error)
       const message=String(error?.message||'').trim()
       notifyAction(message || L('Η αποθήκευση του εργαζομένου απέτυχε.', 'Employee save failed.'))
+    } finally {
+      setProfileSaving(false)
     }
   }
 
@@ -274,7 +289,7 @@ export default function EmployeeWorkspacePage() {
       <WorkspaceTabs ariaLabel={L('Καρτέλα εργαζομένου', 'Employee record')} value={tab} onChange={setTab} items={tabItems} />
 
       <WorkspaceBody className="ew-body" data-health-loading={healthLoading ? 'true' : 'false'}>
-        {tab === 'profile' && <ProfileTab language={language} form={form} setForm={setForm} editing={editingProfile} onEdit={() => setEditingProfile(true)} onCancel={() => { if(isNewEmployee){navigate(APP_ROUTES.EMPLOYEES);return} setForm(employee); setEditingProfile(false) }} onSave={save} />}
+        {tab === 'profile' && <ProfileTab language={language} form={form} setForm={setForm} editing={editingProfile} saving={profileSaving} onEdit={() => { editingProfileRef.current = true; setEditingProfile(true) }} onCancel={() => { if(isNewEmployee){navigate(APP_ROUTES.EMPLOYEES);return} setForm(employee); editingProfileRef.current = false; setEditingProfile(false) }} onSave={save} />}
 
         {tab === 'health' && <EmployeeHealthTab
           language={language}

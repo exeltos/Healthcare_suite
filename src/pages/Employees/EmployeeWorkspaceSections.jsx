@@ -52,7 +52,7 @@ function Detail({ label, value, wide=false }) {
   return <div className={`ew-detail ${wide ? 'wide' : ''}`}><span>{label}</span><strong>{value}</strong></div>
 }
 
-export function ProfileTab({ language, form, setForm, editing, onEdit, onCancel, onSave }) {
+export function ProfileTab({ language, form, setForm, editing, saving=false, onEdit, onCancel, onSave }) {
   const L = (el, en) => language === 'en' ? en : el
   return <div className="ew-profile">
     <section className="ew-section">
@@ -61,7 +61,7 @@ export function ProfileTab({ language, form, setForm, editing, onEdit, onCancel,
         title={L('Προσωπικά στοιχεία', 'Personal details')}
         text={L('Στοιχεία ταυτοποίησης του εργαζομένου.', 'Employee identification details.')}
         actions={editing
-          ? <><Button variant="secondary" size="sm" icon={<X size={15}/>} onClick={onCancel}>{L('Ακύρωση', 'Cancel')}</Button><Button size="sm" icon={<Save size={15} />} onClick={onSave}>{L('Αποθήκευση', 'Save')}</Button></>
+          ? <><Button variant="secondary" size="sm" icon={<X size={15}/>} onClick={onCancel}>{L('Ακύρωση', 'Cancel')}</Button><Button size="sm" icon={<Save size={15} />} loading={saving} loadingLabel={L('Αποθήκευση…', 'Saving…')} onClick={onSave}>{L('Αποθήκευση', 'Save')}</Button></>
           : <IconButton label={L('Επεξεργασία', 'Edit')} size="sm" onClick={onEdit}><Edit3 size={15} /></IconButton>}
       />
       <div className="ew-grid ew-grid--three">

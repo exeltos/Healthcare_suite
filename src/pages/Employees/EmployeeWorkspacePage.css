@@ -49,3 +49,34 @@
 
 /* rc.61 — normalize employee field-title typography with the shared form system. */
 .ew-field>span,.ew-detail span{font-family:inherit;font-weight:var(--font-weight-semibold,600);letter-spacing:0}
+
+/* rc.130 — employee forms: one visual language for native/custom fields and stable alignment. */
+.ew-grid .core-field{gap:6px;align-content:start}
+.ew-grid .core-field__label{
+  min-height:16px;
+  color:var(--text-soft);
+  font-family:inherit;
+  font-size:.73rem;
+  font-weight:var(--font-weight-semibold,600);
+  line-height:1.35;
+  letter-spacing:0;
+}
+.ew-grid .core-control{
+  box-sizing:border-box;
+  width:100%;
+  height:42px;
+  min-height:42px;
+  padding:0 11px;
+  border:1px solid var(--border);
+  border-radius:9px;
+  background:var(--surface);
+  color:var(--text);
+  font:inherit;
+  font-size:inherit;
+  line-height:1.2;
+}
+.ew-grid .core-date-control{font-family:inherit;font-size:inherit;font-variant-numeric:tabular-nums}
+.ew-grid .core-control:disabled{background:#f6f8f9;color:#4e6472;cursor:default}
+.ew-grid .core-control:focus{outline:2px solid color-mix(in srgb,var(--primary) 18%,transparent);border-color:var(--primary);box-shadow:none}
+.ew-grid .library-field,.ew-grid .ew-field,.ew-grid .core-field{min-width:0}
+.ew-vaccine-form .ew-grid--three,.ew-profile .ew-grid--three{align-items:start}
