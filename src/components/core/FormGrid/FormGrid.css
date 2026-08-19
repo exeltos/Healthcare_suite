@@ -1,5 +1,0 @@
-.core-form-grid { display: grid; grid-template-columns: repeat(var(--core-form-columns), minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
-.core-form-grid--compact { gap: var(--space-3); }
-.core-form-grid__full, .core-field--full { grid-column: 1 / -1; }
-@media (max-width: 1050px) { .core-form-grid[style*='--core-form-columns: 3'] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 700px) { .core-form-grid { grid-template-columns: minmax(0, 1fr) !important; } }

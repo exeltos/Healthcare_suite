@@ -132,9 +132,11 @@ export async function loadEmployeeOccupationalVisits(employeeId){
     return loadAllEmployees().find(row=>String(row.id)===String(employeeId))?.occupationalVisits||[]
   }
   const client=requireSupabase()
+  const organizationId=await currentOrganizationId(client)
   const { data,error }=await client
     .from('employee_occupational_visits')
     .select('id,employee_id,visit_date,fitness,next_review_date,notes,created_at,updated_at')
+    .eq('organization_id',organizationId)
     .eq('employee_id',employeeId)
     .order('visit_date',{ascending:false})
   if(error) throw error
