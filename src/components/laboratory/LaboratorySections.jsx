@@ -13,7 +13,7 @@ export function LaboratorySourceSection({
   form, setForm,
   patients, patientMode, setPatientMode, selectedPatientId, selectedPatient, choosePatient, newPatient, setNewPatient,
   employees, employeeMode, setEmployeeMode, selectedEmployeeId, selectedEmployee, chooseEmployee, newEmployee, setNewEmployee, createAndLinkEmployee,
-  employeeFullName, onSourceChange,
+  employeeFullName, onSourceChange, lockSource = false,
 }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
@@ -50,6 +50,8 @@ export function LaboratorySourceSection({
         value={form.sourceType}
         options={laboratoryOptions(['Ασθενής', 'Προσωπικό', 'Περιβάλλον', 'Νερό'], language)}
         placeholder={null}
+        disabled={lockSource}
+        helpText={lockSource ? L('Η πηγή ορίζεται αυτόματα από την κατηγορία.', 'The source is set automatically by the category.') : undefined}
         onChange={(event) => changeSource(event.target.value)}
       />
     </div>

@@ -77,3 +77,40 @@
 }
 
 /* rc.133 — DateField now uses the same canonical .core-control as text/select fields. */
+
+
+/* rc.134 — Laboratory dates must be visually identical to the other form controls.
+   The date component is text-backed (dd/mm/yyyy), so normalize every edge explicitly
+   here to prevent legacy/global input rules from producing underline-style fields. */
+.lw-page .core-date-control{
+  box-sizing:border-box !important;
+  width:100% !important;
+  height:42px !important;
+  min-height:42px !important;
+  padding:0 12px !important;
+  border:1px solid var(--border) !important;
+  border-top:1px solid var(--border) !important;
+  border-right:1px solid var(--border) !important;
+  border-bottom:1px solid var(--border) !important;
+  border-left:1px solid var(--border) !important;
+  border-radius:10px !important;
+  background:var(--surface) !important;
+  color:var(--text) !important;
+  font:inherit !important;
+  font-family:inherit !important;
+  font-size:inherit !important;
+  font-weight:400 !important;
+  line-height:1.2 !important;
+  box-shadow:none !important;
+  appearance:none;
+}
+.lw-page .core-date-control:hover:not(:disabled){border-color:var(--border-strong) !important}
+.lw-page .core-date-control:focus{
+  outline:0 !important;
+  border-color:var(--primary) !important;
+  box-shadow:0 0 0 3px var(--focus-ring) !important;
+}
+.lw-page .core-date-control:disabled{
+  background:var(--surface-muted) !important;
+  color:var(--muted) !important;
+}

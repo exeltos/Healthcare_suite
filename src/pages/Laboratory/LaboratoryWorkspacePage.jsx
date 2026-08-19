@@ -130,7 +130,6 @@ export default function LaboratoryWorkspacePage() {
   const { values: form, setValues: setForm, validate: validateLaboratoryForm } = useCoreForm({
     initialValues: { ...emptyRecord, collectionDate: todayIso(), receivedDate: todayIso() },
     validationSchema: {
-      subjectName: required(L('Συμπληρώστε ή επιλέξτε πηγή δείγματος.', 'Enter or select a sample source.')),
       sampleType: required(L('Συμπληρώστε είδος δείγματος.', 'Enter sample type.')),
       collectionDate: required(L('Συμπληρώστε ημερομηνία λήψης.', 'Enter collection date.')),
     },
@@ -185,7 +184,9 @@ export default function LaboratoryWorkspacePage() {
         collectionDate: todayIso(),
         receivedDate: todayIso(),
         ...(prefillSourceType && !prefillPatient ? {
-          sourceType: prefillSourceType, subjectName: '', subjectCode: '', department: '',
+          sourceType: prefillSourceType,
+          subjectName: ['Περιβάλλον', 'Νερό'].includes(prefillSourceType) ? prefillSourceType : '',
+          subjectCode: '', department: '',
           ...(['Περιβάλλον', 'Νερό'].includes(prefillSourceType) && collectionMode ? {
             receivedDate: '', sampleAcceptance: 'Εκκρεμεί', status: 'Εκκρεμεί',
             sampleType: prefillSourceType === 'Νερό' ? 'Νερό δικτύου' : 'Επίχρισμα επιφάνειας',
@@ -450,6 +451,11 @@ export default function LaboratoryWorkspacePage() {
       notifyAction(L('Επιλέξτε εργαζόμενο ή δημιουργήστε νέο εργαζόμενο.', 'Select a staff member or create a new one.'))
       return
     }
+    // Water/Surfaces are already scoped by the route/category. Do not ask the
+    // user to re-enter the source as a separate subject just to save the sample.
+    if (['Περιβάλλον', 'Νερό'].includes(payload.sourceType) && !String(payload.subjectName || '').trim()) {
+      payload.subjectName = payload.sourceType
+    }
     const formErrors = validateLaboratoryForm(payload)
     if (Object.keys(formErrors).length) {
       notifyAction(Object.values(formErrors)[0] || L('Συμπληρώστε τα υποχρεωτικά πεδία.', 'Complete the required fields.'))
@@ -576,6 +582,7 @@ export default function LaboratoryWorkspacePage() {
         {tab === 'sample' && <div className="lw-stack">
           {isNew ? <LaboratorySourceSection
             form={form} setForm={setForm}
+        lockSource={collectionMode && ['Περιβάλλον', 'Νερό'].includes(form.sourceType || routeSourceType || location.state?.prefillSourceType || '')}
             patients={patients} patientMode={patientMode} setPatientMode={setPatientMode} selectedPatientId={selectedPatientId} selectedPatient={selectedPatient} choosePatient={choosePatient} newPatient={newPatient} setNewPatient={setNewPatient}
             employees={employees} employeeMode={employeeMode} setEmployeeMode={setEmployeeMode} selectedEmployeeId={selectedEmployeeId} selectedEmployee={selectedEmployee} chooseEmployee={chooseEmployee} newEmployee={newEmployee} setNewEmployee={setNewEmployee} createAndLinkEmployee={createAndLinkEmployee}
             employeeFullName={employeeFullName}

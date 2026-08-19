@@ -36,7 +36,7 @@ function displayToDate(value = '') {
   return Number.isNaN(probe.getTime()) || probe.getDate() !== Number(day) || probe.getMonth() + 1 !== Number(month) ? null : iso
 }
 
-function LocalDateControl({ value = '', onChange, onBlur, ...props }) {
+function LocalDateControl({ value = '', onChange, onBlur, className = '', ...props }) {
   const [text, setText] = useState(() => dateToDisplay(value))
   useEffect(() => setText(dateToDisplay(value)), [value])
 
@@ -47,7 +47,7 @@ function LocalDateControl({ value = '', onChange, onBlur, ...props }) {
   }
 
   return <input
-    className="core-control"
+    className={['core-control', 'core-date-control', className].filter(Boolean).join(' ')}
     type="text"
     inputMode="numeric"
     autoComplete="off"
