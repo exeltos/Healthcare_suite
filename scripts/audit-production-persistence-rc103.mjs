@@ -29,7 +29,7 @@ const checks=[
  ['Patient cascade delete uses correct promoted therapy id',patientWorkflow.includes('promotedRecordIdForTherapy(therapy.id)')],
  ['Patient source config persists in Supabase library',configBackend.includes("library_key:'patient-source-config'")&&configBackend.includes('savePatientSourceConfigBackend')],
  ['Settings uses Supabase patient-source config backend',settings.includes('savePatientSourceConfigBackend')&&settings.includes('hydratePatientSourceConfigBackend')],
- ['Source laboratory rows mirror into analytics caches',clinicalSupport.includes('saveStaffSamples(staff)')&&clinicalSupport.includes('saveEnvironmentalSamples(environment)')&&clinicalSupport.includes('saveWaterRecords(water)')],
+ ['Source laboratory rows mirror into analytics caches',clinicalSupport.includes('saveStaffSamples(staff,{emit:false})')&&clinicalSupport.includes('saveEnvironmentalSamples(environment,{emit:false})')&&clinicalSupport.includes('saveWaterRecords(water,{emit:false})')],
  ['Isolation rows mirror into analytics caches',clinicalSupport.includes('for(const item of rows)upsertIsolation(item)')],
  ['Notifiable disease rows mirror after Supabase load',clinicalSupport.includes('saveNotifiableDiseases(rows)')],
 ]

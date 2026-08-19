@@ -47,7 +47,7 @@ function LocalDateControl({ value = '', onChange, onBlur, ...props }) {
   }
 
   return <input
-    className="core-control core-date-control"
+    className="core-control"
     type="text"
     inputMode="numeric"
     autoComplete="off"

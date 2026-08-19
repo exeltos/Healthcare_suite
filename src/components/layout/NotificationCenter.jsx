@@ -135,12 +135,16 @@ export default function NotificationCenter(){
   const ref=useRef(null)
   const [open,setOpen]=useState(false)
   const [version,setVersion]=useState(0)
+  const [policyVersion,setPolicyVersion]=useState(0)
   const [readIds,setReadIds]=useState(loadReadNotificationIds)
   const [policies,setPolicies]=useState([])
   const currentRole=loadCurrentProfile()?.role||''
-  useAppEvents([SURVEILLANCE_PROGRAMS_EVENT, ORGANIZATION_EVENT, QUALITY_EVENT, PATIENT_SAMPLES_EVENT, STAFF_SAMPLES_EVENT, ENVIRONMENTAL_SAMPLES_EVENT, WATER_RECORDS_EVENT, GOVERNANCE_EVENT], () => setVersion(v => v + 1))
+  useAppEvents([SURVEILLANCE_PROGRAMS_EVENT, ORGANIZATION_EVENT, QUALITY_EVENT, PATIENT_SAMPLES_EVENT, STAFF_SAMPLES_EVENT, ENVIRONMENTAL_SAMPLES_EVENT, WATER_RECORDS_EVENT], () => setVersion(v => v + 1))
+  useAppEvents(GOVERNANCE_EVENT, () => { setPolicyVersion(v => v + 1); setVersion(v => v + 1) })
   useAppEvents(NOTIFICATION_READ_EVENT, () => setReadIds(loadReadNotificationIds()), { includeStorage: true })
-  useEffect(()=>{loadNotificationPolicies().then(setPolicies).catch(()=>setPolicies([]))},[version])
+  // Governance policy reads are independent from operational data refreshes.
+  // A laboratory/patient event must never cause another policy GET.
+  useEffect(()=>{loadNotificationPolicies().then(setPolicies).catch(()=>setPolicies([]))},[policyVersion])
   useEffect(()=>{
     const onPointerDown=event=>{if(open && ref.current && !ref.current.contains(event.target))setOpen(false)}
     document.addEventListener('pointerdown',onPointerDown)

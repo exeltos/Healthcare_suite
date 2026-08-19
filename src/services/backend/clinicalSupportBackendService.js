@@ -14,9 +14,12 @@ export async function loadClinicalSourceSamples(){
   const staff=rows.filter(row=>row.sourceType==='Προσωπικό')
   const environment=rows.filter(row=>row.sourceType==='Περιβάλλον')
   const water=rows.filter(row=>row.sourceType==='Νερό')
-  saveStaffSamples(staff)
-  saveEnvironmentalSamples(environment)
-  saveWaterRecords(water)
+  // Supabase hydration updates the local mirrors silently. Emitting the same
+  // domain events here would immediately re-trigger Laboratory workspace
+  // hydration, causing an unbounded GET loop (patients/source samples/notifications).
+  saveStaffSamples(staff,{emit:false})
+  saveEnvironmentalSamples(environment,{emit:false})
+  saveWaterRecords(water,{emit:false})
   return rows
 }
 export async function saveClinicalSourceSample(input={}){

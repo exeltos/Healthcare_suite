@@ -186,7 +186,10 @@ export default function LaboratoryWorkspacePage() {
         receivedDate: todayIso(),
         ...(prefillSourceType && !prefillPatient ? {
           sourceType: prefillSourceType, subjectName: '', subjectCode: '', department: '',
-          ...(['Περιβάλλον', 'Νερό'].includes(prefillSourceType) && collectionMode ? { receivedDate: '', sampleAcceptance: 'Εκκρεμεί', status: 'Εκκρεμεί' } : {}),
+          ...(['Περιβάλλον', 'Νερό'].includes(prefillSourceType) && collectionMode ? {
+            receivedDate: '', sampleAcceptance: 'Εκκρεμεί', status: 'Εκκρεμεί',
+            sampleType: prefillSourceType === 'Νερό' ? 'Νερό δικτύου' : 'Επίχρισμα επιφάνειας',
+          } : {}),
         } : {}),
         ...(prefillPatient ? {
           sourceType: 'Ασθενής',
