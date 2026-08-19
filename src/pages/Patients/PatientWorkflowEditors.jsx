@@ -70,14 +70,19 @@ export function SampleEditor({ form, setForm, samples, save, cancel, files, uplo
 export function IsolationEditor({ form, setForm, save, cancel, files = [], upload, deleteAttachment }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
-  return <form className="pw-editor compact" onSubmit={save}>
+  const todayIso = new Date().toISOString().slice(0, 10)
+  const computedStatus = form.status === 'Ακυρωμένη' ? 'Ακυρωμένη' : (form.endDate && form.endDate < todayIso ? 'Ολοκληρωμένη' : 'Ενεργή')
+  const patchDate = (key, value) => setForm((x) => ({ ...x, [key]: value, status: x.status === 'Ακυρωμένη' ? 'Ακυρωμένη' : ((key === 'endDate' ? value : x.endDate) && (key === 'endDate' ? value : x.endDate) < todayIso ? 'Ολοκληρωμένη' : 'Ενεργή') }))
+  return <form className="pw-editor compact pw-isolation-editor" onSubmit={save}>
     <div className="pw-form-grid compact">
       <Field label={L("Τύπος", "Type")}><LibraryField hideLabel libraryKey="isolation-types" value={form.isolationType} allowManual placeholder={L("Επιλογή", "Select")} getOptionLabel={(item) => patientDisplayValue(item.name, language)} onChange={(v) => setForm((x) => ({ ...x, isolationType: v }))} /></Field>
       <Field label={L("Παθογόνο", "Pathogen")}><LibraryField hideLabel libraryKey="microorganisms" value={form.pathogen} allowManual placeholder={L("Επιλογή", "Select")} onChange={(v) => setForm((x) => ({ ...x, pathogen: v }))} /></Field>
-      <Field label={L("Έναρξη", "Start")}><Input type="date" value={form.startDate} onChange={(v) => setForm((x) => ({ ...x, startDate: v }))} /></Field>
-      <Field label={L("Λήξη", "End")}><Input type="date" value={form.endDate} onChange={(v) => setForm((x) => ({ ...x, endDate: v }))} /></Field>
-      <Field label={L("Κατάσταση", "Status")}><Select value={form.status} onChange={(v) => setForm((x) => ({ ...x, status: v }))}><option value="Ενεργή">{L("Ενεργή", "Active")}</option><option value="Ολοκληρωμένη">{L("Ολοκληρωμένη", "Completed")}</option><option value="Ακυρωμένη">{L("Ακυρωμένη", "Cancelled")}</option></Select></Field>
-      <Field label={L("Επισύναψη", "Attachment")}><div className="pw-inline-attachment-field">{form.id ? <AttachmentTools files={files} upload={upload} deleteAttachment={deleteAttachment} /> : <span>{L('Αποθηκεύστε πρώτα την απομόνωση για να προσθέσετε αρχείο.', 'Save the isolation first to add a file.')}</span>}</div></Field>
+      <Field label={L("Έναρξη", "Start")}><Input type="date" value={form.startDate} onChange={(v) => patchDate('startDate', v)} /></Field>
+      <Field label={L("Λήξη", "End")}><Input type="date" value={form.endDate} onChange={(v) => patchDate('endDate', v)} /></Field>
+    </div>
+    <div className="pw-isolation-meta-row">
+      <div className="pw-isolation-status-card"><span>{L('Κατάσταση', 'Status')}</span><Badge tone={computedStatus === 'Ενεργή' ? 'danger' : computedStatus === 'Ολοκληρωμένη' ? 'neutral' : 'warning'}>{patientDisplayValue(computedStatus, language)}</Badge><small>{L('Υπολογίζεται αυτόματα από τις ημερομηνίες έναρξης και λήξης.', 'Calculated automatically from the start and end dates.')}</small></div>
+      <div className="pw-isolation-attachment-card"><span>{L('Επισύναψη', 'Attachment')}</span><div className="pw-inline-attachment-field">{form.id ? <AttachmentTools files={files} upload={upload} deleteAttachment={deleteAttachment} /> : <small>{L('Μετά την πρώτη αποθήκευση μπορείτε να προσθέσετε αρχείο.', 'After the first save you can add a file.')}</small>}</div></div>
     </div>
     <div className="pw-form-actions"><Button variant="secondary" type="button" onClick={cancel}>{L('Ακύρωση', 'Cancel')}</Button><Button type="submit">{L('Αποθήκευση', 'Save')}</Button></div>
   </form>

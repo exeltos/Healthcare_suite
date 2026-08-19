@@ -425,3 +425,18 @@
 .pw-inline-attachment-field .pw-attachment-tools{justify-content:flex-start;width:100%}
 .pw-field input[inputmode="numeric"]{font-variant-numeric:tabular-nums;letter-spacing:.01em}
 @media(max-width:720px){.pw-file-upload-card{grid-template-columns:1fr}.pw-file-upload-card>div:last-child{justify-content:flex-start}}
+
+/* rc.125 — cleaner isolation editor and automatic date-derived status */
+.pw-isolation-editor .pw-form-grid.compact{gap:14px 16px}
+.pw-isolation-meta-row{display:grid;grid-template-columns:minmax(210px,.72fr) minmax(0,1.28fr);gap:14px;margin-top:14px}
+.pw-isolation-status-card,.pw-isolation-attachment-card{min-height:74px;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:10px 12px}
+.pw-isolation-status-card{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:6px 10px}
+.pw-isolation-status-card>span,.pw-isolation-attachment-card>span{font-size:.71rem;font-weight:700;color:#5b7180}
+.pw-isolation-status-card .core-badge{justify-self:start}
+.pw-isolation-status-card small{grid-column:1/-1;color:var(--muted);font-size:.68rem;line-height:1.35}
+.pw-isolation-attachment-card{display:grid;gap:7px}
+.pw-isolation-attachment-card .pw-inline-attachment-field{min-height:34px;padding:0;border:0;background:transparent}
+.pw-isolation-attachment-card .pw-attachment-tools{justify-content:flex-start;gap:7px}
+.pw-isolation-attachment-card .pw-attachment-tools>span{max-width:100%;background:#f9fbfc}
+.pw-isolation-attachment-card small{color:var(--muted);font-size:.7rem}
+@media(max-width:720px){.pw-isolation-meta-row{grid-template-columns:1fr}}

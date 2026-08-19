@@ -358,11 +358,9 @@ export default function PatientWorkflowPage() {
       notifyAction(L('Η λήξη της απομόνωσης δεν μπορεί να προηγείται της έναρξης.', 'Isolation end date cannot be before its start date.'))
       return
     }
-    if (isolationForm.status === 'Ολοκληρωμένη' && !isolationForm.endDate) {
-      notifyAction(L('Για ολοκληρωμένη απομόνωση συμπληρώστε ημερομηνία λήξης.', 'Enter an end date before completing the isolation.'))
-      return
-    }
-    const savedIsolation = await saveClinicalIsolation({ ...isolationForm, id: isolationForm.id || `ISO-${Date.now()}`, patientId: patient.id, patientName: patient.fullName, patientCode: patient.patientCode, department: patient.department, clinicalCaseId: activeCase.id })
+    const todayIso = new Date().toISOString().slice(0, 10)
+    const derivedStatus = isolationForm.status === 'Ακυρωμένη' ? 'Ακυρωμένη' : (isolationForm.endDate && isolationForm.endDate < todayIso ? 'Ολοκληρωμένη' : 'Ενεργή')
+    const savedIsolation = await saveClinicalIsolation({ ...isolationForm, status: derivedStatus, id: isolationForm.id || `ISO-${Date.now()}`, patientId: patient.id, patientName: patient.fullName, patientCode: patient.patientCode, department: patient.department, clinicalCaseId: activeCase.id })
     setIsolationForm(savedIsolation); await refreshAll(activeCase.id)
   }
   async function removeCase(id) {

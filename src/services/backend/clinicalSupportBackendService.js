@@ -62,7 +62,9 @@ export async function loadClinicalIsolations(patientId=''){
 export async function saveClinicalIsolation(input={}){
   if(!IS_PRODUCTION)return upsertIsolation(input)
   const c=requireSupabase(),org=await orgId(c),pid=await patientIdFor(c,input),dep=await departmentId(c,org,input.department)
+  const today=new Date().toISOString().slice(0,10)
   const row={...input,id:input.id||`ISO-${Date.now()}`}
+  row.status=row.status==='Ακυρωμένη'?'Ακυρωμένη':(row.endDate&&row.endDate<today?'Ολοκληρωμένη':'Ενεργή')
   const payload={id:String(row.id),organization_id:org,patient_id:pid,surveillance_case_id:row.clinicalCaseId?String(row.clinicalCaseId):null,department_id:dep,isolation_type:String(row.isolationType||''),status:String(row.status||'Ενεργή'),start_date:date(row.startDate),end_date:date(row.endDate),reason:String(row.reason||''),data:rest(row,['id','patientId','patientCode','patientName','department','isolationType','status','startDate','endDate','reason'])}
   const {data,error}=await c.from('patient_isolations').upsert(payload,{onConflict:'id'}).select().single();if(error)throw error;const mapped={...row,id:data.id};upsertIsolation(mapped);return mapped
 }
