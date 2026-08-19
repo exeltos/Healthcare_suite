@@ -1,7 +1,0 @@
-
-# The app uses the new sb_publishable_/sb_secret_ API key model.
-# Gateway JWT verification is disabled for this function; it validates the caller
-# explicitly with auth.getUser() and then checks public.is_platform_owner().
-[functions.platform-owner-admin]
-verify_jwt = false
-
