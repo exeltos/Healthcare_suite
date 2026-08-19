@@ -426,17 +426,22 @@
 .pw-field input[inputmode="numeric"]{font-variant-numeric:tabular-nums;letter-spacing:.01em}
 @media(max-width:720px){.pw-file-upload-card{grid-template-columns:1fr}.pw-file-upload-card>div:last-child{justify-content:flex-start}}
 
-/* rc.125 — cleaner isolation editor and automatic date-derived status */
+/* rc.126 — compact isolation status + full-width attachment row */
 .pw-isolation-editor .pw-form-grid.compact{gap:14px 16px}
-.pw-isolation-meta-row{display:grid;grid-template-columns:minmax(210px,.72fr) minmax(0,1.28fr);gap:14px;margin-top:14px}
-.pw-isolation-status-card,.pw-isolation-attachment-card{min-height:74px;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:10px 12px}
-.pw-isolation-status-card{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:6px 10px}
-.pw-isolation-status-card>span,.pw-isolation-attachment-card>span{font-size:.71rem;font-weight:700;color:#5b7180}
-.pw-isolation-status-card .core-badge{justify-self:start}
-.pw-isolation-status-card small{grid-column:1/-1;color:var(--muted);font-size:.68rem;line-height:1.35}
-.pw-isolation-attachment-card{display:grid;gap:7px}
-.pw-isolation-attachment-card .pw-inline-attachment-field{min-height:34px;padding:0;border:0;background:transparent}
-.pw-isolation-attachment-card .pw-attachment-tools{justify-content:flex-start;gap:7px}
-.pw-isolation-attachment-card .pw-attachment-tools>span{max-width:100%;background:#f9fbfc}
+.pw-isolation-status-line{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:14px;padding:2px 2px 0}
+.pw-isolation-status-label{font-size:.71rem;font-weight:700;color:#5b7180}
+.pw-isolation-status-line .core-badge{flex:0 0 auto}
+.pw-isolation-status-line small{flex-basis:100%;color:var(--muted);font-size:.68rem;line-height:1.35;margin-top:-1px}
+.pw-isolation-attachment-card{display:grid;gap:7px;margin-top:11px;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:10px 12px;min-width:0}
+.pw-isolation-attachment-card>span{font-size:.71rem;font-weight:700;color:#5b7180}
+.pw-isolation-attachment-card .pw-inline-attachment-field{min-height:38px;padding:0;border:0;background:transparent;min-width:0}
+.pw-isolation-attachment-card .pw-attachment-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-start;width:100%;min-width:0}
+.pw-isolation-attachment-card .pw-attachment-tools>span{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:6px;width:100%;max-width:100%;min-width:0;padding:7px 8px;border:1px solid var(--border);border-radius:8px;background:#f9fbfc;font-size:.72rem}
+.pw-isolation-attachment-card .pw-attachment-tools>span>svg:first-child{flex:0 0 auto}
+.pw-isolation-attachment-card .pw-attachment-tools>span{overflow:hidden}
+.pw-isolation-attachment-card .pw-attachment-tools>span>.pw-icon-button{flex:0 0 auto}
+.pw-isolation-attachment-card .pw-attachment-tools>span{white-space:nowrap;text-overflow:ellipsis}
 .pw-isolation-attachment-card small{color:var(--muted);font-size:.7rem}
-@media(max-width:720px){.pw-isolation-meta-row{grid-template-columns:1fr}}
+.pw-isolation-editor .pw-form-actions{margin-top:14px}
+@media(max-width:720px){.pw-isolation-status-line{align-items:flex-start}.pw-isolation-attachment-card .pw-attachment-tools>span{grid-template-columns:auto minmax(0,1fr) auto auto}}
+

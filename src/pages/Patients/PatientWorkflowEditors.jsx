@@ -80,9 +80,14 @@ export function IsolationEditor({ form, setForm, save, cancel, files = [], uploa
       <Field label={L("Έναρξη", "Start")}><Input type="date" value={form.startDate} onChange={(v) => patchDate('startDate', v)} /></Field>
       <Field label={L("Λήξη", "End")}><Input type="date" value={form.endDate} onChange={(v) => patchDate('endDate', v)} /></Field>
     </div>
-    <div className="pw-isolation-meta-row">
-      <div className="pw-isolation-status-card"><span>{L('Κατάσταση', 'Status')}</span><Badge tone={computedStatus === 'Ενεργή' ? 'danger' : computedStatus === 'Ολοκληρωμένη' ? 'neutral' : 'warning'}>{patientDisplayValue(computedStatus, language)}</Badge><small>{L('Υπολογίζεται αυτόματα από τις ημερομηνίες έναρξης και λήξης.', 'Calculated automatically from the start and end dates.')}</small></div>
-      <div className="pw-isolation-attachment-card"><span>{L('Επισύναψη', 'Attachment')}</span><div className="pw-inline-attachment-field">{form.id ? <AttachmentTools files={files} upload={upload} deleteAttachment={deleteAttachment} /> : <small>{L('Μετά την πρώτη αποθήκευση μπορείτε να προσθέσετε αρχείο.', 'After the first save you can add a file.')}</small>}</div></div>
+    <div className="pw-isolation-status-line">
+      <span className="pw-isolation-status-label">{L('Κατάσταση', 'Status')}</span>
+      <Badge tone={computedStatus === 'Ενεργή' ? 'danger' : computedStatus === 'Ολοκληρωμένη' ? 'neutral' : 'warning'}>{patientDisplayValue(computedStatus, language)}</Badge>
+      <small>{L('Υπολογίζεται αυτόματα από τις ημερομηνίες έναρξης και λήξης.', 'Calculated automatically from the start and end dates.')}</small>
+    </div>
+    <div className="pw-isolation-attachment-card">
+      <span>{L('Επισύναψη', 'Attachment')}</span>
+      <div className="pw-inline-attachment-field">{form.id ? <AttachmentTools files={files} upload={upload} deleteAttachment={deleteAttachment} /> : <small>{L('Μετά την πρώτη αποθήκευση μπορείτε να προσθέσετε αρχείο.', 'After the first save you can add a file.')}</small>}</div>
     </div>
     <div className="pw-form-actions"><Button variant="secondary" type="button" onClick={cancel}>{L('Ακύρωση', 'Cancel')}</Button><Button type="submit">{L('Αποθήκευση', 'Save')}</Button></div>
   </form>
