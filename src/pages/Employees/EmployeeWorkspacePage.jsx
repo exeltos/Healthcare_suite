@@ -54,6 +54,7 @@ export default function EmployeeWorkspacePage() {
     setHealthView('vaccinations')
     setSelectedVaccination(null)
     setOccupationalDraft(null)
+    setEditingProfile(isNewEmployee)
   }, [employeeId])
 
   async function refreshEmployeeDirectory({preserveDraft=true}={}){
@@ -64,7 +65,8 @@ export default function EmployeeWorkspacePage() {
     setForm((current)=>next
       ? (preserveDraft?{...next,...pickUnsaved(current,next)}:next)
       : {})
-    if(next&&hasProfileData(next)) setEditingProfile(false)
+    // Background refreshes must never close a profile the user is actively editing.
+    setEditingProfile((current)=>current || !(next&&hasProfileData(next)))
     const userRows=await loadDirectoryUserAccounts()
     setUserAccount(userRows.find((item)=>String(item.employeeId)===String(employeeId))||null)
     try{setOccupationalVisitsState(await loadEmployeeOccupationalVisits(employeeId))}catch{}
@@ -86,7 +88,7 @@ export default function EmployeeWorkspacePage() {
         const next=employeeRows.find((item)=>String(item.id)===String(employeeId))||null
         setEmployee(next)
         setForm(next||{})
-        if(next&&hasProfileData(next)) setEditingProfile(false)
+        setEditingProfile((current)=>current || !(next&&hasProfileData(next)))
         setUserAccount(userRows.find((item)=>String(item.employeeId)===String(employeeId))||null)
         setOccupationalVisitsState(occupationalRows)
         setVaccinations(vaccinationRows)

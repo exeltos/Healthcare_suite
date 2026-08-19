@@ -28,7 +28,7 @@ export function EmployeeHealthTab({ language, view, setView, vaccinations, selec
         <form className="ew-vaccine-form" onSubmit={onSaveVaccination}>
           <div className="ew-grid ew-grid--three">
             <Field label={L('Εμβόλιο *','Vaccine *')}><LibraryField hideLabel allowManual libraryKey="vaccines" value={selectedVaccination.vaccine || ''} onChange={(value) => setSelectedVaccination({ ...selectedVaccination, vaccine: value })} placeholder={L('Επιλέξτε ή γράψτε εμβόλιο','Select or enter vaccine')} /></Field>
-            <DateField required label={L('Ημερομηνία *','Date *')} value={selectedVaccination.date || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, date: e.target.value })} />
+            <DateField required label={L('Ημερομηνία','Date')} value={selectedVaccination.date || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, date: e.target.value })} />
             <Field label={L('Δόση','Dose')}><input value={selectedVaccination.dose || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, dose: e.target.value })} /></Field>
             <Field label={L('Παρτίδα','Lot')}><input value={selectedVaccination.lot || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, lot: e.target.value })} /></Field>
             <DateField label={L('Ισχύς έως','Valid until')} value={selectedVaccination.validUntil || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, validUntil: e.target.value })} />
@@ -108,7 +108,7 @@ function OccupationalHealthTab({ language, visits, draft, setDraft, onSave, onDe
 
     {isEditing ? <form className="ew-occupational-form" onSubmit={onSave}>
       <div className="ew-grid ew-grid--three">
-        <DateField required label={L('Ημερομηνία εξέτασης *', 'Examination date *')} value={draft.date || ''} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
+        <DateField required label={L('Ημερομηνία εξέτασης', 'Examination date')} value={draft.date || ''} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
         <Field label={L('Καταλληλότητα', 'Fitness')}><select value={draft.fitness || 'Κατάλληλος'} onChange={(e) => setDraft({ ...draft, fitness: e.target.value })}><option value="Κατάλληλος">{employeeDisplayValue('Κατάλληλος', language)}</option><option value="Κατάλληλος με περιορισμούς">{employeeDisplayValue('Κατάλληλος με περιορισμούς', language)}</option><option value="Προσωρινά μη κατάλληλος">{employeeDisplayValue('Προσωρινά μη κατάλληλος', language)}</option></select></Field>
         <DateField label={L('Επόμενος επανέλεγχος', 'Next review')} value={draft.nextReviewDate || ''} onChange={(e) => setDraft({ ...draft, nextReviewDate: e.target.value })} />
         <Field label={L('Σημειώσεις', 'Notes')} wide><textarea value={draft.notes || ''} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} /></Field>
