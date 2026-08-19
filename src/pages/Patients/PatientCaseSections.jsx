@@ -1,7 +1,7 @@
 import { useI18n } from '../../i18n'
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
 import { useEffect, useState } from 'react'
-import { Activity, FlaskConical, Paperclip, Pill, Plus, RefreshCcw, ShieldAlert } from 'lucide-react'
+import { Activity, FlaskConical, Paperclip, Pill, Plus, RefreshCcw, ShieldAlert, Trash2 } from 'lucide-react'
 import Button from '../../components/core/Button/Button'
 import Badge from '../../components/core/Badge/Badge'
 import MultiSelect from '../../components/core/MultiSelect/MultiSelect'
@@ -48,16 +48,26 @@ export function AssessmentPanel({ readOnly = false, data, patch, patchNested, fo
     const target = devices.find((item) => String(item.id) === String(focusedRecord.id))
     if (target) setDeviceForm({ ...target })
   }, [focusedRecord?.type, focusedRecord?.id])
-  function saveDevice(event) {
+  async function saveDevice(event) {
     event.preventDefault()
     if (readOnly) return
-    if (!deviceForm?.type) return
-    const next = devices.some((item) => String(item.id) === String(deviceForm.id))
-      ? devices.map((item) => String(item.id) === String(deviceForm.id) ? deviceForm : item)
-      : [...devices, deviceForm]
-    if (deviceForm.customDevice) upsertMasterItemAsync('devices', { name: deviceForm.type })
-    patch({ deviceRecords: next, questionnaire: { ...(data.questionnaire || {}), devices: next.map((item) => item.type) } })
-    setDeviceForm(null)
+    if (!deviceForm?.type) {
+      notifyAction(L('Επιλέξτε ή καταχωρίστε συσκευή.', 'Select or enter a device.'))
+      return
+    }
+    const savedDevice = { ...deviceForm }
+    const next = devices.some((item) => String(item.id) === String(savedDevice.id))
+      ? devices.map((item) => String(item.id) === String(savedDevice.id) ? savedDevice : item)
+      : [...devices, savedDevice]
+    try {
+      if (savedDevice.customDevice) await upsertMasterItemAsync('devices', { name: savedDevice.type })
+      await patch({ deviceRecords: next, questionnaire: { ...(data.questionnaire || {}), devices: next.map((item) => item.type) } })
+      // Collapse only the inline device editor after persistence succeeds.
+      // The clinical-assessment workspace itself remains open.
+      setDeviceForm(null)
+    } catch (error) {
+      notifyAction(L('Η συσκευή δεν αποθηκεύτηκε. Δοκιμάστε ξανά.', 'The device was not saved. Please try again.'))
+    }
   }
   function removeDevice(id) {
     if (readOnly) return
