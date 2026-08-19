@@ -1,29 +1,7 @@
-import { useEffect, useState } from 'react'
 import { ChevronRight, ClipboardList, Edit3, Plus, Save, ShieldCheck, Stethoscope, Syringe, X } from 'lucide-react'
 import LibraryField from '../../components/core/LibraryField/LibraryField'
-import { Button, IconButton, WorkspaceSectionHeader } from '../../components/core'
+import { Button, DateField, IconButton, WorkspaceSectionHeader } from '../../components/core'
 import { employeeDisplayValue } from './employeePresentation'
-
-
-function toGreekEmployeeDate(value='') {
-  const match=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : String(value||'')
-}
-function toIsoEmployeeDate(value='') {
-  const text=String(value||'').trim()
-  if(!text)return ''
-  const match=text.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/)
-  if(!match)return null
-  const day=match[1].padStart(2,'0'),month=match[2].padStart(2,'0'),year=match[3]
-  const iso=`${year}-${month}-${day}`
-  const probe=new Date(`${iso}T12:00:00`)
-  return Number.isNaN(probe.getTime()) || probe.getFullYear()!==Number(year) || probe.getMonth()+1!==Number(month) || probe.getDate()!==Number(day) ? null : iso
-}
-function EmployeeDateField({label,value='',onChange,disabled=false,required=false}) {
-  const [text,setText]=useState(()=>toGreekEmployeeDate(value))
-  useEffect(()=>setText(toGreekEmployeeDate(value)),[value])
-  return <Field label={label}><input disabled={disabled} required={required} type="text" inputMode="numeric" placeholder="ηη/μμ/εεεε" value={text} onChange={(event)=>{const next=event.target.value.replace(/[^0-9\/.-]/g,'').slice(0,10);setText(next);const iso=toIsoEmployeeDate(next);if(iso!==null)onChange?.(iso)}} onBlur={()=>{const iso=toIsoEmployeeDate(text);setText(iso===null?toGreekEmployeeDate(value):toGreekEmployeeDate(iso))}} /></Field>
-}
 
 const emptyOccupationalVisit = {
   date: '',
@@ -50,10 +28,10 @@ export function EmployeeHealthTab({ language, view, setView, vaccinations, selec
         <form className="ew-vaccine-form" onSubmit={onSaveVaccination}>
           <div className="ew-grid ew-grid--three">
             <Field label={L('Εμβόλιο *','Vaccine *')}><LibraryField hideLabel allowManual libraryKey="vaccines" value={selectedVaccination.vaccine || ''} onChange={(value) => setSelectedVaccination({ ...selectedVaccination, vaccine: value })} placeholder={L('Επιλέξτε ή γράψτε εμβόλιο','Select or enter vaccine')} /></Field>
-            <EmployeeDateField required label={L('Ημερομηνία *','Date *')} value={selectedVaccination.date || ''} onChange={(value) => setSelectedVaccination({ ...selectedVaccination, date: value })} />
+            <DateField required label={L('Ημερομηνία *','Date *')} value={selectedVaccination.date || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, date: e.target.value })} />
             <Field label={L('Δόση','Dose')}><input value={selectedVaccination.dose || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, dose: e.target.value })} /></Field>
             <Field label={L('Παρτίδα','Lot')}><input value={selectedVaccination.lot || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, lot: e.target.value })} /></Field>
-            <EmployeeDateField label={L('Ισχύς έως','Valid until')} value={selectedVaccination.validUntil || ''} onChange={(value) => setSelectedVaccination({ ...selectedVaccination, validUntil: value })} />
+            <DateField label={L('Ισχύς έως','Valid until')} value={selectedVaccination.validUntil || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, validUntil: e.target.value })} />
             <Field label={L('Σημειώσεις','Notes')} wide><textarea value={selectedVaccination.notes || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, notes: e.target.value })} /></Field>
           </div>
           <div className="ew-form-actions ew-form-actions--split">
@@ -100,7 +78,7 @@ export function ProfileTab({ language, form, setForm, editing, onEdit, onCancel,
         <Field label={L('Κωδικός εργαζομένου', 'Employee code')}><input disabled={!editing} value={form.employeeCode || ''} onChange={(e) => setForm({ ...form, employeeCode: e.target.value })} /></Field>
         <LibraryField disabled={!editing} label={L('Ιδιότητα', 'Professional category')} libraryKey="professional-categories" value={form.professionalCategory || ''} onChange={(value) => setForm({ ...form, professionalCategory: value })} />
         <LibraryField disabled={!editing} label={L('Τμήμα', 'Department')} libraryKey="departments" value={form.department || ''} onChange={(value) => setForm({ ...form, department: value })} />
-        <EmployeeDateField disabled={!editing} label={L('Ημερομηνία πρόσληψης', 'Hire date')} value={form.hireDate || ''} onChange={(value) => setForm({ ...form, hireDate: value })} />
+        <DateField disabled={!editing} label={L('Ημερομηνία πρόσληψης', 'Hire date')} value={form.hireDate || ''} onChange={(e) => setForm({ ...form, hireDate: e.target.value })} />
         <Field label={L('Κατάσταση', 'Status')}><select disabled={!editing} value={form.status || 'Ενεργό'} onChange={(e) => setForm({ ...form, status: e.target.value })}><option value="Ενεργό">{employeeDisplayValue('Ενεργό', language)}</option><option value="Ανενεργό">{employeeDisplayValue('Ανενεργό', language)}</option></select></Field>
       </div>
     </section>
@@ -130,9 +108,9 @@ function OccupationalHealthTab({ language, visits, draft, setDraft, onSave, onDe
 
     {isEditing ? <form className="ew-occupational-form" onSubmit={onSave}>
       <div className="ew-grid ew-grid--three">
-        <EmployeeDateField required label={L('Ημερομηνία εξέτασης *', 'Examination date *')} value={draft.date || ''} onChange={(value) => setDraft({ ...draft, date: value })} />
+        <DateField required label={L('Ημερομηνία εξέτασης *', 'Examination date *')} value={draft.date || ''} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
         <Field label={L('Καταλληλότητα', 'Fitness')}><select value={draft.fitness || 'Κατάλληλος'} onChange={(e) => setDraft({ ...draft, fitness: e.target.value })}><option value="Κατάλληλος">{employeeDisplayValue('Κατάλληλος', language)}</option><option value="Κατάλληλος με περιορισμούς">{employeeDisplayValue('Κατάλληλος με περιορισμούς', language)}</option><option value="Προσωρινά μη κατάλληλος">{employeeDisplayValue('Προσωρινά μη κατάλληλος', language)}</option></select></Field>
-        <EmployeeDateField label={L('Επόμενος επανέλεγχος', 'Next review')} value={draft.nextReviewDate || ''} onChange={(value) => setDraft({ ...draft, nextReviewDate: value })} />
+        <DateField label={L('Επόμενος επανέλεγχος', 'Next review')} value={draft.nextReviewDate || ''} onChange={(e) => setDraft({ ...draft, nextReviewDate: e.target.value })} />
         <Field label={L('Σημειώσεις', 'Notes')} wide><textarea value={draft.notes || ''} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} /></Field>
       </div>
       <div className="ew-form-actions ew-form-actions--split">
@@ -162,7 +140,8 @@ export function formatDate(value, language='el') {
 }
 
 export function hasProfileData(record = {}) {
-  return Boolean(record.firstName || record.lastName || record.employeeCode || record.professionalCategory || record.department)
+  const safe = record && typeof record === 'object' ? record : {}
+  return Boolean(safe.firstName || safe.lastName || safe.employeeCode || safe.professionalCategory || safe.department)
 }
 
 export function pickUnsaved(current, next) {

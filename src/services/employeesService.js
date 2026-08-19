@@ -65,7 +65,8 @@ function splitLegacyName(fullName = '') {
 }
 
 export function employeeFullName(record = {}) {
-  return [record.lastName, record.firstName].filter(Boolean).join(' ').trim() || record.fullName || ''
+  const safe = record && typeof record === 'object' ? record : {}
+  return [safe.lastName, safe.firstName].filter(Boolean).join(' ').trim() || safe.fullName || ''
 }
 
 export function normalizeEmployee(record = {}, index = 0) {
