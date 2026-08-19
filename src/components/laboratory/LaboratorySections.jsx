@@ -150,7 +150,7 @@ export function LaboratorySourceSection({
   </section>
 }
 
-export function LaboratorySampleSection({ form, setForm, isNew, patientSampleOptions = [] }) {
+export function LaboratorySampleSection({ form, setForm, isNew, patientSampleOptions = [], laboratoryFieldsLocked = false }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
 
@@ -204,15 +204,18 @@ export function LaboratorySampleSection({ form, setForm, isNew, patientSampleOpt
       /> : null}
       <DateField label={L('Ημερομηνία λήψης', 'Collection date')} value={form.collectionDate} onChange={(e) => setForm({ ...form, collectionDate: e.target.value })} />
       <TimeField label={L('Ώρα λήψης', 'Collection time')} value={form.collectionTime || ''} onChange={(e) => setForm({ ...form, collectionTime: e.target.value })} />
-      <DateField label={L('Ημερομηνία παραλαβής', 'Receipt date')} value={form.receivedDate} onChange={(e) => setForm({ ...form, receivedDate: e.target.value })} />
+      <DateField label={L('Ημερομηνία παραλαβής', 'Receipt date')} disabled={laboratoryFieldsLocked} helpText={laboratoryFieldsLocked ? L('Συμπληρώνεται μόνο από το Εργαστήριο.', 'Completed by Laboratory only.') : undefined} value={form.receivedDate} onChange={(e) => setForm({ ...form, receivedDate: e.target.value })} />
       <SelectField
         label={L('Αποδοχή δείγματος', 'Sample acceptance')}
-        value={form.sampleAcceptance || 'Αποδεκτό'}
-        options={laboratoryOptions(['Αποδεκτό', 'Απορρίφθηκε'], language)}
+        value={form.sampleAcceptance || 'Εκκρεμεί'}
+        options={laboratoryOptions(['Εκκρεμεί', 'Αποδεκτό', 'Απορρίφθηκε'], language)}
         placeholder={null}
+        disabled={laboratoryFieldsLocked}
+        helpText={laboratoryFieldsLocked ? L('Η αποδοχή ή απόρριψη καταχωρείται από το Εργαστήριο.', 'Acceptance or rejection is recorded by Laboratory.') : undefined}
         onChange={(e) => setForm({ ...form, sampleAcceptance: e.target.value, rejectionReason: e.target.value === 'Απορρίφθηκε' ? form.rejectionReason : '' })}
       />
       {form.sampleAcceptance === 'Απορρίφθηκε' ? <TextField
+        disabled={laboratoryFieldsLocked}
         label={L('Λόγος απόρριψης *', 'Rejection reason *')}
         value={form.rejectionReason || ''}
         onChange={(e) => setForm({ ...form, rejectionReason: e.target.value })}
@@ -224,7 +227,7 @@ export function LaboratorySampleSection({ form, setForm, isNew, patientSampleOpt
   </section>
 }
 
-export function LaboratoryResultSection({ form, setForm, normalizeMicroorganismRows, updateMicroorganism }) {
+export function LaboratoryResultSection({ form, setForm, normalizeMicroorganismRows, updateMicroorganism, readOnly = false }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
   const rows = normalizeMicroorganismRows(form)
@@ -246,6 +249,10 @@ export function LaboratoryResultSection({ form, setForm, normalizeMicroorganismR
       text={L('Καταχώρηση αποτελέσματος, μικροοργανισμού και ανθεκτικότητας.', 'Finalize result, microorganisms and resistance in Laboratory.')}
     />
 
+    {readOnly ? <Alert tone="info" title={L('Εργαστηριακό αποτέλεσμα', 'Laboratory result')}>
+      {L('Τα παρακάτω στοιχεία προβάλλονται εδώ, αλλά καταχωρούνται και τροποποιούνται μόνο από το Εργαστήριο.', 'These fields are visible here but can only be entered or changed by Laboratory.')}
+    </Alert> : null}
+
     {form.sourceType === 'Ασθενής' ? <Alert tone={form.status === 'Θετικό' ? 'warning' : 'info'} title={L('Κλινική ροή', 'Clinical workflow')}>
       {form.category === 'Επανέλεγχος'
         ? L('Ο επανέλεγχος παραμένει συνδεδεμένος με το προηγούμενο δείγμα και δεν ανοίγει νέο περιστατικό λοίμωξης.', 'The follow-up remains linked to the previous sample and does not open a new infection case.')
@@ -262,12 +269,13 @@ export function LaboratoryResultSection({ form, setForm, normalizeMicroorganismR
       <SelectField
         label={L('Κατάσταση', 'Status')}
         value={form.status}
+        disabled={readOnly}
         options={laboratoryOptions(LABORATORY_RESULT_STATUSES, language)}
         placeholder={null}
         onChange={(e) => changeStatus(e.target.value)}
       />
-      <DateField label={L('Ημερομηνία αποτελέσματος', 'Result date')} value={form.resultDate || ''} onChange={(e) => setForm({ ...form, resultDate: e.target.value })} />
-      <TextAreaField fullWidth label={L('Παρατηρήσεις αποτελέσματος', 'Result notes')} value={form.resultNotes || ''} onChange={(e) => setForm({ ...form, resultNotes: e.target.value })} />
+      <DateField label={L('Ημερομηνία αποτελέσματος', 'Result date')} disabled={readOnly} value={form.resultDate || ''} onChange={(e) => setForm({ ...form, resultDate: e.target.value })} />
+      <TextAreaField fullWidth label={L('Παρατηρήσεις αποτελέσματος', 'Result notes')} disabled={readOnly} value={form.resultNotes || ''} onChange={(e) => setForm({ ...form, resultNotes: e.target.value })} />
     </div>
 
     {form.status !== 'Εκκρεμεί' ? <Alert tone="success" title={L('Επικύρωση αποτελέσματος', 'Result validation')}>
@@ -281,15 +289,18 @@ export function LaboratoryResultSection({ form, setForm, normalizeMicroorganismR
         label={L('Κρίσιμο αποτέλεσμα', 'Critical result')}
         description={L('Ενεργοποιήστε μόνο όταν απαιτείται άμεση γνωστοποίηση.', 'Use only when immediate communication is required.')}
         checked={!!form.criticalResult}
+        disabled={readOnly}
         onChange={(e) => setForm({ ...form, criticalResult: e.target.checked })}
       />
       {form.criticalResult ? <TextField
         label={L('Γνωστοποιήθηκε σε *', 'Communicated to *')}
+        disabled={readOnly}
         value={form.criticalCommunicatedTo || ''}
         onChange={(e) => setForm({ ...form, criticalCommunicatedTo: e.target.value })}
       /> : null}
       {form.criticalResult ? <TextField
         type="datetime-local"
+        disabled={readOnly}
         label={L('Ημερομηνία / ώρα γνωστοποίησης *', 'Communication date / time *')}
         value={String(form.criticalCommunicatedAt || '').slice(0,16)}
         onChange={(e) => setForm({ ...form, criticalCommunicatedAt: e.target.value })}
@@ -304,7 +315,7 @@ export function LaboratoryResultSection({ form, setForm, normalizeMicroorganismR
       emptyText={form.status === 'Θετικό'
         ? L('Το θετικό αποτέλεσμα απαιτεί τουλάχιστον έναν μικροοργανισμό.', 'A positive result requires at least one microorganism.')
         : L('Δεν έχει καταχωρηθεί μικροοργανισμός.', 'No microorganism has been recorded.')}
-      onAdd={() => setForm((current) => ({
+      onAdd={readOnly ? undefined : () => setForm((current) => ({
         ...current,
         microorganismResults: [...normalizeMicroorganismRows(current), { id: `ORG-${Date.now()}`, name: '', resistance: '' }],
       }))}
@@ -313,16 +324,18 @@ export function LaboratoryResultSection({ form, setForm, normalizeMicroorganismR
           label={L('Μικροοργανισμός', 'Microorganism')}
           libraryKey="microorganisms"
           value={row.name || ''}
-          allowManual
+          allowManual={!readOnly}
+          disabled={readOnly}
           onChange={(value) => updateMicroorganism(index, { name: value })}
         />
         <SelectField
           label={L('Χαρακτηρισμός αντοχής', 'Resistance classification')}
           value={row.resistance || ''}
+          disabled={readOnly}
           options={laboratoryOptions(LABORATORY_RESISTANCE_OPTIONS, language)}
           onChange={(e) => updateMicroorganism(index, { resistance: e.target.value })}
         />
-        <IconButton
+        {!readOnly ? <IconButton
           label={L('Διαγραφή μικροοργανισμού', 'Delete microorganism')}
           variant="danger"
           onClick={() => {
@@ -334,13 +347,13 @@ export function LaboratoryResultSection({ form, setForm, normalizeMicroorganismR
           }}
         >
           <Trash2 size={16} />
-        </IconButton>
+        </IconButton> : null}
       </div>}
     />
   </section>
 }
 
-export function LaboratoryAntibiogramSection({ form, setForm, updateAntibiogram }) {
+export function LaboratoryAntibiogramSection({ form, setForm, updateAntibiogram, readOnly = false }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
   const hasOrganism = Array.isArray(form.microorganismResults)
@@ -354,7 +367,7 @@ export function LaboratoryAntibiogramSection({ form, setForm, updateAntibiogram 
       actions={<Button
         size="sm"
         variant="secondary"
-        disabled={form.status !== 'Θετικό' || !hasOrganism}
+        disabled={readOnly || form.status !== 'Θετικό' || !hasOrganism}
         onClick={() => setForm((current) => ({
           ...current,
           antibiogram: [...(current.antibiogram || []), { id: `ABG-${Date.now()}`, antibiotic: '', sensitivity: '', mic: '' }],
@@ -373,10 +386,10 @@ export function LaboratoryAntibiogramSection({ form, setForm, updateAntibiogram 
       items={form.antibiogram || []}
       emptyText={L('Δεν έχει καταχωρηθεί αντιβιόγραμμα.', 'No antibiogram has been recorded.')}
       renderRow={(row, index) => <div className="lw-antibiogram-row">
-        <LibraryField label={L('Αντιβιοτικό', 'Antimicrobial')} libraryKey="antibiotics" value={row.antibiotic || ''} allowManual onChange={(value) => updateAntibiogram(index, { antibiotic: value })} />
-        <SelectField label={L('Ευαισθησία', 'Susceptibility')} value={row.sensitivity || ''} options={['S', 'I', 'R']} onChange={(e) => updateAntibiogram(index, { sensitivity: e.target.value })} />
-        <TextField label="MIC" value={row.mic || ''} onChange={(e) => updateAntibiogram(index, { mic: e.target.value })} />
-        <IconButton
+        <LibraryField label={L('Αντιβιοτικό', 'Antimicrobial')} libraryKey="antibiotics" value={row.antibiotic || ''} allowManual={!readOnly} disabled={readOnly} onChange={(value) => updateAntibiogram(index, { antibiotic: value })} />
+        <SelectField label={L('Ευαισθησία', 'Susceptibility')} disabled={readOnly} value={row.sensitivity || ''} options={['S', 'I', 'R']} onChange={(e) => updateAntibiogram(index, { sensitivity: e.target.value })} />
+        <TextField label="MIC" disabled={readOnly} value={row.mic || ''} onChange={(e) => updateAntibiogram(index, { mic: e.target.value })} />
+        {!readOnly ? <IconButton
           label={L('Διαγραφή γραμμής', 'Delete row')}
           variant="danger"
           onClick={() => {
@@ -388,7 +401,7 @@ export function LaboratoryAntibiogramSection({ form, setForm, updateAntibiogram 
           }}
         >
           <Trash2 size={16} />
-        </IconButton>
+        </IconButton> : null}
       </div>}
     />
   </section>

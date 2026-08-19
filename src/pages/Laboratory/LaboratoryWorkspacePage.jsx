@@ -4,7 +4,7 @@ import { APP_EVENTS } from '../../core/events'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
 import { required, useCoreForm } from '../../core/forms'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { FileText, FlaskConical, Printer, Save, ShieldCheck } from 'lucide-react'
 
 import { Badge, Button, IconButton, WorkspaceBody, WorkspaceHeader, WorkspaceShell, WorkspaceTabs } from '../../components/core'
@@ -115,6 +115,7 @@ export default function LaboratoryWorkspacePage() {
   const L = (el, en) => language === 'en' ? en : el
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const returnContext = location.state?.returnContext
   const returnToOrigin = () => {
     if (returnContext?.path) {
@@ -134,6 +135,13 @@ export default function LaboratoryWorkspacePage() {
       collectionDate: required(L('Συμπληρώστε ημερομηνία λήψης.', 'Enter collection date.')),
     },
   })
+  const profile = loadCurrentProfile(language)
+  const routeSourceType = decodeURIComponent(params?.sourceType || '')
+  const collectionMode = searchParams.get('mode') === 'collection'
+  const isEnvironmentalSource = ['Περιβάλλον', 'Νερό'].includes(form.sourceType || routeSourceType || location.state?.prefillSourceType || '')
+  const laboratoryResultEditor = ['laboratory', 'admin'].includes(profile?.role || '') && !collectionMode
+  const laboratoryFieldsLocked = isEnvironmentalSource && !laboratoryResultEditor
+
   const [tab, setTab] = useState('sample')
   const [patients, setPatients] = useState(loadPatientRegistry)
   const [laboratoryRecords,setLaboratoryRecords]=useState(loadAllLaboratoryRecords)
@@ -176,7 +184,10 @@ export default function LaboratoryWorkspacePage() {
         ...emptyRecord,
         collectionDate: todayIso(),
         receivedDate: todayIso(),
-        ...(prefillSourceType && !prefillPatient ? { sourceType: prefillSourceType, subjectName: '', subjectCode: '', department: '' } : {}),
+        ...(prefillSourceType && !prefillPatient ? {
+          sourceType: prefillSourceType, subjectName: '', subjectCode: '', department: '',
+          ...(['Περιβάλλον', 'Νερό'].includes(prefillSourceType) && collectionMode ? { receivedDate: '', sampleAcceptance: 'Εκκρεμεί', status: 'Εκκρεμεί' } : {}),
+        } : {}),
         ...(prefillPatient ? {
           sourceType: 'Ασθενής',
           patientId: prefillPatient.id || '',
@@ -441,6 +452,10 @@ export default function LaboratoryWorkspacePage() {
       notifyAction(Object.values(formErrors)[0] || L('Συμπληρώστε τα υποχρεωτικά πεδία.', 'Complete the required fields.'))
       return
     }
+    if (laboratoryFieldsLocked && ['Περιβάλλον', 'Νερό'].includes(payload.sourceType)) {
+      payload = preserveLaboratoryOwnedFields(payload, record)
+    }
+    if (!laboratoryFieldsLocked) {
     if (payload.sampleAcceptance === 'Απορρίφθηκε' && !String(payload.rejectionReason || '').trim()) {
       notifyAction(L('Συμπληρώστε τον λόγο απόρριψης του δείγματος.', 'Enter the sample rejection reason.'))
       setTab('sample')
@@ -492,6 +507,7 @@ export default function LaboratoryWorkspacePage() {
     } else {
       payload = { ...payload, criticalCommunicatedTo: '', criticalCommunicatedAt: '', criticalCommunicatedBy: '' }
     }
+    }
 
     let createdPatient = null
     if (shouldCreatePatientWithSample) {
@@ -532,7 +548,8 @@ export default function LaboratoryWorkspacePage() {
     }
     setForm(normalizeForForm(saved))
     setRecord({ ...saved, sourceType: payload.sourceType })
-    navigate(routeFor.laboratoryRecordWorkspace(encodeURIComponent(payload.sourceType), encodeURIComponent(saved.id)), { replace: true, state: location.state })
+    const savedPath = routeFor.laboratoryRecordWorkspace(encodeURIComponent(payload.sourceType), encodeURIComponent(saved.id))
+    navigate(collectionMode ? `${savedPath}?mode=collection` : savedPath, { replace: true, state: location.state })
   }
 
 
@@ -561,10 +578,10 @@ export default function LaboratoryWorkspacePage() {
             employeeFullName={employeeFullName}
             onSourceChange={(value) => { if (value !== 'Ασθενής') setSelectedPatientId(''); if (value !== 'Προσωπικό') setSelectedEmployeeId('') }}
           /> : null}
-          <LaboratorySampleSection form={form} setForm={setForm} isNew={isNew} patientSampleOptions={patientSampleOptions} />
+          <LaboratorySampleSection form={form} setForm={setForm} isNew={isNew} patientSampleOptions={patientSampleOptions} laboratoryFieldsLocked={laboratoryFieldsLocked} />
         </div>}
-        {tab === 'result' && <LaboratoryResultSection form={form} setForm={setForm} normalizeMicroorganismRows={normalizeMicroorganismRows} updateMicroorganism={updateMicroorganism} />}
-        {tab === 'antibiogram' && <LaboratoryAntibiogramSection form={form} setForm={setForm} updateAntibiogram={updateAntibiogram} />}
+        {tab === 'result' && <LaboratoryResultSection form={form} setForm={setForm} normalizeMicroorganismRows={normalizeMicroorganismRows} updateMicroorganism={updateMicroorganism} readOnly={laboratoryFieldsLocked} />}
+        {tab === 'antibiogram' && <LaboratoryAntibiogramSection form={form} setForm={setForm} updateAntibiogram={updateAntibiogram} readOnly={laboratoryFieldsLocked} />}
       </WorkspaceBody>
     </WorkspaceShell>
   )
@@ -584,6 +601,29 @@ export default function LaboratoryWorkspacePage() {
   }
 }
 
+
+function preserveLaboratoryOwnedFields(payload = {}, original = null) {
+  const baseline = original || {}
+  return {
+    ...payload,
+    receivedDate: baseline.receivedDate || '',
+    sampleAcceptance: baseline.sampleAcceptance || 'Εκκρεμεί',
+    rejectionReason: baseline.rejectionReason || '',
+    status: baseline.status || baseline.resultStatus || 'Εκκρεμεί',
+    resultDate: baseline.resultDate || '',
+    resultNotes: baseline.resultNotes || '',
+    microorganism: baseline.microorganism || '',
+    resistance: baseline.resistance || '',
+    microorganismResults: normalizeMicroorganismRows(baseline),
+    antibiogram: Array.isArray(baseline.antibiogram) ? baseline.antibiogram : [],
+    validatedAt: baseline.validatedAt || '',
+    validatedBy: baseline.validatedBy || '',
+    criticalResult: Boolean(baseline.criticalResult),
+    criticalCommunicatedTo: baseline.criticalCommunicatedTo || '',
+    criticalCommunicatedAt: baseline.criticalCommunicatedAt || '',
+    criticalCommunicatedBy: baseline.criticalCommunicatedBy || '',
+  }
+}
 
 function normalizeForForm(record = {}) {
   return {

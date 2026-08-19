@@ -208,7 +208,7 @@ export default function LaboratoryPage() {
           description={description}
           actions={<Button
             icon={<Plus size={17} />}
-            onClick={() => navigate(APP_ROUTES.LABORATORY_NEW_WORKSPACE, {
+            onClick={() => navigate((view === 'environment' || view === 'water') ? `${APP_ROUTES.LABORATORY_NEW_WORKSPACE}?mode=collection` : APP_ROUTES.LABORATORY_NEW_WORKSPACE, {
               state: { prefillSourceType: view === 'environment' ? 'Περιβάλλον' : view === 'water' ? 'Νερό' : view === 'staff' ? 'Προσωπικό' : '', returnContext: { path: view ? routeFor.laboratoryView(view) : APP_ROUTES.LABORATORY, label: L('Ένα βήμα πίσω', 'Back one step') } },
             })}
           >{newLabel}</Button>}
@@ -262,7 +262,10 @@ export default function LaboratoryPage() {
         columns={columns}
         rows={filtered}
         getRowKey={(row) => `${row.sourceType}:${row.id}`}
-        onRowClick={(row) => navigate(routeFor.laboratoryRecordWorkspace(encodeURIComponent(row.sourceType), encodeURIComponent(row.id)), { state: { returnContext: { path: view ? routeFor.laboratoryView(view) : APP_ROUTES.LABORATORY, label: L('Ένα βήμα πίσω', 'Back one step'), listScope: view ? routeFor.laboratoryView(view) : APP_ROUTES.LABORATORY, highlightRowKey: `${row.sourceType}:${row.id}` } } })}
+        onRowClick={(row) => {
+          const recordPath = routeFor.laboratoryRecordWorkspace(encodeURIComponent(row.sourceType), encodeURIComponent(row.id))
+          navigate((view === 'environment' || view === 'water') ? `${recordPath}?mode=collection` : recordPath, { state: { returnContext: { path: view ? routeFor.laboratoryView(view) : APP_ROUTES.LABORATORY, label: L('Ένα βήμα πίσω', 'Back one step'), listScope: view ? routeFor.laboratoryView(view) : APP_ROUTES.LABORATORY, highlightRowKey: `${row.sourceType}:${row.id}` } } })
+        }}
         selectedKeys={selectedKeys}
         onSelectionChange={setSelectedKeys}
         highlightedKey={location.state?.returnFromDetail ? (location.state?.highlightRowKey || '') : ''}

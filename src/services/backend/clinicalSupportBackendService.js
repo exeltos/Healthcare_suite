@@ -37,7 +37,13 @@ export async function saveClinicalSourceSample(input={}){
     data:rest(row,['id','sourceType','department','subjectName','subjectCode','sampleType','sampleReason','collectionDate','collectionTime','receivedDate','resultDate','status','resultStatus','microorganism','resistance','sampleAcceptance','rejectionReason','validatedAt','criticalResult','criticalCommunicatedTo','criticalCommunicatedAt'])}
   const {data,error}=await c.from('laboratory_source_samples').upsert(payload,{onConflict:'id'}).select('*,department:departments(id,name),employee:employees(id,first_name,last_name,employee_code)').single()
   if(error)throw error
-  const mapped=mapSource(data)
+  // Production verification: do not report success until the row can be read back from Supabase.
+  const {data:verified,error:verifyError}=await c.from('laboratory_source_samples')
+    .select('*,department:departments(id,name),employee:employees(id,first_name,last_name,employee_code)')
+    .eq('organization_id',org).eq('id',String(data.id)).eq('source_type',String(row.sourceType)).maybeSingle()
+  if(verifyError)throw verifyError
+  if(!verified?.id)throw new Error('Η εργαστηριακή εγγραφή δεν επιβεβαιώθηκε στο Supabase.')
+  const mapped=mapSource(verified)
   localSaveSource(mapped)
   return mapped
 }

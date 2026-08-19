@@ -75,3 +75,25 @@
   line-height: 1.35;
   letter-spacing: 0;
 }
+
+/* rc.132 — Laboratory date controls align exactly with the surrounding text/select fields. */
+.lw-page .core-date-control{
+  box-sizing:border-box;
+  width:100%;
+  min-height:var(--control-height);
+  height:var(--control-height);
+  padding:0 var(--space-3);
+  border:1px solid var(--border-strong);
+  border-radius:var(--radius-md);
+  background:var(--surface);
+  color:var(--text);
+  font:inherit;
+  font-size:inherit;
+  font-weight:inherit;
+  line-height:1.2;
+  font-variant-numeric:tabular-nums;
+}
+.lw-page .core-date-control::placeholder{color:#91a0a5;font:inherit}
+.lw-page .core-date-control:hover:not(:disabled){border-color:color-mix(in srgb,var(--primary) 42%,var(--border-strong))}
+.lw-page .core-date-control:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px var(--focus-ring)}
+.lw-page .core-date-control:disabled{background:var(--surface-muted);color:var(--text-soft);cursor:not-allowed}
