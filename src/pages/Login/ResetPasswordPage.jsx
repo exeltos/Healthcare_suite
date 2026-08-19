@@ -6,7 +6,7 @@ import { APP_ROUTES } from '../../config/routes'
 import { useI18n } from '../../i18n'
 import './LoginPage.css'
 
-const BUILD_VERSION='0.12.0-rc.119'
+const BUILD_VERSION='0.12.0-rc.120'
 
 function currentAuthLinkInfo(){
   if(typeof window==='undefined')return {type:'',accessToken:'',refreshToken:'',code:'',tokenHash:''}

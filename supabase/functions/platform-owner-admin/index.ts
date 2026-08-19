@@ -11,12 +11,13 @@ Deno.serve(async(req)=>{
   if(!secret)return json({error:'Supabase secret key is not available in the Edge Function environment.'},500)
   const authHeader=req.headers.get('Authorization')||''
   if(!authHeader.toLowerCase().startsWith('bearer '))return json({error:'Unauthorized'},401)
-  const caller=createClient(url,publishable,{global:{headers:{Authorization:authHeader}},auth:{autoRefreshToken:false,persistSession:false}})
   const admin=createClient(url,secret,{auth:{autoRefreshToken:false,persistSession:false}})
-  const {data:{user},error:userError}=await caller.auth.getUser()
-  if(userError||!user)return json({error:'Unauthorized'},401)
-  const {data:isOwner,error:ownerError}=await caller.rpc('is_platform_owner')
-  if(ownerError||!isOwner)return json({error:'Forbidden'},403)
+  const accessToken=authHeader.replace(/^bearer\s+/i,'').trim()
+  const {data:{user},error:userError}=await admin.auth.getUser(accessToken)
+  if(userError||!user)return json({error:'Η συνεδρία Platform Owner δεν είναι πλέον έγκυρη. Κάνε έξοδο και νέα σύνδεση.'},401)
+  const {data:owner,error:ownerError}=await admin.from('platform_owners').select('user_id,active').eq('user_id',user.id).eq('active',true).maybeSingle()
+  if(ownerError)return json({error:ownerError.message},400)
+  if(!owner)return json({error:'Δεν έχεις ενεργή πρόσβαση Platform Owner.'},403)
   const body=await req.json().catch(()=>({}))
   if(body.action==='list'){
     const {data,error}=await admin.from('organizations').select('id,name,slug,active,created_at,updated_at').order('name')
@@ -41,22 +42,41 @@ Deno.serve(async(req)=>{
     return json({ok:true,organization:org,userId},201)
   }
   if(body.action==='updateOrganization'){
-    const id=String(body.organizationId||''),name=String(body.name||'').trim(),slug=slugify(body.slug||name)
-    if(!id||!name||!slug)return json({error:'organizationId, hospital name and slug are required.'},400)
-    const {data,error}=await admin.from('organizations').update({name,slug}).eq('id',id).select('id,name,slug,active').maybeSingle()
+    const id=String(body.organizationId||''),name=String(body.name||'').trim()
+    if(!id||!name)return json({error:'organizationId and hospital name are required.'},400)
+    const {data,error}=await admin.from('organizations').update({name}).eq('id',id).select('id,name,slug,active').maybeSingle()
     if(error)return json({error:error.message},400)
     if(!data)return json({error:'Hospital was not found.'},404)
     return json({ok:true,organization:data})
   }
   if(body.action==='deleteOrganization'){
-    const id=String(body.organizationId||'')
+    const id=String(body.organizationId||''),confirmation=String(body.confirmation||'').trim()
     if(!id)return json({error:'organizationId is required'},400)
-    const {count,error:profileCountError}=await admin.from('user_profiles').select('user_id',{count:'exact',head:true}).eq('organization_id',id)
-    if(profileCountError)return json({error:profileCountError.message},400)
-    if((count||0)>0)return json({error:'Το νοσοκομείο έχει ήδη χρήστες και δεν μπορεί να διαγραφεί. Απενεργοποίησέ το αντί για διαγραφή.'},409)
-    const {error}=await admin.from('organizations').delete().eq('id',id)
-    if(error)return json({error:'Η διαγραφή δεν επιτρέπεται επειδή υπάρχουν ήδη συνδεδεμένα δεδομένα. Απενεργοποίησε το νοσοκομείο αντί για διαγραφή.'},409)
-    return json({ok:true})
+    const {data:org,error:orgError}=await admin.from('organizations').select('id,name').eq('id',id).maybeSingle()
+    if(orgError)return json({error:orgError.message},400)
+    if(!org)return json({error:'Το νοσοκομείο δεν βρέθηκε.'},404)
+    if(confirmation!==org.name)return json({error:'Για οριστική διαγραφή πρέπει να επιβεβαιωθεί ακριβώς το όνομα του νοσοκομείου.'},400)
+
+    const {data:profiles,error:pError}=await admin.from('user_profiles').select('user_id').eq('organization_id',id)
+    if(pError)return json({error:pError.message},400)
+    const userIds=(profiles||[]).map((x:any)=>x.user_id).filter(Boolean)
+
+    // Governance tables intentionally use ON DELETE RESTRICT. A Platform Owner hard-delete
+    // explicitly clears the tenant's evidence before deleting the tenant. This action is
+    // reserved for deliberate tenant reset/removal and is protected by exact-name confirmation.
+    for(const table of ['security_auth_events','indicator_definition_history','system_audit_log']){
+      const {error}=await admin.from(table).delete().eq('organization_id',id)
+      if(error && !/does not exist|schema cache/i.test(error.message||''))return json({error:`${table}: ${error.message}`},400)
+    }
+
+    const {error:deleteError}=await admin.from('organizations').delete().eq('id',id)
+    if(deleteError)return json({error:`Η οριστική διαγραφή απέτυχε: ${deleteError.message}`},409)
+
+    for(const userId of userIds){
+      const {error}=await admin.auth.admin.deleteUser(userId)
+      if(error && !/not found/i.test(error.message||''))return json({error:`Το νοσοκομείο διαγράφηκε, αλλά απέτυχε η διαγραφή λογαριασμού χρήστη: ${error.message}`},500)
+    }
+    return json({ok:true,deletedUsers:userIds.length})
   }
   if(body.action==='setOrganizationActive'){
     const id=String(body.organizationId||'');if(!id)return json({error:'organizationId is required'},400)
