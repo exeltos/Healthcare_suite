@@ -80,7 +80,47 @@ export async function saveIndicatorSourceBackend(type,rows=[]){
   }
   local(rows);return rows
 }
+
+export async function saveIndicatorSourceRecordBackend(type,row={}){
+  const local=localWriter(type)
+  const key=String(row.id||row.key||'').trim()
+  if(!key)throw new Error('Indicator source record requires an id.')
+  if(!IS_PRODUCTION){
+    const current=localReader(type)()
+    const next=current.some(x=>String(x.id)===key)?current.map(x=>String(x.id)===key?row:x):[row,...current]
+    local(next);return row
+  }
+  const c=requireSupabase(),org=await orgId(c)
+  const payload={organization_id:org,source_type:type,record_key:key,record_date:date(row.date),data:row}
+  const {data,error}=await c.from('indicator_source_records')
+    .upsert(payload,{onConflict:'organization_id,source_type,record_key'})
+    .select('source_type,record_key,record_date,data').single()
+  if(error)throw error
+  const {data:verified,error:verifyError}=await c.from('indicator_source_records')
+    .select('source_type,record_key,record_date,data')
+    .eq('organization_id',org).eq('source_type',type).eq('record_key',key).single()
+  if(verifyError)throw verifyError
+  if(!verified)throw new Error('The record was not found after saving to Supabase.')
+  const saved={...(verified.data||{}),id:verified.record_key,date:verified.record_date||verified.data?.date||''}
+  const current=localReader(type)()
+  const next=current.some(x=>String(x.id)===key)?current.map(x=>String(x.id)===key?saved:x):[saved,...current]
+  local(next);return saved
+}
+
+export async function deleteIndicatorSourceRecordBackend(type,keyValue){
+  const local=localWriter(type), key=String(keyValue||'').trim()
+  if(!key)throw new Error('Indicator source record requires an id.')
+  if(!IS_PRODUCTION){const next=localReader(type)().filter(x=>String(x.id)!==key);local(next);return true}
+  const c=requireSupabase(),org=await orgId(c)
+  const {data,error}=await c.from('indicator_source_records').delete()
+    .eq('organization_id',org).eq('source_type',type).eq('record_key',key).select('record_key')
+  if(error)throw error
+  if(!(data||[]).some(x=>String(x.record_key)===key))throw new Error('Supabase did not confirm deletion of the record.')
+  const next=localReader(type)().filter(x=>String(x.id)!==key);local(next);return true
+}
+
 function localWriter(type){if(type==='daily_census')return saveDailyCensus;if(type==='antibiotic_ddd')return saveAntibioticDDD;if(type==='structural_snapshot')return saveStructuralSnapshots;if(type==='prevalence_snapshot')return savePrevalenceSnapshots;throw new Error('Unknown indicator source type.')}
+function localReader(type){if(type==='daily_census')return loadDailyCensus;if(type==='antibiotic_ddd')return loadAntibioticDDD;if(type==='structural_snapshot')return loadStructuralSnapshots;if(type==='prevalence_snapshot')return loadPrevalenceSnapshots;throw new Error('Unknown indicator source type.')}
 async function orgId(c){const {data,error}=await c.rpc('current_organization_id');if(error)throw error;if(!data)throw new Error('Organization context not found.');return data}
 function date(v){const s=String(v||'').trim();return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:null}
 

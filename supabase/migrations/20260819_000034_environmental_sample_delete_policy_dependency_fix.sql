@@ -1,4 +1,4 @@
--- Healthcare Suite rc.137 compatibility fix
+-- Healthcare Suite rc.137
 -- Self-contained source-aware helper + DELETE policy for Water / Surfaces laboratory samples.
 -- Safe to run even when migration 000031 was not previously applied.
 begin;
