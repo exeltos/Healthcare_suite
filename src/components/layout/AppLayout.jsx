@@ -102,15 +102,19 @@ export default function AppLayout() {
     }
   },[authState])
 
+  // Hooks must always run in the same order. These callbacks intentionally live
+  // before every conditional return; otherwise the initial auth-loading render
+  // skips them and the authenticated render triggers React invariant #310.
+  const openNewEntryLauncher=useCallback((initialTypeId='')=>{setLauncherInitialType(initialTypeId);setLauncherOpen(true)},[])
+  const closeNewEntryLauncher=useCallback(()=>{setLauncherOpen(false);setLauncherInitialType('')},[])
+  const toggleNavigation=useCallback(()=>{const isMobile=typeof window!=='undefined'&&window.matchMedia('(max-width: 760px)').matches;if(isMobile){setMobileOpen(v=>!v);return}setCollapsed(v=>!v)},[])
+
   const session=readSessionValue(SESSION_KEY)
   if(authState==='checking'||dataState==='loading') return <div className="app-auth-loading"><div className="suite-logo">H</div><span>{t('common.loading')}</span></div>
   if((authState==='invalid'||!isSessionAllowed({session,user}))&&!goodbye) return <Navigate to="/login" replace/>
   const currentModule=moduleForPath(location.pathname)
   const helpPreview=new URLSearchParams(location.search).get('helpPreview')==='1'
   if(user && user.demo!==true && !canViewModule(user,currentModule) && location.pathname!==APP_ROUTES.DASHBOARD) return <Navigate to={APP_ROUTES.DASHBOARD} replace state={{accessDenied:true}}/>
-  const openNewEntryLauncher=useCallback((initialTypeId='')=>{setLauncherInitialType(initialTypeId);setLauncherOpen(true)},[])
-  const closeNewEntryLauncher=useCallback(()=>{setLauncherOpen(false);setLauncherInitialType('')},[])
-  const toggleNavigation=useCallback(()=>{const isMobile=typeof window!=='undefined'&&window.matchMedia('(max-width: 760px)').matches;if(isMobile){setMobileOpen(v=>!v);return}setCollapsed(v=>!v)},[])
   async function logout(){
     try{await signOutUser()}catch{}
     removeSessionValue(SESSION_KEY)

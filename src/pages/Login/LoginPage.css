@@ -37,3 +37,15 @@
 .login-index-language button:hover{border-color:rgba(11,107,117,.38);background:#f7fbfb;color:#0b6b75}
 .login-index-language button svg{width:16px;height:16px}
 @media(max-width:560px){.login-index-language{top:16px;right:16px}.login-index-language button{height:34px;min-width:60px;padding:0 10px}}
+
+/* rc.119 — dedicated invitation/recovery view aligned with the main auth screen. */
+.reset-password-card{min-height:660px}
+.reset-password-visual{background:linear-gradient(145deg,#07535b,#0a7079)}
+.reset-password-copy h1{max-width:560px;font-size:clamp(2.6rem,4vw,4rem)}
+.reset-password-copy p{max-width:560px;min-height:0}
+.reset-password-auth-panel{padding-top:54px;padding-bottom:54px}
+.reset-password-wrapper{min-height:520px}
+.reset-password-header{min-height:0;margin-bottom:28px}
+.reset-password-header .login-back-button{margin-bottom:26px}
+@media(max-width:900px){.reset-password-card{min-height:0}.reset-password-visual{min-height:500px}.reset-password-auth-panel{min-height:610px}}
+@media(max-width:560px){.reset-password-visual{display:none}.reset-password-auth-panel{min-height:100vh;padding-top:72px}.reset-password-wrapper{min-height:0}.reset-password-card{min-height:100vh}}
