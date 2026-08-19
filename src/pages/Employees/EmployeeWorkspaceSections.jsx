@@ -1,6 +1,6 @@
 import { ChevronRight, ClipboardList, Edit3, Plus, Save, ShieldCheck, Stethoscope, Syringe, X } from 'lucide-react'
 import LibraryField from '../../components/core/LibraryField/LibraryField'
-import { Button, IconButton, WorkspaceSectionHeader } from '../../components/core'
+import { Button, DateField, IconButton, WorkspaceSectionHeader } from '../../components/core'
 import { employeeDisplayValue } from './employeePresentation'
 
 const emptyOccupationalVisit = {
@@ -28,10 +28,10 @@ export function EmployeeHealthTab({ language, view, setView, vaccinations, selec
         <form className="ew-vaccine-form" onSubmit={onSaveVaccination}>
           <div className="ew-grid ew-grid--three">
             <Field label={L('Εμβόλιο *','Vaccine *')}><LibraryField hideLabel allowManual libraryKey="vaccines" value={selectedVaccination.vaccine || ''} onChange={(value) => setSelectedVaccination({ ...selectedVaccination, vaccine: value })} placeholder={L('Επιλέξτε ή γράψτε εμβόλιο','Select or enter vaccine')} /></Field>
-            <Field label={L('Ημερομηνία *','Date *')}><input required type="date" value={selectedVaccination.date || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, date: e.target.value })} /></Field>
+            <DateField required label={L('Ημερομηνία *','Date *')} value={selectedVaccination.date || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, date: e.target.value })} />
             <Field label={L('Δόση','Dose')}><input value={selectedVaccination.dose || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, dose: e.target.value })} /></Field>
             <Field label={L('Παρτίδα','Lot')}><input value={selectedVaccination.lot || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, lot: e.target.value })} /></Field>
-            <Field label={L('Ισχύς έως','Valid until')}><input type="date" value={selectedVaccination.validUntil || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, validUntil: e.target.value })} /></Field>
+            <DateField label={L('Ισχύς έως','Valid until')} value={selectedVaccination.validUntil || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, validUntil: e.target.value })} />
             <Field label={L('Σημειώσεις','Notes')} wide><textarea value={selectedVaccination.notes || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, notes: e.target.value })} /></Field>
           </div>
           <div className="ew-form-actions ew-form-actions--split">
@@ -78,7 +78,7 @@ export function ProfileTab({ language, form, setForm, editing, onEdit, onCancel,
         <Field label={L('Κωδικός εργαζομένου', 'Employee code')}><input disabled={!editing} value={form.employeeCode || ''} onChange={(e) => setForm({ ...form, employeeCode: e.target.value })} /></Field>
         <LibraryField disabled={!editing} label={L('Ιδιότητα', 'Professional category')} libraryKey="professional-categories" value={form.professionalCategory || ''} onChange={(value) => setForm({ ...form, professionalCategory: value })} />
         <LibraryField disabled={!editing} label={L('Τμήμα', 'Department')} libraryKey="departments" value={form.department || ''} onChange={(value) => setForm({ ...form, department: value })} />
-        <Field label={L('Ημερομηνία πρόσληψης', 'Hire date')}><input disabled={!editing} type="date" value={form.hireDate || ''} onChange={(e) => setForm({ ...form, hireDate: e.target.value })} /></Field>
+        <DateField disabled={!editing} label={L('Ημερομηνία πρόσληψης', 'Hire date')} value={form.hireDate || ''} onChange={(e) => setForm({ ...form, hireDate: e.target.value })} />
         <Field label={L('Κατάσταση', 'Status')}><select disabled={!editing} value={form.status || 'Ενεργό'} onChange={(e) => setForm({ ...form, status: e.target.value })}><option value="Ενεργό">{employeeDisplayValue('Ενεργό', language)}</option><option value="Ανενεργό">{employeeDisplayValue('Ανενεργό', language)}</option></select></Field>
       </div>
     </section>
@@ -108,9 +108,9 @@ function OccupationalHealthTab({ language, visits, draft, setDraft, onSave, onDe
 
     {isEditing ? <form className="ew-occupational-form" onSubmit={onSave}>
       <div className="ew-grid ew-grid--three">
-        <Field label={L('Ημερομηνία εξέτασης *', 'Examination date *')}><input required type="date" value={draft.date || ''} onChange={(e) => setDraft({ ...draft, date: e.target.value })} /></Field>
+        <DateField required label={L('Ημερομηνία εξέτασης *', 'Examination date *')} value={draft.date || ''} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
         <Field label={L('Καταλληλότητα', 'Fitness')}><select value={draft.fitness || 'Κατάλληλος'} onChange={(e) => setDraft({ ...draft, fitness: e.target.value })}><option value="Κατάλληλος">{employeeDisplayValue('Κατάλληλος', language)}</option><option value="Κατάλληλος με περιορισμούς">{employeeDisplayValue('Κατάλληλος με περιορισμούς', language)}</option><option value="Προσωρινά μη κατάλληλος">{employeeDisplayValue('Προσωρινά μη κατάλληλος', language)}</option></select></Field>
-        <Field label={L('Επόμενος επανέλεγχος', 'Next review')}><input type="date" value={draft.nextReviewDate || ''} onChange={(e) => setDraft({ ...draft, nextReviewDate: e.target.value })} /></Field>
+        <DateField label={L('Επόμενος επανέλεγχος', 'Next review')} value={draft.nextReviewDate || ''} onChange={(e) => setDraft({ ...draft, nextReviewDate: e.target.value })} />
         <Field label={L('Σημειώσεις', 'Notes')} wide><textarea value={draft.notes || ''} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} /></Field>
       </div>
       <div className="ew-form-actions ew-form-actions--split">

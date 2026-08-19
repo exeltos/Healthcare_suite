@@ -130,13 +130,19 @@ export default function EmployeeWorkspacePage() {
       notifyAction(L('Συμπληρώστε όνομα και επώνυμο.', 'Enter first and last name.'))
       return
     }
-    const saved = await saveDirectoryEmployee({ ...(isNewEmployee?{}:employee), ...form })
-    setEmployee(saved)
-    setForm(saved)
-    setEditingProfile(false)
-    notifyAction(isNewEmployee ? L('Ο εργαζόμενος δημιουργήθηκε.', 'Employee created.') : L('Τα στοιχεία του εργαζομένου αποθηκεύτηκαν.', 'Employee details saved.'))
-    if(isNewEmployee){
-      navigate(routeFor.employeeWorkspace(saved.id), { replace:true, state:{ createdEmployee:true } })
+    try {
+      const saved = await saveDirectoryEmployee({ ...(isNewEmployee?{}:employee), ...form })
+      setEmployee(saved)
+      setForm(saved)
+      setEditingProfile(false)
+      notifyAction(isNewEmployee ? L('Ο εργαζόμενος δημιουργήθηκε και αποθηκεύτηκε στο Supabase.', 'Employee created and saved to Supabase.') : L('Τα στοιχεία του εργαζομένου αποθηκεύτηκαν.', 'Employee details saved.'))
+      if(isNewEmployee){
+        navigate(routeFor.employeeWorkspace(saved.id), { replace:true, state:{ createdEmployee:true } })
+      }
+    } catch (error) {
+      console.error('Employee save failed', error)
+      const message=String(error?.message||'').trim()
+      notifyAction(message || L('Η αποθήκευση του εργαζομένου απέτυχε.', 'Employee save failed.'))
     }
   }
 

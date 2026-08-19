@@ -98,9 +98,10 @@ export async function saveDirectoryEmployee(input={}){
   }
   if(!payload.first_name || !payload.last_name) throw new Error('Employee first and last name are required.')
   if(payload.employee_code){
-    const {data:duplicateCode,error:duplicateCodeError}=await client.from('employees').select('id')
+    let duplicateQuery=client.from('employees').select('id')
       .eq('organization_id',organizationId).eq('employee_code',payload.employee_code)
-      .neq('id',String(input.id||'')).limit(1)
+    if(input.id) duplicateQuery=duplicateQuery.neq('id',String(input.id))
+    const {data:duplicateCode,error:duplicateCodeError}=await duplicateQuery.limit(1)
     if(duplicateCodeError)throw duplicateCodeError
     if(duplicateCode?.length)throw new Error('Employee code already exists.')
   }
