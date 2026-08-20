@@ -1,4 +1,5 @@
 import { notifyAction } from '../../components/core/feedback/index'
+import { feedbackSuccess } from '../../core/feedback'
 import { useEffect, useState } from 'react'
 import { Languages } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -65,6 +66,7 @@ export default function LoginPage() {
       removeSessionValue('healthcare-suite.demo')
       writeSessionValue('healthcare-suite.session',authenticated.session)
       writeSessionValue('healthcare-suite.user', JSON.stringify(authenticated.user))
+      feedbackSuccess(language==='en'?'Connected successfully.':'Η σύνδεση ολοκληρώθηκε.', { title: language==='en'?'Connected':'Συνδέθηκε' })
       navigate(authenticated.user?.platformOwner?APP_ROUTES.PLATFORM:APP_ROUTES.DASHBOARD, { replace: true })
     } catch (error) {
       if(error?.code==='AUTH_NOT_CONFIGURED') {

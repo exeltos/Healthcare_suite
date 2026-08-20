@@ -52,7 +52,14 @@ export default function AppFeedbackBridge() {
       lastIntentType.current = type
     }
     const markSaveIntent = () => markIntent('save')
-    const onSubmit = () => markSaveIntent()
+    const saveLabelPattern=/(^|\s)(αποθήκευση|αποθηκευση|αποθήκευσε|αποθηκευσε|save)(\s|$|…|&)/i
+    const onSubmit = (event) => {
+      const submitter=event.submitter
+      if(!submitter) return
+      const explicitAction=submitter.getAttribute?.('data-feedback-action')
+      const label=[submitter.getAttribute?.('aria-label'),submitter.getAttribute?.('title'),submitter.textContent].filter(Boolean).join(' ').trim().toLocaleLowerCase('el-GR')
+      if(explicitAction==='save'||saveLabelPattern.test(label)) markSaveIntent()
+    }
     const onClick = (event) => {
       const actionTarget = event.target?.closest?.('[data-feedback-action], button, [role="button"]')
       if (!actionTarget) return
@@ -63,7 +70,7 @@ export default function AppFeedbackBridge() {
         actionTarget.textContent,
       ].filter(Boolean).join(' ').trim().toLocaleLowerCase('el-GR')
 
-      if (explicitAction === 'save' || /(^|\s)(αποθήκευση|αποθηκευση|αποθήκευσε|αποθηκευσε|save)(\s|$|…|&)/i.test(label)) {
+      if (explicitAction === 'save' || saveLabelPattern.test(label)) {
         markIntent('save')
       } else if (explicitAction === 'delete' || /(^|\s)(διαγραφή|διαγραφη|delete)(\s|$)/i.test(label)) {
         markIntent('delete')

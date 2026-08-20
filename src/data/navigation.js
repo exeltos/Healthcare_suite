@@ -18,8 +18,7 @@ export const navigation = [{
       {id:'vaccinations',moduleKey:MODULES.VACCINATIONS,labelKey:'nav.vaccinations',path:APP_ROUTES.VACCINATIONS,icon:Syringe},
     ]},
     {id:'records',labelKey:'nav.records',icon:ClipboardList,children:[
-      {id:'promoted-antibiotics',moduleKey:MODULES.PROMOTED_ANTIBIOTICS,labelKey:'nav.promotedAntibiotics',path:APP_ROUTES.PROMOTED_ANTIBIOTICS,icon:Pill},
-      {id:'antimicrobial-consumption',moduleKey:MODULES.PROMOTED_ANTIBIOTICS,labelKey:'nav.antimicrobialConsumption',path:APP_ROUTES.ANTIMICROBIAL_CONSUMPTION,icon:BarChart3},
+      {id:'antimicrobial-surveillance',moduleKey:MODULES.PROMOTED_ANTIBIOTICS,labelKey:'nav.antimicrobialSurveillance',path:APP_ROUTES.PROMOTED_ANTIBIOTICS,matchPaths:[APP_ROUTES.PROMOTED_ANTIBIOTICS,APP_ROUTES.ANTIMICROBIAL_CONSUMPTION],icon:BarChart3},
       {id:'notifiable-diseases',moduleKey:MODULES.NOTIFIABLE,labelKey:'nav.notifiableDiseases',path:APP_ROUTES.NOTIFIABLE_DISEASES,icon:FileText},
       {id:'antiseptics',moduleKey:MODULES.ANTISEPTICS_WASTE,labelKey:'nav.antiseptics',path:APP_ROUTES.ANTISEPTIC_CONSUMPTION,icon:Pill},
       {id:'waste',moduleKey:MODULES.ANTISEPTICS_WASTE,labelKey:'nav.waste',path:APP_ROUTES.WASTE,icon:Recycle},

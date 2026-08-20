@@ -7,7 +7,8 @@ import { useI18n } from '../../i18n'
 import { canViewModule } from '../../services/accessControlService'
 
 function containsPath(item, pathname) {
-  if (item.path) return pathname === item.path || pathname.startsWith(`${item.path}/`)
+  const paths=[item.path,...(item.matchPaths||[])].filter(Boolean)
+  if (paths.length) return paths.some(path=>pathname===path||pathname.startsWith(`${path}/`))
   return (item.children || []).some((child) => containsPath(child, pathname))
 }
 
