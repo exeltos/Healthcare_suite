@@ -152,7 +152,7 @@ export function moduleForPath(pathname=''){
   if(p.startsWith('/records/notifiable-diseases')) return MODULES.NOTIFIABLE
   if(p.startsWith('/prevention/hand-hygiene')) return MODULES.HAND_HYGIENE
   if(p.startsWith('/prevention/vaccinations')) return MODULES.VACCINATIONS
-  if(p.startsWith('/prevention/promoted-antibiotics')) return MODULES.PROMOTED_ANTIBIOTICS
+  if(p.startsWith('/surveillance/antimicrobials/restricted')||p.startsWith('/surveillance/antimicrobials/consumption')||p.startsWith('/prevention/promoted-antibiotics')) return MODULES.PROMOTED_ANTIBIOTICS
   if(p.startsWith('/prevention/antiseptic-consumption')||p.startsWith('/prevention/waste')) return MODULES.ANTISEPTICS_WASTE
   if(p.startsWith('/prevention')) return MODULES.HAND_HYGIENE
   if(p.startsWith('/lira')) return MODULES.LIRA

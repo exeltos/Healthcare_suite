@@ -20,6 +20,7 @@ import {
   PageChrome,
   PageHeader,
   StatCard,
+  Tabs,
 } from '../../components/core'
 import { PROMOTED_APPROVAL_OPTIONS } from '../../core/constants/clinicalOptions'
 import { normalizeText, selectedRows, sortRows, uniqueSortedValues } from '../../core/utils/entityList'
@@ -115,7 +116,16 @@ export default function PromotedAntibioticsPage(){
   ]
 
   return <PageChrome className="prevention-unified-page" header={<PageHeader title={L("Αντιμικροβιακή Επιτήρηση","Antimicrobial Surveillance")} description={L("Έγκριση περιορισμένης χρήσης και επιτήρηση κατανάλωσης με ATC/DDD.","Restricted-use approval and ATC/DDD consumption surveillance.")} actions={<Button icon={<Plus size={17}/>} onClick={openNew}>{L('Νέα καταχώρηση','New record')}</Button>}/> }>
-    <div className="antimicrobial-tabs"><Button type="button" className="active">{L('Προωθημένα Αντιβιοτικά','Restricted Antibiotics')}</Button><Button type="button" variant="secondary" onClick={()=>navigate(APP_ROUTES.ANTIMICROBIAL_CONSUMPTION)}>{L('Κατανάλωση Αντιμικροβιακών','Antimicrobial Consumption')}</Button></div>
+    <Tabs
+      variant="clinical"
+      ariaLabel={L('Αντιμικροβιακή επιτήρηση','Antimicrobial surveillance')}
+      value="restricted"
+      onChange={(value)=>{ if(value==='consumption') navigate(APP_ROUTES.ANTIMICROBIAL_CONSUMPTION) }}
+      items={[
+        {id:'restricted',label:L('Προωθημένα Αντιβιοτικά','Restricted Antibiotics')},
+        {id:'consumption',label:L('Κατανάλωση Αντιμικροβιακών','Antimicrobial Consumption')},
+      ]}
+    />
     <ListWorkspace
       stats={<EntitySummary columns={4} ariaLabel={L("Σύνολα προωθημένων αντιβιοτικών","Restricted antibiotic totals")}><StatCard compact icon={Pill} label={L("Αιτήματα","Requests")} value={metrics.total}/><StatCard compact icon={Clock3} label={L("Εκκρεμή","Pending")} value={metrics.pending}/><StatCard compact icon={CheckCircle2} label={L("Εγκεκριμένα","Approved")} value={metrics.approved}/><StatCard compact icon={Users} label={L("Ασθενείς","Patients")} value={metrics.patients}/></EntitySummary>}
       searchValue={search} onSearchChange={setSearch} searchPlaceholder={L("Αναζήτηση ασθενούς, αντιβιοτικού ή ιατρού…","Search patient, antimicrobial or physician…")}

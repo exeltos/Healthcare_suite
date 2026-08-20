@@ -290,20 +290,6 @@
 .entry-form-header--compact h2{
   font-size:1.12rem;
 }
-.entry-form-header__back.lds-button{
-  min-width:42px;
-  width:42px;
-  padding:0;
-  overflow:hidden;
-  color:transparent;
-}
-.entry-form-header__back.lds-button svg{
-  color:var(--text);
-  margin:0;
-}
-.entry-form-header__back .lds-button__label{
-  display:none;
-}
 .entry-form-footer{
   border-top:0;
   background:transparent;
@@ -316,3 +302,10 @@
   padding-bottom:3px;
 }
 
+
+/* rc.168 — compact entry workspaces use the same top-right close action as record workspaces. */
+.entry-form-header--compact .entry-form-header__cancel{
+  display:inline-flex;
+  margin-left:auto;
+  align-self:center;
+}

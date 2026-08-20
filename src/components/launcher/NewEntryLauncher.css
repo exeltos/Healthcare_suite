@@ -951,3 +951,36 @@
   }
 }
 
+
+
+/* rc.168 — WHO workspace navigation + responsive geometry hardening. */
+.hybrid-launcher-backdrop:has(.hybrid-launcher--who-direct){
+  min-width:0;
+  max-width:calc(100vw - var(--sidebar-width));
+}
+.sidebar-collapsed .hybrid-launcher-backdrop:has(.hybrid-launcher--who-direct){
+  max-width:calc(100vw - var(--sidebar-collapsed));
+}
+.hybrid-launcher--who-direct,
+.hybrid-launcher--who-direct .hybrid-launcher-body,
+.hybrid-launcher--who-direct .entry-form-content,
+.hybrid-launcher--who-direct .entry-form-section{
+  min-width:0;
+  max-width:100%;
+}
+.hybrid-launcher--who-direct .hybrid-launcher-body{
+  overflow-x:hidden;
+}
+.hybrid-launcher--who-direct .hybrid-form-grid > *,
+.hybrid-launcher--who-direct .smart-select,
+.hybrid-launcher--who-direct .core-date-time-control{
+  min-width:0;
+  max-width:100%;
+}
+@media(max-width:1360px){
+  .hybrid-launcher--who-direct .who-entry-session-card .hybrid-form-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:760px){
+  .hybrid-launcher-backdrop:has(.hybrid-launcher--who-direct){left:0;max-width:100vw;}
+  .hybrid-launcher--who-direct .who-entry-session-card .hybrid-form-grid{grid-template-columns:1fr;}
+}

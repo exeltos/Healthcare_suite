@@ -1,6 +1,6 @@
 import FormActions from '../../core/FormActions/FormActions'
 import Button from '../../core/Button/Button'
-import { ArrowLeft, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useI18n } from '../../../i18n'
 import './EntryFormChrome.css'
 
@@ -10,18 +10,13 @@ export function EntryFormHeader({ eyebrow, title, description, onClose, compact 
   return (
     <header className={`entry-form-header ${compact ? "entry-form-header--compact" : ""}`.trim()}>
       <div className="entry-form-header__identity">
-        {compact && onClose ? (
-          <Button type="button" variant="secondary" size="sm" icon={<ArrowLeft size={16}/>} onClick={onClose} className="entry-form-header__back">
-            {L('Πίσω','Back')}
-          </Button>
-        ) : null}
         <div>
           {eyebrow && <span className="entry-form-header__eyebrow">{eyebrow}</span>}
           <h2>{title}</h2>
           {description && <p>{description}</p>}
         </div>
       </div>
-      {!compact && onClose && <Button
+      {onClose && <Button
         type="button"
         variant="secondary"
         size="sm"
