@@ -306,6 +306,7 @@ export default function SettingsPage({ embedded = false }) {
                 <span>Master Data</span>
                 <h2>{activePresentation.label}</h2>
                 <p>{activePresentation.description}</p>
+                {activeSectionId==='departments' && <small className="settings-master-source">{L('Πηγή: Supabase · departments','Source: Supabase · departments')}</small>}
               </div>
             </div>
 
@@ -413,7 +414,9 @@ export default function SettingsPage({ embedded = false }) {
                         className="settings-empty"
                         colSpan={activeSection.columns.length + 1}
                       >
-                        {L('Δεν βρέθηκαν εγγραφές.','No records found.')}
+                        {activeSectionId==='departments'
+                          ? L('Δεν υπάρχουν ακόμη τμήματα στη Supabase. Επιλέξτε «Νέα εγγραφή» για να δημιουργήσετε το πρώτο πραγματικό τμήμα του οργανισμού.','There are no departments in Supabase yet. Choose “New record” to create the organization’s first real department.')
+                          : L('Δεν βρέθηκαν εγγραφές.','No records found.')}
                       </td>
                     </tr>
                   )}

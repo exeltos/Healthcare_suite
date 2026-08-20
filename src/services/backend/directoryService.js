@@ -15,7 +15,11 @@ import {
 export async function loadDirectoryDepartments(){
   if(!IS_PRODUCTION) return localDepartments()
   const client=requireSupabase()
-  const { data,error }=await client.from('departments').select('id,code,name,active').order('name')
+  const organizationId=await currentOrganizationId(client)
+  const { data,error }=await client.from('departments')
+    .select('id,code,name,active')
+    .eq('organization_id',organizationId)
+    .order('name')
   if(error) throw error
   const rows=(data||[]).map(mapDepartmentFromDb)
   mirrorDepartments(rows)
@@ -39,14 +43,24 @@ export async function saveDirectoryDepartment(input={}){
     active:input.status!=='Ανενεργό',
   }
   if(!payload.name) throw new Error('Department name is required.')
+  let duplicateQuery=client.from('departments').select('id')
+    .eq('organization_id',organizationId)
+    .ilike('name',payload.name)
+  if(input.id)duplicateQuery=duplicateQuery.neq('id',String(input.id))
+  const {data:duplicate,error:duplicateError}=await duplicateQuery.limit(1)
+  if(duplicateError)throw duplicateError
+  if(duplicate?.length)throw new Error('Department name already exists.')
+
   let query=client.from('departments')
   query=input.id
-    ? query.update(payload).eq('id',input.id)
+    ? query.update(payload).eq('organization_id',organizationId).eq('id',input.id)
     : query.insert(payload)
-  const { data,error }=await query.select('id,code,name,active').single()
+  const { data,error }=await query.select('id,organization_id,code,name,active').single()
   if(error) throw error
+  if(String(data?.organization_id||'')!==String(organizationId))throw new Error('Department organization verification failed.')
   const row=mapDepartmentFromDb(data)
-  await loadDirectoryDepartments()
+  const refreshed=await loadDirectoryDepartments()
+  if(!refreshed.some(item=>String(item.id)===String(row.id)&&String(item.name)===String(row.name)))throw new Error('Department write could not be verified in Supabase.')
   return row
 }
 
@@ -56,8 +70,11 @@ export async function deleteDirectoryDepartment(id){
     return true
   }
   const client=requireSupabase()
-  const { error }=await client.from('departments').delete().eq('id',id)
+  const organizationId=await currentOrganizationId(client)
+  const { data,error }=await client.from('departments').delete()
+    .eq('organization_id',organizationId).eq('id',id).select('id').maybeSingle()
   if(error) throw error
+  if(!data?.id)throw new Error('Department delete did not match a department in the current organization.')
   await loadDirectoryDepartments()
   return true
 }

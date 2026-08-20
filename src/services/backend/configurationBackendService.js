@@ -39,13 +39,26 @@ export async function deleteFormResponseBackend(id){
 
 export async function hydrateMasterDataBackend(){
  if(!IS_PRODUCTION)return loadMasterData()
- const c=requireSupabase(),org=await orgId(c);const {data,error}=await c.from('master_data_libraries').select('library_key,rows').eq('organization_id',org);if(error)throw error
- if(!(data||[]).length)return loadMasterData()
- const merged={...loadMasterData(),...Object.fromEntries(data.map(r=>[r.library_key,Array.isArray(r.rows)?r.rows:[]]))};writeJsonCache('limoxisMasterData',merged);return merged
+ const c=requireSupabase(),org=await orgId(c)
+ const [librariesResult,departmentsResult]=await Promise.all([
+   c.from('master_data_libraries').select('library_key,rows').eq('organization_id',org),
+   c.from('departments').select('id,code,name,active').eq('organization_id',org).order('name'),
+ ])
+ if(librariesResult.error)throw librariesResult.error
+ if(departmentsResult.error)throw departmentsResult.error
+ const libraryRows=Object.fromEntries((librariesResult.data||[]).map(r=>[r.library_key,Array.isArray(r.rows)?r.rows:[]]))
+ const departments=(departmentsResult.data||[]).map(row=>({
+   id:row.id,code:row.code||'',name:row.name||'',status:row.active===false?'Ανενεργό':'Ενεργό'
+ }))
+ const merged={...loadMasterData(),...libraryRows,departments}
+ writeJsonCache('limoxisMasterData',merged)
+ return merged
 }
 export async function saveMasterDataBackend(next={}){
  if(!IS_PRODUCTION)return saveMasterData(next)
- const c=requireSupabase(),org=await orgId(c),rows=Object.entries(next).map(([key,value])=>({organization_id:org,library_key:key,rows:Array.isArray(value)?value:[]}))
+ const c=requireSupabase(),org=await orgId(c),rows=Object.entries(next)
+   .filter(([key])=>key!=='departments')
+   .map(([key,value])=>({organization_id:org,library_key:key,rows:Array.isArray(value)?value:[]}))
  const {error:del}=await c.from('master_data_libraries').delete().eq('organization_id',org);if(del)throw del
  if(rows.length){const {error}=await c.from('master_data_libraries').insert(rows);if(error)throw error}writeJsonCache('limoxisMasterData',next);return next
 }

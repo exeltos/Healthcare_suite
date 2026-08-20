@@ -1,4 +1,5 @@
 import { APP_EVENTS, emitAppEvent } from '../core/events'
+import { IS_PRODUCTION } from '../core/runtime'
 import { readMasterData, writeMasterData } from '../repositories/masterDataRepository'
 import { DEFAULT_MASTER_DATA } from './masterData.defaults'
 
@@ -63,6 +64,12 @@ export function loadMasterData() {
   const saved = readMasterData()
   const merged = { ...DEFAULT_MASTER_DATA, ...saved }
   for (const [key, defaults] of Object.entries(DEFAULT_MASTER_DATA)) {
+    // Departments are organization master data in Production and must never
+    // be silently repopulated from demo/default values.
+    if (key === 'departments' && IS_PRODUCTION) {
+      merged[key] = Array.isArray(saved[key]) ? saved[key].map((row) => ({ ...row })) : []
+      continue
+    }
     merged[key] = mergeLibrary(defaults, saved[key])
   }
   merged.departments = normalizeCanonicalLibrary(merged.departments || [], DEPARTMENT_ALIASES)

@@ -602,3 +602,5 @@
             grid-template-columns: 1fr;
           }
         }
+
+.settings-master-source{display:inline-flex;margin-top:6px;font-size:12px;font-weight:700;color:var(--text-muted,#667f86)}
