@@ -1,4 +1,4 @@
-.lds-button { cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:var(--control-height); padding:0 18px; border:1px solid transparent; border-radius:var(--radius-md); font-weight:800; letter-spacing:-.01em; box-shadow:var(--shadow-xs); transition:background .16s ease,border-color .16s ease,color .16s ease,transform .16s ease,box-shadow .16s ease; }
+.lds-button { cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:var(--control-height); padding:0 18px; border:1px solid transparent; border-radius:var(--radius-sm); font-weight:700; letter-spacing:-.01em; box-shadow:var(--shadow-xs); transition:background .16s ease,border-color .16s ease,color .16s ease,transform .16s ease,box-shadow .16s ease; }
 .lds-button:hover:not(:disabled){ transform:translateY(-1px); box-shadow:var(--shadow-soft); }
 .lds-button:active:not(:disabled){ transform:translateY(0) scale(.985); }
 .lds-button:disabled{ opacity:.52; cursor:not-allowed; transform:none; box-shadow:none; }

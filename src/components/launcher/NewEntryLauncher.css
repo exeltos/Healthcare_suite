@@ -9,6 +9,7 @@
 }
 
 .hybrid-launcher {
+  position: relative;
   width: min(1040px, 96vw);
   max-height: 92vh;
   display: flex;
@@ -153,7 +154,7 @@
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #f7fafb;
+  background: var(--surface-subtle);
 }
 
 .hybrid-selected-type > span {
@@ -234,7 +235,7 @@
   gap: 4px;
   padding: 12px;
   border-radius: 10px;
-  background: #f7fafb;
+  background: var(--surface-subtle);
 }
 
 .hybrid-patient-summary span {
@@ -331,7 +332,7 @@
   padding: 13px;
   border: 1px solid var(--border);
   border-radius: 11px;
-  background: #f7fafb;
+  background: var(--surface-subtle);
 }
 
 .environment-summary-grid span {
@@ -509,7 +510,7 @@
   padding: 13px;
   border: 1px solid var(--border);
   border-radius: 11px;
-  background: #f7fafb;
+  background: var(--surface-subtle);
 }
 
 .who-summary-grid span {
@@ -779,3 +780,174 @@
 
 .hybrid-lab-pending{display:grid;gap:4px;padding:11px 13px;border:1px solid var(--border);border-radius:10px;background:var(--surface-subtle);color:var(--text)}
 .hybrid-lab-pending span{font-size:.73rem;color:var(--muted);line-height:1.45}
+
+/* rc.160 — direct WHO entry is a focused workspace, not a large marketing-style modal. */
+.hybrid-launcher--who-direct{
+  grid-template-rows:auto minmax(0,1fr) auto;
+}
+.hybrid-launcher--who-direct .hybrid-launcher-body{
+  padding:14px 16px;
+}
+.hybrid-launcher--who-direct .entry-form-content{
+  gap:12px;
+}
+.hybrid-launcher--who-direct .entry-form-section{
+  padding:14px;
+  border-radius:12px;
+}
+.hybrid-launcher--who-direct .entry-form-section + .entry-form-section{
+  margin-top:10px;
+}
+.hybrid-launcher--who-direct .entry-form-section__heading{
+  margin-bottom:10px;
+}
+.hybrid-launcher--who-direct .entry-form-section__heading p{
+  margin-top:3px;
+}
+.hybrid-launcher--who-direct .who-entry-session-card .hybrid-form-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px 12px;
+}
+.hybrid-launcher--who-direct .who-entry-session-card .hybrid-field>span,
+.hybrid-launcher--who-direct .who-entry-session-card .smart-select>span{
+  font-size:.68rem;
+}
+.hybrid-launcher--who-direct .who-entry-session-card .hybrid-field input,
+.hybrid-launcher--who-direct .who-entry-session-card .smart-select-control,
+.hybrid-launcher--who-direct .who-entry-session-card .core-date-time-control{
+  min-height:40px;
+  height:40px;
+}
+.hybrid-launcher--who-direct .who-actions button{
+  min-height:62px;
+}
+@media(max-width:1100px){
+  .hybrid-launcher--who-direct .who-entry-session-card .hybrid-form-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+/* rc.161 — direct WHO entry opens as a workspace beside the persistent sidebar. */
+.hybrid-launcher-backdrop:has(.hybrid-launcher--who-direct){
+  top:var(--topbar-height);
+  right:0;
+  bottom:0;
+  left:var(--sidebar-width);
+  z-index:var(--z-modal);
+  display:block;
+  padding:0;
+  background:var(--background);
+}
+.sidebar-collapsed .hybrid-launcher-backdrop:has(.hybrid-launcher--who-direct){
+  left:var(--sidebar-collapsed);
+}
+.hybrid-launcher--who-direct{
+  width:100%;
+  height:100%;
+  max-height:none;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  background:var(--surface);
+}
+.hybrid-launcher--who-direct .hybrid-launcher-body{
+  min-height:0;
+  height:100%;
+  overflow:auto;
+  padding-bottom:70px;
+}
+.hybrid-launcher--who-direct > .entry-form-footer{
+  position:absolute;
+  right:14px;
+  bottom:10px;
+  z-index:30;
+}
+@media(max-width:900px){
+  .hybrid-launcher-backdrop:has(.hybrid-launcher--who-direct){
+    left:0;
+  }
+}
+
+/* rc.162 — direct WHO looks like a patient-style record workspace, not a launcher modal. */
+.hybrid-launcher-backdrop:has(.hybrid-launcher--who-direct){
+  background:var(--background);
+}
+.hybrid-launcher--who-direct{
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  background:var(--background);
+}
+.hybrid-launcher--who-direct > .entry-form-header{
+  background:var(--surface);
+}
+.hybrid-launcher--who-direct .hybrid-launcher-body{
+  padding:16px 18px 10px;
+  background:var(--background);
+}
+.hybrid-launcher--who-direct .entry-form-content{
+  max-width:none;
+  min-height:100%;
+  padding:0;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:var(--surface);
+}
+.hybrid-launcher--who-direct .entry-form-content>.entry-form-section{
+  border-left:0;
+  border-right:0;
+  border-radius:0;
+}
+.hybrid-launcher--who-direct .entry-form-content>.entry-form-section:first-child{
+  border-top:0;
+}
+.hybrid-launcher--who-direct > .entry-form-footer{
+  position:static;
+  width:100%;
+  min-height:50px;
+  padding:5px 18px;
+  border-top:1px solid var(--border);
+  background:var(--surface);
+}
+.hybrid-launcher--who-direct > .entry-form-footer.core-form-actions{
+  width:100%;
+  margin:0;
+  padding:5px 18px;
+}
+
+/* rc.163 — WHO direct workspace must cover the complete main application canvas. */
+.hybrid-launcher-backdrop:has(.hybrid-launcher--who-direct){
+  position:fixed;
+  top:var(--topbar-height);
+  right:0;
+  bottom:0;
+  left:var(--sidebar-width);
+  width:auto;
+  height:auto;
+  margin:0;
+  padding:0;
+  place-items:stretch;
+  overflow:hidden;
+}
+.sidebar-collapsed .hybrid-launcher-backdrop:has(.hybrid-launcher--who-direct){
+  left:var(--sidebar-collapsed);
+}
+.hybrid-launcher--who-direct{
+  width:100%;
+  height:100%;
+  max-width:none;
+  max-height:none;
+  margin:0;
+  border-radius:0;
+}
+.hybrid-launcher--who-direct .hybrid-launcher-body{
+  width:100%;
+  height:100%;
+  min-height:0;
+  overflow:auto;
+}
+@media(max-width:900px){
+  .hybrid-launcher-backdrop:has(.hybrid-launcher--who-direct){
+    left:0;
+  }
+}
+

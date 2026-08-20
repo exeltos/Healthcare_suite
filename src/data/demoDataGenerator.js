@@ -188,7 +188,7 @@ function buildIsolations(rng, patients, samples) {
   return samples.filter((row)=>row.status==='Θετικό' && row.resistance && rng()<.72).slice(0,180).map((sample,index)=>{
     const patient=patients.find((row)=>row.id===sample.patientId)||pick(rng,patients)
     const start=sample.collectionDate.split('/').reverse().join('-')
-    return { id:`DEMO-ISO-${String(index+1).padStart(3,'0')}`, patientId:patient.id, patientName:patient.fullName, patientCode:patient.patientCode, department:patient.department, pathogen:sample.microorganism, resistance:sample.resistance, startDate:start, endDate:rng()<.55?isoDate(addDays(new Date(`${start}T12:00:00`),numberBetween(rng,4,16))):'', status:rng()<.55?'Ολοκληρωμένη':'Ενεργή', isolationType:pick(rng,['Επαφή','Συννοσηλεία','Μονόκλινο']), [DEMO_FLAG]:true }
+    return { id:`DEMO-ISO-${String(index+1).padStart(3,'0')}`, patientId:patient.id, patientName:patient.fullName, patientCode:patient.patientCode, department:patient.department, clinicalCaseId:sample.clinicalCaseId||'', pathogen:sample.microorganism, resistance:sample.resistance, startDate:start, endDate:rng()<.55?isoDate(addDays(new Date(`${start}T12:00:00`),numberBetween(rng,4,16))):'', status:rng()<.55?'Ολοκληρωμένη':'Ενεργή', isolationType:pick(rng,['Επαφή','Συννοσηλεία','Μονόκλινο']), [DEMO_FLAG]:true }
   })
 }
 

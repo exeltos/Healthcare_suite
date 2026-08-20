@@ -1,4 +1,5 @@
 import { confirmAction, notifyAction } from '../components/core/feedback/index'
+import { Button, Drawer, FormActions, FormField, FormGrid, FormSection } from '../components/core'
 import { useEffect, useMemo, useState } from 'react'
 import { Archive, Pencil } from 'lucide-react'
 import { loadMasterData } from '../services/masterDataService'
@@ -169,6 +170,7 @@ export default function SettingsPage({ embedded = false }) {
           await saveDirectoryDepartment({...item,status:'Ανενεργό'})
           const departments=await loadDirectoryDepartments()
           setMasterData(current=>({...current,departments}))
+          closeDrawer()
         }catch(error){
           notifyAction(error?.message||L('Δεν ήταν δυνατή η απενεργοποίηση του τμήματος.','The department could not be deactivated.'))
         }
@@ -178,6 +180,7 @@ export default function SettingsPage({ embedded = false }) {
         ...masterData,
         [activeSectionId]: items.map(row=>row.id===item.id?{...row,status:'Ανενεργό'}:row),
       })
+      closeDrawer()
       return
     }
 
@@ -186,6 +189,7 @@ export default function SettingsPage({ embedded = false }) {
       ...masterData,
       [activeSectionId]: items.filter((row) => row.id !== item.id),
     })
+    closeDrawer()
   }
 
   function resetSection() {
@@ -390,15 +394,14 @@ export default function SettingsPage({ embedded = false }) {
                             <Pencil size={16} aria-hidden="true" />
                           </button>
 
-                          <button
-                            className="delete icon-action"
+                          <Button
+                            variant={activeSection.fields.some(field=>field.id==='status')?'secondary':'danger'}
+                            size="sm"
                             type="button"
-                            title={activeSection.fields.some(field=>field.id==='status')?L('Απενεργοποίηση','Deactivate'):L('Διαγραφή','Delete')}
-                            aria-label={activeSection.fields.some(field=>field.id==='status')?L('Απενεργοποίηση','Deactivate'):L('Διαγραφή','Delete')}
                             onClick={() => deleteItem(item)}
                           >
-                            <Archive size={16} aria-hidden="true" />
-                          </button>
+                            {activeSection.fields.some(field=>field.id==='status')?L('Απενεργοποίηση','Deactivate'):L('Διαγραφή','Delete')}
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -421,97 +424,45 @@ export default function SettingsPage({ embedded = false }) {
         </main>
       </div>
 
-      {drawerOpen && (
-        <div
-          className="settings-drawer-backdrop"
-          onMouseDown={closeDrawer}
-        >
-          <aside
-            className="settings-drawer"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <header>
-              <div>
-                <span>{activePresentation.label}</span>
-                <h3>
-                  {editingItem ? L('Επεξεργασία εγγραφής','Edit record') : L('Νέα εγγραφή','New record')}
-                </h3>
-              </div>
-
-              <button type="button" onClick={closeDrawer}>
-                ×
-              </button>
-            </header>
-
-            <form onSubmit={saveItem}>
-              <div className="settings-form-fields">
-                {activeSection.fields.map((field) => (
-                  <label key={field.id}>
-                    <span>
-                      {studioFieldLabel(field,language)}
-                      {field.required ? ' *' : ''}
-                    </span>
-
-                    {field.type === 'select' ? (
-                      <select
-                        value={formData[field.id] || ''}
-                        onChange={(event) =>
-                          setFormData((current) => ({
-                            ...current,
-                            [field.id]: event.target.value,
-                          }))
-                        }
-                      >
-                        {field.options.map((option) => (
-                          <option key={option} value={option}>
-                            {studioOptionLabel(option,language) || '—'}
-                          </option>
-                        ))}
-                      </select>
-                    ) : field.type === 'checkbox' ? (
-                      <span className="settings-checkbox-field">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(formData[field.id])}
-                          onChange={(event) =>
-                            setFormData((current) => ({
-                              ...current,
-                              [field.id]: event.target.checked,
-                            }))
-                          }
-                        />
-                        <span>{formData[field.id]?L('Ναι','Yes'):L('Όχι','No')}</span>
-                      </span>
-                    ) : (
-                      <input
-                        type={field.type === 'number' ? 'number' : 'text'}
-                        step={field.type === 'number' ? 'any' : undefined}
-                        value={formData[field.id] ?? ''}
-                        onChange={(event) =>
-                          setFormData((current) => ({
-                            ...current,
-                            [field.id]: field.type === 'number' ? event.target.value : event.target.value,
-                          }))
-                        }
-                      />
-                    )}
-                  </label>
-                ))}
-              </div>
-
-              <footer>
-                <button type="button" onClick={closeDrawer}>
-                  {L('Ακύρωση','Cancel')}
-                </button>
-
-                <button className="primary" type="submit">
-                  {L('Αποθήκευση','Save')}
-                </button>
-              </footer>
-            </form>
-          </aside>
-        </div>
-      )}
+      <Drawer
+        open={drawerOpen}
+        onClose={closeDrawer}
+        title={editingItem ? L('Επεξεργασία εγγραφής','Edit record') : L('Νέα εγγραφή','New record')}
+        description={activePresentation.description}
+        width={920}
+        position="center"
+        footer={<FormActions
+          form="master-data-form"
+          onCancel={closeDrawer}
+          destructive={editingItem?<Button
+            variant={activeSection.fields.some(field=>field.id==='status')?'secondary':'danger'}
+            icon={<Archive size={16}/>} type="button" onClick={()=>deleteItem(editingItem)}
+          >{activeSection.fields.some(field=>field.id==='status')?L('Απενεργοποίηση','Deactivate'):L('Διαγραφή','Delete')}</Button>:null}
+        />}
+      >
+        <form id="master-data-form" onSubmit={saveItem}>
+          <FormSection title={activePresentation.label}>
+            <FormGrid columns={2}>
+              {activeSection.fields.map((field) => (
+                <FormField key={field.id} label={studioFieldLabel(field,language)} required={field.required}>
+                  {field.type === 'select' ? (
+                    <select required={field.required} value={formData[field.id] || ''} onChange={(event)=>setFormData(current=>({...current,[field.id]:event.target.value}))}>
+                      {field.options.map((option)=><option key={option} value={option}>{studioOptionLabel(option,language) || '—'}</option>)}
+                    </select>
+                  ) : field.type === 'checkbox' ? (
+                    <label className="settings-checkbox-field">
+                      <input type="checkbox" checked={Boolean(formData[field.id])} onChange={(event)=>setFormData(current=>({...current,[field.id]:event.target.checked}))}/>
+                      <span>{formData[field.id]?L('Ναι','Yes'):L('Όχι','No')}</span>
+                    </label>
+                  ) : (
+                    <input required={field.required} type={field.type === 'number' ? 'number' : 'text'} step={field.type === 'number' ? 'any' : undefined} value={formData[field.id] ?? ''} onChange={(event)=>setFormData(current=>({...current,[field.id]:event.target.value}))}/>
+                  )}
+                </FormField>
+              ))}
+            </FormGrid>
+          </FormSection>
+        </form>
+      </Drawer>
 
 
     </section>

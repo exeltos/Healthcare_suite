@@ -2,6 +2,7 @@ import { useI18n } from '../../i18n'
 import { useEffect, useState } from 'react'
 import { Activity, CalendarDays, ChevronRight, ClipboardList, Edit3, FileText, FlaskConical, History, Paperclip, Pill, Plus, Save, ShieldAlert, Trash2, X } from 'lucide-react'
 import Button from '../../components/core/Button/Button'
+import FormActions from '../../components/core/FormActions/FormActions'
 import Badge from '../../components/core/Badge/Badge'
 import Tabs from '../../components/core/Tabs/Tabs'
 import Timeline from '../../components/core/Timeline/Timeline'
@@ -41,6 +42,20 @@ export function PatientHome({ patient, isNew = false, editing, setEditing, setPa
     else openLaboratorySample?.(sample)
   }
   const therapies = cases.flatMap((surveillanceCase) => getTherapies(surveillanceCase).map((therapy) => ({ ...therapy, clinicalCaseId: surveillanceCase.id, caseReason: surveillanceCase.reason })))
+  const resolveIsolationCaseId = (isolation) => {
+    if (isolation?.clinicalCaseId && cases.some((item) => String(item.id) === String(isolation.clinicalCaseId))) return isolation.clinicalCaseId
+    const matchingSamples = samples.filter((sample) => {
+      const samePathogen = isolation?.pathogen && sampleMicroorganismLabel(sample)
+        && String(sampleMicroorganismLabel(sample)).toLocaleLowerCase('el-GR').includes(String(isolation.pathogen).toLocaleLowerCase('el-GR'))
+      return samePathogen && sample.clinicalCaseId
+    })
+    if (matchingSamples.length) {
+      const targetTime = new Date(`${isolation.startDate || '1970-01-01'}T12:00:00`).getTime()
+      matchingSamples.sort((a,b) => Math.abs(new Date(`${normalizeDate(a.collectionDate) || '1970-01-01'}T12:00:00`).getTime()-targetTime) - Math.abs(new Date(`${normalizeDate(b.collectionDate) || '1970-01-01'}T12:00:00`).getTime()-targetTime))
+      return matchingSamples[0]?.clinicalCaseId || ''
+    }
+    return activeCases[0]?.id || cases[0]?.id || ''
+  }
   const activeIsolations = isolations.filter((item) => item.status === 'Ενεργή')
   const openTimelineItem = (item) => {
     if (!item) return
@@ -112,7 +127,10 @@ export function PatientHome({ patient, isNew = false, editing, setEditing, setPa
 
       {tab === 'care' && <div className="pw-care-grid">
         <section className="pw-care-card"><SectionHeader eyebrow={L("ΑΝΤΙΜΙΚΡΟΒΙΑΚΗ ΑΓΩΓΗ", "ANTIMICROBIAL THERAPY")} title={L("Θεραπευτικά σχήματα", "Treatment regimens")} />{therapies.length === 0 ? <EmptyState icon={<Pill size={24} />} title={L("Δεν υπάρχει αγωγή", "No therapy recorded")} text={L("Οι αγωγές καταχωρίζονται μέσα από την επιτήρηση.", "Therapies are recorded within a surveillance case.")} /> : <div className="pw-record-list compact">{therapies.map((item) => <div key={item.id} className="pw-record-row" role="button" tabIndex={0} onClick={() => openCaseRecord({ caseId: item.clinicalCaseId, tab: 'care', recordType: 'therapy', recordId: item.id })}><div className="pw-record-icon"><Pill size={17} /></div><div className="pw-record-copy"><b>{item.antibiotic}</b><span>{[item.dosage, item.frequency, patientDisplayValue(item.route, language)].filter(Boolean).join(' · ') || L('Χωρίς δοσολογία', 'No dosage recorded')}{item.startDate ? ` · ${formatDate(item.startDate)}` : ''}{item.endDate ? ` – ${formatDate(item.endDate)}` : ''}</span></div><div className="pw-record-badges">{item.isPromoted && <Badge tone="warning">{L('Προωθημένο', 'Restricted')}</Badge>}</div><ChevronRight size={17} /></div>)}</div>}</section>
-        <section className="pw-care-card"><SectionHeader eyebrow={L("ΑΠΟΜΟΝΩΣΗ", "ISOLATION")} title={L("Μέτρα προφύλαξης", "Precaution measures")} />{isolations.length === 0 ? <EmptyState icon={<ShieldAlert size={24} />} title={L("Δεν υπάρχει απομόνωση", "No isolation recorded")} text={L("Τα μέτρα απομόνωσης συνδέονται με την επιτήρηση.", "Isolation precautions are linked to surveillance cases.")} /> : <div className="pw-record-list compact">{isolations.map((item) => <div key={item.id} className="pw-record-row" role="button" tabIndex={0} onClick={() => openCaseRecord({ caseId: item.clinicalCaseId, tab: 'care', recordType: 'isolation', recordId: item.id })}><div className="pw-record-icon"><ShieldAlert size={17} /></div><div className="pw-record-copy"><b>{patientDisplayValue(item.isolationType || 'Απομόνωση', language)}</b><span>{formatDate(item.startDate)}{item.endDate ? ` – ${formatDate(item.endDate)}` : ''}{item.pathogen ? ` · ${item.pathogen}` : ''}</span></div><Badge tone={item.status === 'Ενεργή' ? 'danger' : 'neutral'}>{patientDisplayValue(item.status || 'Ενεργή', language)}</Badge><ChevronRight size={17} /></div>)}</div>}</section>
+        <section className="pw-care-card"><SectionHeader eyebrow={L("ΑΠΟΜΟΝΩΣΗ", "ISOLATION")} title={L("Μέτρα προφύλαξης", "Precaution measures")} />{isolations.length === 0 ? <EmptyState icon={<ShieldAlert size={24} />} title={L("Δεν υπάρχει απομόνωση", "No isolation recorded")} text={L("Τα μέτρα απομόνωσης συνδέονται με την επιτήρηση.", "Isolation precautions are linked to surveillance cases.")} /> : <div className="pw-record-list compact">{isolations.map((item) => <div key={item.id} className="pw-record-row" role="button" tabIndex={0} onClick={() => {
+        const caseId = resolveIsolationCaseId(item)
+        if (caseId) openCaseRecord({ caseId, tab: 'care', recordType: 'isolation', recordId: item.id })
+      }}><div className="pw-record-icon"><ShieldAlert size={17} /></div><div className="pw-record-copy"><b>{patientDisplayValue(item.isolationType || 'Απομόνωση', language)}</b><span>{formatDate(item.startDate)}{item.endDate ? ` – ${formatDate(item.endDate)}` : ''}{item.pathogen ? ` · ${item.pathogen}` : ''}</span></div><Badge tone={item.status === 'Ενεργή' ? 'danger' : 'neutral'}>{patientDisplayValue(item.status || 'Ενεργή', language)}</Badge><ChevronRight size={17} /></div>)}</div>}</section>
       </div>}
 
       {tab === 'diseases' && <section className="pw-panel"><PatientNotifiableDiseases patient={patient} items={notifiableDiseases} focusId={diseaseFocusId} onFocusHandled={() => setDiseaseFocusId('')} onSave={saveNotifiable} onDelete={deleteNotifiable} /></section>}
@@ -140,7 +158,12 @@ export function PatientNotifiableDiseases({ patient, items, focusId, onFocusHand
     setDraft((current) => ({ ...current, attachments: [...(current.attachments || []), ...files] }))
     event.target.value = ''
   }
-  function save(event) { event.preventDefault(); if (!draft?.disease) return; onSave(draft); setDraft(null) }
+  async function save(event) {
+    event.preventDefault()
+    if (!draft?.disease) return
+    await onSave(draft)
+    setDraft(null)
+  }
   return <div className="pw-disease-panel">
     <div className="pw-disease-head"><div><small>EODY</small><h3>{L("Υποχρεωτικώς δηλούμενα νοσήματα", "Notifiable diseases")}</h3><p>{L("Οι δηλώσεις συνδέονται με τον ασθενή και διατηρούν τα δικά τους συνοδευτικά αρχεία.", "Notifications are linked to the patient and keep their own supporting files.")}</p></div><Button size="sm" icon={<Plus size={15} />} onClick={() => setDraft({ ...empty })}>{L("Νέα δήλωση", "New notification")}</Button></div>
     {draft && <form className="pw-editor pw-disease-editor" onSubmit={save}><div className="pw-editor-head"><h3>{draft.id ? L('Επεξεργασία δήλωσης', 'Edit notification') : L('Νέα δήλωση νοσήματος', 'New disease notification')}</h3></div><div className="pw-form-grid compact">
@@ -154,8 +177,8 @@ export function PatientNotifiableDiseases({ patient, items, focusId, onFocusHand
       <LibraryField label={L("Τμήμα", "Department")} libraryKey="departments" value={draft.department||''} onChange={(value)=>update('department',value)} placeholder={L("Επιλέξτε τμήμα", "Select department")} />
       <Field label={L("Κλινικές πληροφορίες", "Clinical information")} wide><textarea value={draft.notes || ''} onChange={(e) => update('notes', e.target.value)} /></Field>
       <Field label={L("Συνοδευτικά αρχεία", "Supporting files")} wide><div className="pw-inline-files"><label className="pw-upload-label"><Paperclip size={14} /> {L("Προσθήκη αρχείων", "Add files")}<input hidden multiple type="file" onChange={addFiles} /></label>{(draft.attachments || []).map((file) => <span key={file.id}><FileText size={13} />{file.name}<IconButton danger label={L("Αφαίρεση", "Remove")} icon={<Trash2 size={12} />} onClick={() => update('attachments', draft.attachments.filter((item) => item.id !== file.id))} /></span>)}</div></Field>
-    </div><div className="pw-form-actions"><Button variant="secondary" type="button" onClick={() => setDraft(null)}>{L("Ακύρωση", "Cancel")}</Button><Button type="submit">{L("Αποθήκευση", "Save")}</Button></div></form>}
-    {!items.length ? <EmptyState icon={<ShieldAlert size={24} />} title={L("Δεν υπάρχουν δηλούμενα νοσήματα", "No notifiable diseases")} text={L("Δημιουργήστε δήλωση μόνο όταν απαιτείται.", "Create a notification only when required.")} /> : <div className="pw-record-list">{items.map((item) => <div key={item.id} className="pw-record-row" role="button" tabIndex={0} onClick={() => setDraft(structuredClone(item))}><div className="pw-record-icon"><ShieldAlert size={17} /></div><div className="pw-record-copy"><b>{item.disease}</b><span>{patientDisplayValue(item.caseClassification, language)} · {formatDate(item.diagnosisDate)} · {item.deadline || 'Χωρίς προθεσμία'}</span></div><div className="pw-record-badges"><Badge tone={item.status === 'Δηλώθηκε' ? 'success' : item.deadline === 'Αμέσως' ? 'danger' : 'warning'}>{patientDisplayValue(item.status, language)}</Badge>{item.attachments?.length > 0 && <Badge tone="neutral">{item.attachments.length} {language === 'en' ? 'files' : 'αρχεία'}</Badge>}</div><div className="pw-icon-actions" onClick={(e) => e.stopPropagation()}><IconButton label={L("Επεξεργασία", "Edit")} icon={<Edit3 size={15} />} onClick={() => setDraft(structuredClone(item))} /><IconButton danger label={L("Διαγραφή", "Delete")} icon={<Trash2 size={15} />} onClick={() => onDelete(item.id)} /></div></div>)}</div>}
+    </div><FormActions onCancel={() => setDraft(null)} /></form>}
+    {!draft && (!items.length ? <EmptyState icon={<ShieldAlert size={24} />} title={L("Δεν υπάρχουν δηλούμενα νοσήματα", "No notifiable diseases")} text={L("Δημιουργήστε δήλωση μόνο όταν απαιτείται.", "Create a notification only when required.")} /> : <div className="pw-record-list">{items.map((item) => <div key={item.id} className="pw-record-row" role="button" tabIndex={0} onClick={() => setDraft(structuredClone(item))}><div className="pw-record-icon"><ShieldAlert size={17} /></div><div className="pw-record-copy"><b>{item.disease}</b><span>{patientDisplayValue(item.caseClassification, language)} · {formatDate(item.diagnosisDate)} · {item.deadline || 'Χωρίς προθεσμία'}</span></div><div className="pw-record-badges"><Badge tone={item.status === 'Δηλώθηκε' ? 'success' : item.deadline === 'Αμέσως' ? 'danger' : 'warning'}>{patientDisplayValue(item.status, language)}</Badge>{item.attachments?.length > 0 && <Badge tone="neutral">{item.attachments.length} {language === 'en' ? 'files' : 'αρχεία'}</Badge>}</div><div className="pw-icon-actions" onClick={(e) => e.stopPropagation()}><IconButton label={L("Επεξεργασία", "Edit")} icon={<Edit3 size={15} />} onClick={() => setDraft(structuredClone(item))} /><IconButton danger label={L("Διαγραφή", "Delete")} icon={<Trash2 size={15} />} onClick={() => onDelete(item.id)} /></div></div>)}</div>)}
   </div>
 }
 

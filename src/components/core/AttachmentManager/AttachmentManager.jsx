@@ -3,6 +3,7 @@ import { Eye, FileText, LoaderCircle, Paperclip, Trash2 } from 'lucide-react'
 import { feedbackError, feedbackSuccess } from '../../../core/feedback'
 import { confirmAction } from '../feedback/index'
 import { useI18n } from '../../../i18n'
+import Button from '../Button/Button'
 import './AttachmentManager.css'
 
 function makeAttachment(file, data) {
@@ -108,7 +109,7 @@ export default function AttachmentManager({ value = [], onChange, hint, readOnly
         <div><strong>{file.name}</strong><small>{formatBytes(file.size)}</small></div>
         <div className="attachment-manager__actions">
           <button type="button" title={L('Προβολή','View')} disabled={!file.data || uploading} onClick={() => viewFile(file)}><Eye size={14} /></button>
-          {!readOnly && <button type="button" className="danger" title={L('Διαγραφή','Delete')} data-feedback-action="delete" disabled={uploading} onClick={() => { if (!confirmAction(`${L('Να διαγραφεί το αρχείο','Delete file')} «${file.name}»;`)) return; onChange?.(value.filter((_, itemIndex) => itemIndex !== index)) }}><Trash2 size={14} /></button>}
+          {!readOnly && <Button size="sm" variant="danger" type="button" title={L('Διαγραφή','Delete')} data-feedback-action="delete" disabled={uploading} onClick={() => { if (!confirmAction(`${L('Να διαγραφεί το αρχείο','Delete file')} «${file.name}»;`)) return; onChange?.(value.filter((_, itemIndex) => itemIndex !== index)) }}>{L('Διαγραφή','Delete')}</Button>}
         </div>
       </article>)}
     </div>

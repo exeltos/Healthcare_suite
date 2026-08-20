@@ -445,3 +445,90 @@
 .pw-isolation-editor .pw-form-actions{margin-top:14px}
 @media(max-width:720px){.pw-isolation-status-line{align-items:flex-start}.pw-isolation-attachment-card .pw-attachment-tools>span{grid-template-columns:auto minmax(0,1fr) auto auto}}
 
+/* rc.144 — Patients final workspace consistency pass. */
+.pw-page { --pw-control-height: var(--control-height, 42px); --pw-control-radius: var(--control-radius, 10px); }
+
+.pw-field > input,
+.pw-field > select,
+.pw-field > textarea,
+.pw-field > .core-library-field,
+.pw-form-grid input,
+.pw-form-grid select,
+.pw-form-grid textarea {
+  width:100%;
+  min-height:var(--pw-control-height);
+  border-radius:var(--pw-control-radius);
+  font:inherit;
+}
+.pw-field > textarea,.pw-form-grid textarea{min-height:92px;resize:vertical}
+
+.pw-editor .pw-form-actions{
+  position:sticky;
+  bottom:0;
+  z-index:8;
+  margin-top:16px;
+  padding:12px 0 2px;
+  background:linear-gradient(to bottom,transparent,var(--surface) 18%);
+}
+
+@media (min-width:901px){
+  .pw-patient-tab-body .pw-registry-title{
+    position:sticky;
+    top:0;
+    z-index:7;
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+  }
+  .pw-patient-tab-body .pw-registry-strip{overflow:visible}
+  .pw-editor{min-height:100%}
+}
+
+.patients-page .core-list-workspace select{
+  min-height:var(--control-height,42px);
+  border-radius:var(--control-radius,10px);
+  font:inherit;
+}
+
+/* rc.155 — EODY editor and isolation navigation fixes. */
+@media (min-width:901px){
+  .pw-disease-panel:has(.pw-disease-editor){
+    overflow:hidden;
+  }
+  .pw-disease-editor{
+    flex:1;
+    min-height:0;
+    overflow:auto;
+    margin:14px 16px 16px;
+    padding-bottom:0;
+  }
+  .pw-disease-editor .pw-form-actions{
+    position:sticky;
+    bottom:0;
+    z-index:6;
+    margin:14px -16px 0;
+    padding:12px 16px 14px;
+    border-top:1px solid var(--border);
+    background:var(--surface);
+  }
+}
+
+/* rc.156 — patient tab return context + compact therapy action. */
+.pw-add-therapy-button{
+  white-space:nowrap;
+  flex:none;
+}
+.pw-section-header-actions .pw-add-therapy-button{
+  min-width:max-content;
+}
+
+
+/* rc.157 — local form action positioning retired in favor of core FormActions. */
+.pw-form-actions,.pw-save-bar,.ew-form-actions,.lw-form-actions{position:static!important;transform:none!important}
+
+@media (min-width:901px){
+  .pw-editor>.core-form-actions,
+  .pw-disease-editor>.core-form-actions,
+  .pw-care-card>.core-form-actions{
+    position:sticky;bottom:0;z-index:20;
+  }
+}

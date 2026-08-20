@@ -27,3 +27,8 @@ export function feedbackWarning(message, options = {}) {
 export function feedbackError(message, options = {}) {
   publishFeedback({ type: 'error', title: 'Προέκυψε πρόβλημα', message, duration: 6000, ...options })
 }
+
+export function feedbackSaved(options = {}) {
+  const demo = typeof window !== 'undefined' && window.sessionStorage?.getItem('healthcare-suite.runtime-demo') === 'true'
+  publishFeedback({ type: demo ? 'saved-demo' : 'saved-production', title: 'Αποθηκεύτηκε', message: 'Αποθήκευση', duration: 2800, ...options })
+}

@@ -1,22 +1,27 @@
 import FormActions from '../../core/FormActions/FormActions'
 import Button from '../../core/Button/Button'
-import { X } from 'lucide-react'
+import { ArrowLeft, X } from 'lucide-react'
 import { useI18n } from '../../../i18n'
 import './EntryFormChrome.css'
 
-export function EntryFormHeader({ eyebrow, title, description, onClose }) {
+export function EntryFormHeader({ eyebrow, title, description, onClose, compact = false }) {
   const { language } = useI18n()
   const L = (el,en) => language === 'en' ? en : el
   return (
-    <header className="entry-form-header">
+    <header className={`entry-form-header ${compact ? "entry-form-header--compact" : ""}`.trim()}>
       <div className="entry-form-header__identity">
+        {compact && onClose ? (
+          <Button type="button" variant="secondary" size="sm" icon={<ArrowLeft size={16}/>} onClick={onClose} className="entry-form-header__back">
+            {L('Πίσω','Back')}
+          </Button>
+        ) : null}
         <div>
           {eyebrow && <span className="entry-form-header__eyebrow">{eyebrow}</span>}
           <h2>{title}</h2>
           {description && <p>{description}</p>}
         </div>
       </div>
-      {onClose && <Button
+      {!compact && onClose && <Button
         type="button"
         variant="secondary"
         size="sm"
@@ -71,6 +76,7 @@ export function EntryFormSection({ eyebrow, title, description, children, classN
 
 export function EntryFormFooter({
   onCancel,
+  compact = false,
   onBack,
   showBack = false,
   primaryLabel = 'Επόμενο',
@@ -92,7 +98,7 @@ export function EntryFormFooter({
       primaryDisabled={primaryDisabled}
       saving={saving}
       sticky={false}
-      className="entry-form-footer"
+      className={`entry-form-footer ${compact ? 'entry-form-footer--compact' : ''}`.trim()}
     />
   )
 }

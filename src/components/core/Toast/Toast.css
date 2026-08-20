@@ -13,3 +13,9 @@
 @keyframes core-toast-in { from { opacity: 0; transform: translateY(8px); } }
 @media (max-width: 600px) { .core-toast-region { right: var(--space-4); bottom: var(--space-4); } }
 @media (prefers-reduced-motion: reduce) { .core-toast { animation: none; } }
+
+/* rc.143 — neutral save wording; runtime is communicated only by card color. */
+.core-toast--saved-production { border-color: var(--info-border); background: var(--info-soft); }
+.core-toast--saved-production .core-toast__mark { color: var(--info-dark); background: var(--surface); }
+.core-toast--saved-demo { border-color: var(--success-border); background: var(--success-soft); }
+.core-toast--saved-demo .core-toast__mark { color: var(--success-dark); background: var(--surface); }

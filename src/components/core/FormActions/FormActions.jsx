@@ -1,4 +1,5 @@
 import Button from '../Button/Button'
+import { ArrowLeft, Plus, Save, X } from 'lucide-react'
 import { useI18n } from '../../../i18n'
 import './FormActions.css'
 
@@ -22,6 +23,9 @@ export default function FormActions({
   extraActions,
   destructive,
   className = '',
+  showPrimary = true,
+  primaryIcon,
+  cancelIcon,
 }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
@@ -37,34 +41,37 @@ export default function FormActions({
       <div className="core-form-actions__secondary">
         {destructive}
         {extraActions}
-        {onCancel && (
-          <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
-            {resolvedCancelLabel}
-          </Button>
-        )}
       </div>
       <div className="core-form-actions__primary">
         {showBack && (
-          <Button type="button" variant="ghost" onClick={onBack} disabled={saving}>
-            {resolvedBackLabel}
+          <Button type="button" variant="ghost" icon={<ArrowLeft size={16} />} onClick={onBack} disabled={saving}>
+            {resolvedBackLabel.replace(/^←\s*/, '')}
           </Button>
         )}
         {onSaveAndNew && (
-          <Button type="button" variant="secondary" onClick={onSaveAndNew} disabled={resolvedDisabled}>
+          <Button type="button" variant="secondary" icon={<Plus size={16} />} onClick={onSaveAndNew} disabled={resolvedDisabled}>
             {resolvedSaveAndNewLabel}
           </Button>
         )}
-        <Button
-          type={primaryType}
-          form={form}
-          onClick={onPrimary}
-          disabled={resolvedDisabled}
-          loading={saving}
-          loadingLabel={L('Αποθήκευση…', 'Saving…')}
-          data-feedback-action="save"
-        >
-          {resolvedPrimaryLabel}
-        </Button>
+        {onCancel && (
+          <Button type="button" variant="secondary" icon={cancelIcon ?? <X size={16} />} onClick={onCancel} disabled={saving}>
+            {resolvedCancelLabel}
+          </Button>
+        )}
+        {showPrimary && (
+          <Button
+            type={primaryType}
+            form={form}
+            icon={primaryIcon ?? <Save size={16} />}
+            onClick={onPrimary}
+            disabled={resolvedDisabled}
+            loading={saving}
+            loadingLabel={L('Αποθήκευση…', 'Saving…')}
+            data-feedback-action="save"
+          >
+            {resolvedPrimaryLabel}
+          </Button>
+        )}
       </div>
     </footer>
   )

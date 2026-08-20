@@ -18,9 +18,26 @@ const HAS_SUPABASE_RUNTIME =
   RAW_DATA_PROVIDER === 'supabase' ||
   Boolean(NORMALIZED_SUPABASE_URL && RAW_SUPABASE_KEY)
 
-export const APP_MODE = RAW_MODE === 'production' || HAS_SUPABASE_RUNTIME ? 'production' : 'demo'
+export const DEPLOYMENT_MODE = RAW_MODE === 'production' || HAS_SUPABASE_RUNTIME ? 'production' : 'demo'
+
+const DEMO_RUNTIME_SESSION_KEY = 'healthcare-suite.runtime-demo'
+function demoRuntimeRequested(){
+  try{
+    if(typeof window==='undefined') return false
+    const params=new URLSearchParams(window.location.search)
+    if(params.get('demo')==='1') window.sessionStorage?.setItem(DEMO_RUNTIME_SESSION_KEY,'true')
+    return window.sessionStorage?.getItem(DEMO_RUNTIME_SESSION_KEY)==='true'
+  }catch{return false}
+}
+
+// A production deployment may expose an isolated Demo entry. Demo runs only in
+// browser-local storage and never talks to the configured Supabase data layer.
+export const IS_DEMO_RUNTIME = demoRuntimeRequested()
+export const APP_MODE = IS_DEMO_RUNTIME ? 'demo' : DEPLOYMENT_MODE
 export const IS_PRODUCTION = APP_MODE === 'production'
 export const IS_DEMO = !IS_PRODUCTION
+export const CAN_ENTER_DEMO = true
+export const DEMO_RUNTIME_KEY = DEMO_RUNTIME_SESSION_KEY
 
 export const AUTH_PROVIDER = RAW_AUTH_PROVIDER
 export const DATA_PROVIDER = RAW_DATA_PROVIDER
@@ -37,6 +54,8 @@ export const SESSION_IDLE_MS = SESSION_IDLE_MINUTES * 60 * 1000
 export function runtimeSummary() {
   return {
     mode: APP_MODE,
+    deploymentMode: DEPLOYMENT_MODE,
+    demoRuntime: IS_DEMO_RUNTIME,
     authProvider: AUTH_PROVIDER || (IS_DEMO ? 'demo-session' : 'unconfigured'),
     dataProvider: DATA_PROVIDER || (IS_DEMO ? 'browser-local' : 'unconfigured'),
     supabaseConfigured: Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY),

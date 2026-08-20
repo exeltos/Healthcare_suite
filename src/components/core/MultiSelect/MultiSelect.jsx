@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, Plus, X } from 'lucide-react'
 import './MultiSelect.css'
 import { useI18n } from '../../../i18n'
+import Button from '../Button/Button'
 
 function normalizeValues(value) {
   if (Array.isArray(value)) return value.filter(Boolean)
@@ -49,7 +50,7 @@ export default function MultiSelect({
     {customOpen && !disabled && <div className="core-multiselect-custom">
       <input autoFocus value={customValue} onChange={(event) => setCustomValue(event.target.value)} placeholder={L("Γράψτε νέα επιλογή", "Enter new option")} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCustom() } }} />
       <button type="button" onClick={addCustom}>{L("Προσθήκη", "Add")}</button>
-      <button type="button" className="cancel" onClick={() => { setCustomOpen(false); setCustomValue('') }}>{L("Ακύρωση", "Cancel")}</button>
+      <Button size="sm" variant="secondary" type="button" onClick={() => { setCustomOpen(false); setCustomValue('') }}>{L("Ακύρωση", "Cancel")}</Button>
     </div>}
     <div className="core-multiselect-selected">
       {selected.length === 0 ? <small>{emptyLabel}</small> : selected.map((item) => <span key={item}>{getOptionLabel ? getOptionLabel(item) : item}<button type="button" disabled={disabled} onClick={() => toggle(item)} aria-label={`${L("Αφαίρεση", "Remove")} ${getOptionLabel ? getOptionLabel(item) : item}`}><X size={12} /></button></span>)}

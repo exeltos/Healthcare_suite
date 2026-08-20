@@ -3,6 +3,10 @@ import { useMemo, useState } from 'react'
 import { useServiceCollection } from '../../core/hooks'
 import { Plus, Search, Trash2, X } from 'lucide-react'
 import LibraryField from '../core/LibraryField/LibraryField'
+import Button from '../core/Button/Button'
+import Drawer from '../core/Drawer/Drawer'
+import FormActions from '../core/FormActions/FormActions'
+import { SmartDateInput, SmartTimeInput } from '../core/fields/DateTimeControls'
 import { buildFieldValidationSchema, useCoreForm } from '../../core/forms'
 import { useI18n } from '../../i18n'
 import './PreventionRecordsPage.css'
@@ -27,10 +31,12 @@ export default function PreventionRecordsPage({ title, titleEn, description, des
   async function remove(){if(!selectedId||!confirmAction(L('Να διαγραφεί η εγγραφή;','Delete this record?')))return; await deleteRecord(selectedId); refreshRecords(); close()}
 
   return <section className="prevention-records-page">
-    <header className="prevention-records-header"><div><span>{L(eyebrow,eyebrowEn)}</span><h1>{L(title,titleEn)}</h1><p>{L(description,descriptionEn)}</p></div><button type="button" onClick={openNew}><Plus size={18}/>{L('Νέα καταχώρηση','New record')}</button></header>
+    <header className="prevention-records-header"><div><span>{L(eyebrow,eyebrowEn)}</span><h1>{L(title,titleEn)}</h1><p>{L(description,descriptionEn)}</p></div><Button icon={<Plus size={18}/>} onClick={openNew}>{L('Νέα καταχώρηση','New record')}</Button></header>
     <label className="prevention-search"><Search size={18}/><input value={search} placeholder={L('Αναζήτηση...','Search...')} onChange={e=>setSearch(e.target.value)}/></label>
     <div className="prevention-table-card"><table><thead><tr>{columns.map(c=><th key={c.key}>{L(c.label,c.labelEn)}</th>)}</tr></thead><tbody>{filtered.map(r=><tr className="core-record-row" role="button" tabIndex={0} key={r.id} onClick={()=>openRecord(r)} onKeyDown={(event)=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openRecord(r)}}}>{columns.map(c=><td key={c.key}>{c.render?c.render(r):r[c.key]||'—'}</td>)}</tr>)}</tbody></table>{filtered.length===0&&<div className="prevention-empty">{L("Δεν υπάρχουν εγγραφές.","No records.")}</div>}</div>
-    {drawerOpen&&<div className="prevention-drawer-backdrop" onMouseDown={close}><aside className="prevention-drawer" onMouseDown={e=>e.stopPropagation()}><header><div><span>{L(eyebrow,eyebrowEn)}</span><h2>{selectedId||L('Νέα καταχώρηση','New record')}</h2></div><button type="button" onClick={close}><X size={20}/></button></header><form onSubmit={save}><div className="prevention-form-grid">{fields.map(field=><Field key={field.id} language={language} field={field} value={formData[field.id]} error={errors[field.id]} onChange={value=>setFormData(cur=>({...cur,[field.id]:value}))}/>)}</div><footer>{selectedId&&<button className="delete" type="button" onClick={remove}><Trash2 size={16}/>{L('Διαγραφή','Delete')}</button>}<div><button type="button" onClick={close}>{L('Ακύρωση','Cancel')}</button><button className="primary" type="submit">{L('Αποθήκευση','Save')}</button></div></footer></form></aside></div>}
+    <Drawer open={drawerOpen} onClose={close} title={selectedId ? L('Επεξεργασία καταχώρησης','Edit record') : L('Νέα καταχώρηση','New record')} description={L(description,descriptionEn)} width={980} position="center" footer={<FormActions form="prevention-record-form" onCancel={close} extraActions={selectedId ? <Button variant="danger" type="button" onClick={remove}>{L('Διαγραφή','Delete')}</Button> : null}/>}>
+      <form id="prevention-record-form" className="prevention-core-form" onSubmit={save}><div className="prevention-form-grid">{fields.map(field=><Field key={field.id} language={language} field={field} value={formData[field.id]} error={errors[field.id]} onChange={value=>setFormData(cur=>({...cur,[field.id]:value}))}/>)}</div></form>
+    </Drawer>
   </section>
 }
 
@@ -40,8 +46,8 @@ function Field({field,value,onChange,error,language='el'}){
   if(field.libraryKey)return <div><LibraryField label={L(field.label,field.labelEn)} libraryKey={field.libraryKey} category={field.category||''} value={value||''} onChange={onChange} allowEmpty={!field.required} allowManual={field.allowManual!==false}/>{errorNode}</div>
   if(field.type==='select')return <label><span>{L(field.label,field.labelEn)}</span><select value={value||''} onChange={e=>onChange(e.target.value)}>{!field.required&&<option value="">—</option>}{field.options.map(o=>{const value=typeof o==='string'?o:o.value; const label=typeof o==='string'?o:L(o.label,o.labelEn); return <option key={value} value={value}>{label}</option>})}</select>{errorNode}</label>
   if(field.type==='textarea')return <label className="full"><span>{L(field.label,field.labelEn)}</span><textarea value={value||''} onChange={e=>onChange(e.target.value)}/>{errorNode}</label>
-  if(field.type==='date')return <label><span>{L(field.label,field.labelEn)}</span><div className="smart"><input type="date" value={greekToIso(value)} onChange={e=>onChange(isoToGreek(e.target.value))}/><button type="button" onClick={()=>onChange(todayGreek())}>{L('Σήμερα','Today')}</button></div>{errorNode}</label>
-  if(field.type==='time')return <label><span>{L(field.label,field.labelEn)}</span><div className="smart"><input type="time" value={value||''} onChange={e=>onChange(e.target.value)}/><button type="button" onClick={()=>onChange(currentTime())}>{L('Τώρα','Now')}</button></div>{errorNode}</label>
+  if(field.type==='date')return <label><span>{L(field.label,field.labelEn)}</span><SmartDateInput value={greekToIso(value)} onValueChange={next=>onChange(isoToGreek(next))}/>{errorNode}</label>
+  if(field.type==='time')return <label><span>{L(field.label,field.labelEn)}</span><SmartTimeInput value={value||''} onValueChange={onChange}/>{errorNode}</label>
   return <label><span>{L(field.label,field.labelEn)}</span><input type={field.type||'text'} value={value||''} onChange={e=>onChange(e.target.value)}/>{errorNode}</label>
 }
 function greekToIso(v){if(!v)return'';if(/^\d{4}-\d{2}-\d{2}$/.test(v))return v;const[d,m,y]=String(v).split('/');return y?`${y}-${m}-${d}`:''}

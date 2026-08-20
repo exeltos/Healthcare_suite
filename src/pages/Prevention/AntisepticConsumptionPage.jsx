@@ -4,6 +4,7 @@ import { useServiceCollection } from '../../core/hooks'
 import { BarChart3, Download, Droplets, Gauge, PackagePlus, Plus, Printer, Trash2 } from 'lucide-react'
 import {
   Button,
+  DateField,
   Drawer,
   EntityCell,
   EntitySummary,
@@ -103,7 +104,7 @@ export default function AntisepticConsumptionPage(){
       <form id="antiseptic-record-form" className="records-unified-form" onSubmit={save}>
         <FormSection title={L('Βασικά στοιχεία','Basic details')}>
           <FormGrid columns={2}>
-            <FormField label={L('Ημερομηνία','Date')} required><input type="date" value={greekToIso(formData.date)} onChange={e=>setField('date',isoToGreek(e.target.value))}/></FormField>
+            <DateField label={L('Ημερομηνία','Date')} required value={greekToIso(formData.date)} onValueChange={value=>setField('date',isoToGreek(value))}/>
             <FormField label={L('Τμήμα','Department')} required><LibraryField hideLabel libraryKey="departments" value={formData.department} onChange={value=>setField('department',value)} placeholder={L('Επιλέξτε ή γράψτε τμήμα','Select or enter department')}/></FormField>
             <FormField label={L('Προϊόν αντισηπτικού','Antiseptic product')} required><LibraryField hideLabel allowManual libraryKey="antiseptic-products" value={formData.product} onChange={value=>setField('product',value)} placeholder={L('Επιλέξτε ή γράψτε προϊόν','Select or enter product')}/></FormField>
             <FormField label={L('Υπεύθυνος καταχώρησης','Recorded by')}><input value={formData.responsible} onChange={e=>setField('responsible',e.target.value)}/></FormField>

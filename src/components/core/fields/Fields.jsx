@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
 import FormField from '../FormField/FormField'
 import './Fields.css'
+import { SmartDateInput, SmartTimeInput } from './DateTimeControls'
 
 function normalizeOptions(options = []) {
   return options.map((option) => typeof option === 'object' ? option : ({ value: option, label: option }))
@@ -18,62 +18,12 @@ export function NumberField({ label, error, helpText, required, fullWidth, ...pr
   return <FormField label={label} error={error} helpText={helpText} required={required} fullWidth={fullWidth} disabled={props.disabled}><input className="core-control" type="number" required={required} {...props} /></FormField>
 }
 
-function dateToDisplay(value = '') {
-  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : String(value || '')
-}
-
-function displayToDate(value = '') {
-  const clean = String(value || '').trim()
-  if (!clean) return ''
-  const match = clean.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/)
-  if (!match) return null
-  const day = match[1].padStart(2, '0')
-  const month = match[2].padStart(2, '0')
-  const year = match[3]
-  const iso = `${year}-${month}-${day}`
-  const probe = new Date(`${iso}T12:00:00`)
-  return Number.isNaN(probe.getTime()) || probe.getDate() !== Number(day) || probe.getMonth() + 1 !== Number(month) ? null : iso
-}
-
-function LocalDateControl({ value = '', onChange, onBlur, className = '', ...props }) {
-  const [text, setText] = useState(() => dateToDisplay(value))
-  useEffect(() => setText(dateToDisplay(value)), [value])
-
-  const commit = (nextText) => {
-    const iso = displayToDate(nextText)
-    if (iso !== null) onChange?.({ target: { value: iso } })
-    return iso
-  }
-
-  return <input
-    className={['core-control', 'core-date-control', className].filter(Boolean).join(' ')}
-    type="text"
-    inputMode="numeric"
-    autoComplete="off"
-    placeholder="ηη/μμ/εεεε"
-    value={text}
-    {...props}
-    onChange={(event) => {
-      const next = event.target.value.replace(/[^0-9\/.-]/g, '').slice(0, 10)
-      setText(next)
-      commit(next)
-    }}
-    onBlur={(event) => {
-      const iso = displayToDate(text)
-      if (iso === null) setText(dateToDisplay(value))
-      else setText(dateToDisplay(iso))
-      onBlur?.(event)
-    }}
-  />
-}
-
 export function DateField({ label, error, helpText, required, fullWidth, ...props }) {
-  return <FormField label={label} error={error} helpText={helpText} required={required} fullWidth={fullWidth} disabled={props.disabled}><LocalDateControl required={required} {...props} /></FormField>
+  return <FormField label={label} error={error} helpText={helpText} required={required} fullWidth={fullWidth} disabled={props.disabled}><SmartDateInput required={required} {...props} /></FormField>
 }
 
 export function TimeField({ label, error, helpText, required, fullWidth, ...props }) {
-  return <FormField label={label} error={error} helpText={helpText} required={required} fullWidth={fullWidth} disabled={props.disabled}><input className="core-control" type="time" required={required} {...props} /></FormField>
+  return <FormField label={label} error={error} helpText={helpText} required={required} fullWidth={fullWidth} disabled={props.disabled}><SmartTimeInput required={required} {...props} /></FormField>
 }
 
 export function SelectField({ label, error, helpText, required, fullWidth, options = [], placeholder = 'Επιλέξτε', ...props }) {

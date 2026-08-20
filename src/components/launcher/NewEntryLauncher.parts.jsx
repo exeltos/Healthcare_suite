@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { whoMoments } from './NewEntryLauncher.config'
 import { useI18n } from '../../i18n'
 import { calculateWhoCompliance } from '../../core/utils/observationMetrics'
+import { SmartDateInput, SmartTimeInput } from '../core/fields/DateTimeControls'
 
 export function EnvironmentSummary({ samples }) {
   const total = samples.length
@@ -313,12 +314,18 @@ export function HybridInput({ label, value, onChange, type = 'text', readOnly = 
   return (
     <label className="hybrid-field">
       <span>{label}</span>
-      <input
-        type={type}
-        value={value}
-        readOnly={readOnly}
-        onChange={(event) => onChange(event.target.value)}
-      />
+      {type === 'date' ? (
+        <SmartDateInput value={value || ''} disabled={readOnly} onValueChange={onChange} />
+      ) : type === 'time' ? (
+        <SmartTimeInput value={value || ''} disabled={readOnly} onValueChange={onChange} />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          readOnly={readOnly}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      )}
     </label>
   )
 }

@@ -709,22 +709,11 @@ export default function InfectionsPage() {
 
               <footer className="infection-drawer-footer">
                 {selectedRecord && (
-                  <button
-                    className="infection-delete-button"
-                    type="button"
-                    onClick={() =>
-                      deleteRecord(selectedRecord.id)
-                    }
-                  >
-                    <Trash2 size={17} />
-                    Διαγραφή
-                  </button>
+                  <Button variant="danger" type="button" onClick={() => deleteRecord(selectedRecord.id)}>Διαγραφή</Button>
                 )}
 
                 <div>
-                  <button type="button" onClick={closeDrawer}>
-                    Ακύρωση
-                  </button>
+                  <Button variant="secondary" type="button" onClick={closeDrawer}>Ακύρωση</Button>
 
                   <Button
                     icon={<CheckCircle2 size={18} />}

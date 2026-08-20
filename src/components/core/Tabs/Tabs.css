@@ -1,14 +1,37 @@
-.core-tabs { display: flex; gap: var(--space-2); min-width: 0; overflow-x: auto; }
-.core-tabs button { min-height: 42px; display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-soft); font: inherit; font-weight: 700; white-space: nowrap; cursor: pointer; }
-.core-tabs button:hover:not(:disabled) { color: var(--primary); }
-.core-tabs button.is-active { color: var(--primary); border-bottom-color: var(--primary); }
+/* Canonical tabs — used by record drawers and full workspaces. */
+.core-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.core-tabs button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 11px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: .8rem;
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+  transition: color .16s ease, background .16s ease, border-color .16s ease;
+}
+.core-tabs button:hover:not(:disabled) { color: var(--primary); background: var(--primary-softer); }
+.core-tabs button.is-active { color: var(--primary); border-bottom-color: var(--primary); background: transparent; }
 .core-tabs button:disabled { opacity: .45; cursor: not-allowed; }
-.core-tabs__count { min-width: 22px; height: 22px; display: inline-grid; place-items: center; padding: 0 6px; border-radius: var(--radius-pill); background: var(--surface-muted); font-size: var(--font-size-xs); }
-.core-tabs--pill { padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-subtle); }
-.core-tabs--pill button { min-height: 36px; border: 0; border-radius: var(--radius-sm); }
+.core-tabs__count { min-width: 21px; height: 21px; display: inline-grid; place-items: center; padding: 0 6px; border-radius: var(--radius-pill); background: var(--surface-muted); font-size: .68rem; }
+.core-tabs--pill { padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-subtle); gap: 4px; }
+.core-tabs--pill button { min-height: 34px; border: 0; border-radius: var(--radius-sm); }
 .core-tabs--pill button.is-active { background: var(--surface); box-shadow: var(--shadow-xs); }
-
-.core-tabs--clinical{gap:4px;padding:8px 10px 0;border-bottom:1px solid var(--border);background:#fbfcfd;overflow-x:auto}
-.core-tabs--clinical button{min-height:43px;padding:9px 13px;font-size:.8rem;font-weight:700;border-bottom:2px solid transparent}
-.core-tabs--clinical button.is-active{color:var(--primary);border-bottom-color:var(--primary)}
-.core-tabs--clinical .core-tabs__count{min-width:22px;height:22px;padding:0 6px;background:#edf2f4;font-size:.68rem}
+.core-tabs--clinical { gap: 2px; padding: 0 14px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.core-tabs--clinical button { min-height: 40px; padding: 0 11px; font-size: .8rem; }

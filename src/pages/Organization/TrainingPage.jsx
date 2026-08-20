@@ -1,17 +1,17 @@
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
-import { Archive, BookOpenCheck, Check, Download, GraduationCap, Plus, Printer, UserCheck } from 'lucide-react'
+import { Archive, Trash2, BookOpenCheck, Check, Download, GraduationCap, Plus, Printer, UserCheck } from 'lucide-react'
 import {
   Badge, Button, DateRangeFilter, Drawer, EntityCell, EntitySummary, FormActions, FormField, FormGrid, FormSection,
-  LibraryField, ListWorkspace, PageChrome, PageHeader, StatCard,
+  LibraryField, ListWorkspace, PageChrome, PageHeader, StatCard, Tabs,
 } from '../../components/core'
 import AttachmentManager from '../../components/core/AttachmentManager/AttachmentManager'
 import HybridMultiSelector from '../../components/core/HybridMultiSelector/HybridMultiSelector'
 import { downloadCsv, printRows } from '../../core/utils/listExport'
 import { normalizeText, selectedRows, sortRows } from '../../core/utils/entityList'
 import { loadTraining, ORGANIZATION_EVENT } from '../../services/organizationService'
-import { loadOperationalTraining, saveOperationalTraining } from '../../services/backend/organizationBackendService'
+import { deleteOperationalTraining, loadOperationalTraining, saveOperationalTraining } from '../../services/backend/organizationBackendService'
 import { EMPLOYEES_EVENT, loadEmployees } from '../../services/employeesService'
 import { useRecordDeepLink } from '../../core/navigation/recordDeepLink'
 import { masterNames } from '../../services/masterDataService'
@@ -50,6 +50,7 @@ export default function TrainingPage(){
   const [open,setOpen]=useState(false)
   const [editing,setEditing]=useState(null)
   const [form,setForm]=useState(EMPTY)
+  const [activeTab,setActiveTab]=useState('details')
   const notificationLink=useRecordDeepLink(rows)
 
   useAppEvents([ORGANIZATION_EVENT, EMPLOYEES_EVENT], () => {
@@ -114,6 +115,7 @@ export default function TrainingPage(){
   function openNew(){
     setEditing(null)
     setForm({...EMPTY,date:new Date().toISOString().slice(0,10)})
+    setActiveTab('details')
     setOpen(true)
   }
 
@@ -121,6 +123,7 @@ export default function TrainingPage(){
     notificationLink.markOpened(row.id)
     setEditing(row)
     setForm({...EMPTY,...row,attendance:row.attendance||[],attachments:row.attachments||[]})
+    setActiveTab('details')
     setOpen(true)
   }
 
@@ -129,6 +132,7 @@ export default function TrainingPage(){
     setOpen(false)
     setEditing(null)
     setForm(EMPTY)
+    setActiveTab('details')
   }
 
   async function save(e){
@@ -180,6 +184,25 @@ export default function TrainingPage(){
     } catch (error) {
       console.error('Training archive failed', error)
       notifyAction(L('Η αρχειοθέτηση της εκπαίδευσης απέτυχε.','Training could not be archived.'))
+    }
+  }
+
+
+  async function removeRecord(){
+    if(!editing)return
+    if(form.status==='Ολοκληρωμένη'||(form.attendance||[]).some(item=>['Παρών','Online'].includes(item.status))){
+      notifyAction(L('Ολοκληρωμένη εκπαίδευση ή εγγραφή με πραγματικές παρουσίες δεν διαγράφεται. Χρησιμοποιήστε Αρχειοθέτηση ώστε να διατηρηθεί το ιστορικό.','Completed training or a record with actual attendance cannot be deleted. Use Archive to preserve history.'))
+      return
+    }
+    if(!confirmAction(L('Να διαγραφεί οριστικά η εκπαίδευση;','Permanently delete this training record?')))return
+    try{
+      await deleteOperationalTraining(editing.id)
+      setRows(await loadOperationalTraining())
+      notifyAction(L('Η εκπαίδευση διαγράφηκε.','Training record deleted.'))
+      close()
+    }catch(error){
+      console.error('Training delete failed',error)
+      notifyAction(L('Η διαγραφή της εκπαίδευσης απέτυχε.','Training record could not be deleted.'))
     }
   }
 
@@ -271,93 +294,99 @@ export default function TrainingPage(){
       open={open}
       onClose={close}
       title={editing?L('Επεξεργασία εκπαίδευσης','Edit training'):L('Νέα εκπαίδευση','New training')}
-      description={L('Στοιχεία, παρουσιολόγιο και αρχεία στην ίδια scrollable καρτέλα.','Details, attendance and files in the same scrollable record.')}
+      description={L('Στοιχεία, παρουσιολόγιο, αξιολόγηση και υλικό σε καθαρές ξεχωριστές καρτέλες.','Details, attendance, assessment and material in clear separate tabs.')}
       width={1180}
       position="center"
-      footer={<FormActions form="training-form" onCancel={close} extraActions={editing?<Button variant="secondary" icon={<Archive size={16}/>} onClick={archiveRecord}>{L('Αρχειοθέτηση','Archive')}</Button>:null}/>}
+      footer={<FormActions form="training-form" onCancel={close} destructive={editing&&form.status!=='Ολοκληρωμένη'&&!(form.attendance||[]).some(item=>['Παρών','Online'].includes(item.status))?<Button variant="danger" icon={<Trash2 size={16}/>} onClick={removeRecord}>{L('Διαγραφή','Delete')}</Button>:null} extraActions={editing?<Button variant="secondary" icon={<Archive size={16}/>} onClick={archiveRecord}>{L('Αρχειοθέτηση','Archive')}</Button>:null}/>}
     >
       <form id="training-form" className="organization-unified-form" onSubmit={save}>
-        <FormSection title={L('Βασικά στοιχεία','Basic details')}>
-          <FormGrid columns={2}>
-            <FormField label={L('Τίτλος','Title')} required><input required value={form.title} onChange={e=>setField('title',e.target.value)}/></FormField>
-            <FormField label={L('Κατηγορία','Category')}><select value={form.category} onChange={e=>setField('category',e.target.value)}>{CATEGORIES.map(x=><option key={x} value={x}>{trainingDisplayValue(x,language)}</option>)}</select></FormField>
-            <FormField label={L('Τμήμα','Department')}><LibraryField hideLabel libraryKey="departments" value={form.department} onChange={value=>setField('department',value)} placeholder={L('Επιλέξτε ή γράψτε τμήμα','Select or enter department')}/></FormField>
-            <FormField label={L('Εκπαιδευτής','Trainer')}><input value={form.trainer} onChange={e=>setField('trainer',e.target.value)}/></FormField>
-            <FormField label={L('Ημερομηνία','Date')} required><input type="date" required value={form.date} onChange={e=>setField('date',e.target.value)}/></FormField>
-            <FormField label={L('Διάρκεια (ώρες)','Duration (hours)')}><input inputMode="decimal" value={form.durationHours} onChange={e=>setField('durationHours',e.target.value)} placeholder={L('π.χ. 1,5','e.g. 1.5')}/></FormField>
-            <FormField label={L('Κατάσταση','Status')}><select value={form.status} onChange={e=>setField('status',e.target.value)}>{STATUSES.map(x=><option key={x} value={x}>{trainingDisplayValue(x,language)}</option>)}</select></FormField>
-            <FormField label={L('Ισχύς πιστοποίησης έως','Certification valid until')}><input type="date" value={form.validUntil||''} onChange={e=>setField('validUntil',e.target.value)}/></FormField>
-            <FormField label={L('Υποχρεωτική εκπαίδευση','Mandatory training')}><label className="org-inline-check"><input type="checkbox" checked={!!form.mandatory} onChange={e=>setField('mandatory',e.target.checked)}/><span>{L('Παρακολούθηση συμμόρφωσης προσωπικού','Track staff compliance')}</span></label></FormField>
-            <FormField label={L('Επανάληψη κάθε (μήνες)','Repeat every (months)')}><input type="number" min="1" value={form.recurrenceMonths||''} onChange={e=>setField('recurrenceMonths',e.target.value)} placeholder={L('π.χ. 12','e.g. 12')}/></FormField>
-            <FormField label={L('Αξιολόγηση επάρκειας','Competency assessment')}>
-              <label className="org-inline-check"><input type="checkbox" checked={!!form.competencyRequired} onChange={e=>setField('competencyRequired',e.target.checked)}/><span>{L('Απαιτείται για αυτή την εκπαίδευση','Required for this training')}</span></label>
-            </FormField>
-          </FormGrid>
-        </FormSection>
+        <Tabs
+          variant="segmented"
+          value={activeTab}
+          onChange={setActiveTab}
+          ariaLabel={L('Ενότητες εκπαίδευσης','Training sections')}
+          items={[
+            {id:'details',label:L('Στοιχεία','Details')},
+            {id:'attendance',label:L('Παρουσιολόγιο','Attendance'),count:form.attendance.length},
+            {id:'assessment',label:L('Αξιολόγηση','Assessment'),count:form.attendance.filter(att=>['Παρών','Online'].includes(att.status)).length},
+            {id:'material',label:L('Υλικό & σημειώσεις','Material & notes')},
+          ]}
+        />
 
-        <FormSection
-          title={`${L('Παρουσιολόγιο','Attendance')} (${form.attendance.length})`}
-          description={L('Προσθέστε συμμετέχοντες από το μητρώο προσωπικού ή χειροκίνητα και καταγράψτε παρουσία / αποτέλεσμα.','Add participants from the staff registry or manually and record attendance / result.')}
-        >
-          <HybridMultiSelector
-            items={employees.filter(item=>item.status!=='Ανενεργό')}
-            selected={selectorValue}
-            onChange={setAttendees}
-            label={L('Συμμετέχοντες','Participants')}
-            getName={item=>item.fullName||''}
-            getMeta={item=>[item.department,item.professionalCategory].filter(Boolean).join(' · ')}
-            manualFields={[
-              {key:'name',label:L('Ονοματεπώνυμο','Full name'),required:true},
-              {key:'department',label:L('Τμήμα','Department')},
-              {key:'role',label:L('Ιδιότητα','Professional category')},
-            ]}
-          />
-          {form.attendance.length>0&&<div className="org-attendance-list org-attendance-list--selected">
-            {form.attendance.map(att=><div className="org-attendance-row is-selected" key={attendeeKey(att)}>
-              <div className="org-stack-row__main">
-                <strong>{att.employeeName}</strong>
-                <small>{[
-                  att.department,
-                  att.professionalCategory,
-                  trainingDisplayValue(att.manual?'Χειροκίνητη καταχώρηση':'Από μητρώο προσωπικού',language),
-                ].filter(Boolean).join(' · ')}</small>
-              </div>
-              <select value={att.status} onChange={e=>updateAttendance(attendeeKey(att),{status:e.target.value})} aria-label={L('Παρουσία','Attendance status')}>
-                {ATTENDANCE_STATUSES.map(x=><option key={x} value={x}>{trainingDisplayValue(x,language)}</option>)}
-              </select>
-              <input className="org-score" inputMode="decimal" value={att.score||''} onChange={e=>updateAttendance(attendeeKey(att),{score:e.target.value})} placeholder={L('Βαθμός','Score')}/>
-              {form.competencyRequired&&<select value={att.competencyResult||''} onChange={e=>updateAttendance(attendeeKey(att),{competencyResult:e.target.value,assessedAt:e.target.value?new Date().toISOString():att.assessedAt})} aria-label={L('Αποτέλεσμα επάρκειας','Competency result')}>
-                <option value="">{L('Αξιολόγηση…','Assessment…')}</option>
-                <option value="Επαρκής">{L('Επαρκής','Competent')}</option>
-                <option value="Χρειάζεται επανεκπαίδευση">{L('Χρειάζεται επανεκπαίδευση','Retraining required')}</option>
-              </select>}
-            </div>)}
-          </div>}
-          {form.competencyRequired&&form.attendance.some(att=>['Παρών','Online'].includes(att.status))&&<div className="org-competency-followup">
-            <div className="org-competency-followup__title">{L('Στοιχεία αξιολόγησης επάρκειας','Competency assessment details')}</div>
-            {form.attendance.filter(att=>['Παρών','Online'].includes(att.status)).map(att=><div className="org-competency-followup__card" key={`competency-${attendeeKey(att)}`}>
-              <div className="org-competency-followup__person"><strong>{att.employeeName}</strong><small>{[att.department,att.professionalCategory].filter(Boolean).join(' · ')}</small>{att.competencyResult&&<small>{att.competencyResult==='Επαρκής'?L('Closed-loop: επάρκεια τεκμηριωμένη','Closed-loop: competency documented'):L('Open follow-up: απαιτείται επανεκπαίδευση','Open follow-up: retraining required')}</small>}</div>
-              <div className="org-competency-followup__fields">
-                <label><span>{L('Αξιολογητής','Assessed by')}</span><input value={att.assessedBy||''} onChange={e=>updateAttendance(attendeeKey(att),{assessedBy:e.target.value})}/></label>
-                <label><span>{L('Ημερομηνία αξιολόγησης','Assessment date')}</span><input type="date" value={(att.assessedAt||'').slice(0,10)} onChange={e=>updateAttendance(attendeeKey(att),{assessedAt:e.target.value})}/></label>
-                <label><span>{L('Επάρκεια έως','Competency valid until')}</span><input type="date" value={att.competencyValidUntil||''} onChange={e=>updateAttendance(attendeeKey(att),{competencyValidUntil:e.target.value})}/></label>
-                <label className="org-competency-followup__notes"><span>{L('Σημείωση επάρκειας / επανεκπαίδευσης','Competency / retraining note')}</span><input value={att.competencyNotes||''} onChange={e=>updateAttendance(attendeeKey(att),{competencyNotes:e.target.value})}/></label>
-              </div>
-            </div>)}
-          </div>}
-        </FormSection>
+        <div hidden={activeTab!=='details'}>
+          <FormSection title={L('Βασικά στοιχεία','Basic details')}>
+            <FormGrid columns={2}>
+              <FormField label={L('Τίτλος','Title')} required><input required value={form.title} onChange={e=>setField('title',e.target.value)}/></FormField>
+              <FormField label={L('Κατηγορία','Category')}><select value={form.category} onChange={e=>setField('category',e.target.value)}>{CATEGORIES.map(x=><option key={x} value={x}>{trainingDisplayValue(x,language)}</option>)}</select></FormField>
+              <FormField label={L('Τμήμα','Department')}><LibraryField hideLabel libraryKey="departments" value={form.department} onChange={value=>setField('department',value)} placeholder={L('Επιλέξτε ή γράψτε τμήμα','Select or enter department')}/></FormField>
+              <FormField label={L('Εκπαιδευτής','Trainer')}><input value={form.trainer} onChange={e=>setField('trainer',e.target.value)}/></FormField>
+              <FormField label={L('Ημερομηνία','Date')} required><input type="date" required value={form.date} onChange={e=>setField('date',e.target.value)}/></FormField>
+              <FormField label={L('Διάρκεια (ώρες)','Duration (hours)')}><input inputMode="decimal" value={form.durationHours} onChange={e=>setField('durationHours',e.target.value)} placeholder={L('π.χ. 1,5','e.g. 1.5')}/></FormField>
+              <FormField label={L('Κατάσταση','Status')}><select value={form.status} onChange={e=>setField('status',e.target.value)}>{STATUSES.map(x=><option key={x} value={x}>{trainingDisplayValue(x,language)}</option>)}</select></FormField>
+              <FormField label={L('Ισχύς πιστοποίησης έως','Certification valid until')}><input type="date" value={form.validUntil||''} onChange={e=>setField('validUntil',e.target.value)}/></FormField>
+              <FormField label={L('Υποχρεωτική εκπαίδευση','Mandatory training')}><label className="org-inline-check"><input type="checkbox" checked={!!form.mandatory} onChange={e=>setField('mandatory',e.target.checked)}/><span>{L('Παρακολούθηση συμμόρφωσης προσωπικού','Track staff compliance')}</span></label></FormField>
+              <FormField label={L('Επανάληψη κάθε (μήνες)','Repeat every (months)')}><input type="number" min="1" value={form.recurrenceMonths||''} onChange={e=>setField('recurrenceMonths',e.target.value)} placeholder={L('π.χ. 12','e.g. 12')}/></FormField>
+              <FormField label={L('Αξιολόγηση επάρκειας','Competency assessment')}>
+                <label className="org-inline-check"><input type="checkbox" checked={!!form.competencyRequired} onChange={e=>setField('competencyRequired',e.target.checked)}/><span>{L('Απαιτείται για αυτή την εκπαίδευση','Required for this training')}</span></label>
+              </FormField>
+            </FormGrid>
+          </FormSection>
+        </div>
 
-        <FormSection title={L('Εκπαιδευτικό υλικό & συνημμένα','Training material & attachments')}>
-          <AttachmentManager
-            value={form.attachments}
-            onChange={value=>setField('attachments',value)}
-            hint={L('Παρουσιάσεις, παρουσιολόγια, πιστοποιητικά ή άλλο υλικό','Presentations, attendance sheets, certificates or other material')}
-          />
-        </FormSection>
+        <div hidden={activeTab!=='attendance'}>
+          <FormSection
+            title={`${L('Παρουσιολόγιο','Attendance')} (${form.attendance.length})`}
+            description={L('Επιλέξτε τους συμμετέχοντες και καταγράψτε μόνο την παρουσία. Η βαθμολογία και η επάρκεια βρίσκονται στην ξεχωριστή καρτέλα Αξιολόγηση.','Select participants and record attendance only. Scores and competency are kept in the separate Assessment tab.')}
+          >
+            <HybridMultiSelector
+              items={employees.filter(item=>item.status!=='Ανενεργό')}
+              selected={selectorValue}
+              onChange={setAttendees}
+              label={L('Συμμετέχοντες','Participants')}
+              getName={item=>item.fullName||''}
+              getMeta={item=>[item.department,item.professionalCategory].filter(Boolean).join(' · ')}
+              manualFields={[
+                {key:'name',label:L('Ονοματεπώνυμο','Full name'),required:true},
+                {key:'department',label:L('Τμήμα','Department')},
+                {key:'role',label:L('Ιδιότητα','Professional category')},
+              ]}
+            />
+            {form.attendance.length>0&&<div className="org-attendance-list org-attendance-list--selected org-attendance-list--presence-only">
+              {form.attendance.map(att=><div className="org-attendance-row is-selected" key={attendeeKey(att)}>
+                <div className="org-stack-row__main"><strong>{att.employeeName}</strong><small>{[att.department,att.professionalCategory,trainingDisplayValue(att.manual?'Χειροκίνητη καταχώρηση':'Από μητρώο προσωπικού',language)].filter(Boolean).join(' · ')}</small></div>
+                <select value={att.status} onChange={e=>updateAttendance(attendeeKey(att),{status:e.target.value})} aria-label={L('Παρουσία','Attendance status')}>{ATTENDANCE_STATUSES.map(x=><option key={x} value={x}>{trainingDisplayValue(x,language)}</option>)}</select>
+              </div>)}
+            </div>}
+          </FormSection>
+        </div>
 
-        <FormSection title={L('Σημειώσεις','Notes')}>
-          <FormField><textarea rows="5" value={form.notes||''} onChange={e=>setField('notes',e.target.value)}/></FormField>
-        </FormSection>
+        <div hidden={activeTab!=='assessment'}>
+          <FormSection
+            title={L('Αξιολόγηση συμμετεχόντων','Participant assessment')}
+            description={L('Η αξιολόγηση παραμένει ξεχωριστή από το παρουσιολόγιο. Εμφανίζονται όσοι είναι Παρόντες ή Online.','Assessment is separate from attendance. Only Present or Online participants are shown.')}
+          >
+            {form.attendance.filter(att=>['Παρών','Online'].includes(att.status)).length ? <div className="org-assessment-list">
+              {form.attendance.filter(att=>['Παρών','Online'].includes(att.status)).map(att=><div className="org-assessment-card" key={`assessment-${attendeeKey(att)}`}>
+                <div className="org-competency-followup__person"><strong>{att.employeeName}</strong><small>{[att.department,att.professionalCategory].filter(Boolean).join(' · ')}</small></div>
+                <FormGrid columns={form.competencyRequired?3:1}>
+                  <FormField label={L('Βαθμός / αποτέλεσμα','Score / result')}><input inputMode="decimal" value={att.score||''} onChange={e=>updateAttendance(attendeeKey(att),{score:e.target.value})} placeholder={L('π.χ. 85% ή Επιτυχής','e.g. 85% or Passed')}/></FormField>
+                  {form.competencyRequired&&<FormField label={L('Αποτέλεσμα επάρκειας','Competency result')}><select value={att.competencyResult||''} onChange={e=>updateAttendance(attendeeKey(att),{competencyResult:e.target.value,assessedAt:e.target.value?(att.assessedAt||new Date().toISOString()):att.assessedAt})}><option value="">{L('Επιλέξτε…','Select…')}</option><option value="Επαρκής">{L('Επαρκής','Competent')}</option><option value="Χρειάζεται επανεκπαίδευση">{L('Χρειάζεται επανεκπαίδευση','Retraining required')}</option></select></FormField>}
+                  {form.competencyRequired&&<FormField label={L('Αξιολογητής','Assessed by')}><input value={att.assessedBy||''} onChange={e=>updateAttendance(attendeeKey(att),{assessedBy:e.target.value})}/></FormField>}
+                  {form.competencyRequired&&<FormField label={L('Ημερομηνία αξιολόγησης','Assessment date')}><input type="date" value={(att.assessedAt||'').slice(0,10)} onChange={e=>updateAttendance(attendeeKey(att),{assessedAt:e.target.value})}/></FormField>}
+                  {form.competencyRequired&&<FormField label={L('Επάρκεια έως','Competency valid until')}><input type="date" value={att.competencyValidUntil||''} onChange={e=>updateAttendance(attendeeKey(att),{competencyValidUntil:e.target.value})}/></FormField>}
+                  {form.competencyRequired&&<FormField label={L('Σημείωση / σχέδιο επανεκπαίδευσης','Note / retraining plan')}><input value={att.competencyNotes||''} onChange={e=>updateAttendance(attendeeKey(att),{competencyNotes:e.target.value})}/></FormField>}
+                </FormGrid>
+              </div>)}
+            </div>:<div className="org-empty">{L('Δεν υπάρχουν παρόντες συμμετέχοντες για αξιολόγηση. Συμπληρώστε πρώτα το παρουσιολόγιο.','There are no present participants to assess. Complete attendance first.')}</div>}
+          </FormSection>
+        </div>
+
+        <div hidden={activeTab!=='material'}>
+          <FormSection title={L('Εκπαιδευτικό υλικό & συνημμένα','Training material & attachments')}>
+            <AttachmentManager value={form.attachments} onChange={value=>setField('attachments',value)} hint={L('Παρουσιάσεις, παρουσιολόγια, πιστοποιητικά ή άλλο υλικό','Presentations, attendance sheets, certificates or other material')} />
+          </FormSection>
+          <FormSection title={L('Σημειώσεις','Notes')}><FormField><textarea rows="5" value={form.notes||''} onChange={e=>setField('notes',e.target.value)}/></FormField></FormSection>
+        </div>
       </form>
     </Drawer>
   </PageChrome>

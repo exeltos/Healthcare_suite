@@ -627,42 +627,21 @@ export default function IsolationPage() {
 
               <footer className="isolation-drawer-footer">
                 {selectedRecord && (
-                  <button
-                    className="isolation-delete-button"
-                    type="button"
-                    onClick={() =>
-                      deleteRecord(selectedRecord.id)
-                    }
-                  >
-                    <Trash2 size={17} />
-                    Διαγραφή
-                  </button>
+                  <Button variant="danger" type="button" onClick={() => deleteRecord(selectedRecord.id)}>Διαγραφή</Button>
                 )}
 
                 <div>
                   {selectedRecord &&
                     formData.status === 'Ενεργή' && (
-                      <button
-                        type="button"
-                        onClick={endIsolation}
-                      >
-                        Λήξη
-                      </button>
+                      <Button variant="secondary" type="button" onClick={endIsolation}>Λήξη</Button>
                     )}
 
                   {selectedRecord &&
                     formData.status === 'Ολοκληρωμένη' && (
-                      <button
-                        type="button"
-                        onClick={reopenIsolation}
-                      >
-                        Αναίρεση λήξης
-                      </button>
+                      <Button variant="secondary" type="button" onClick={reopenIsolation}>Αναίρεση λήξης</Button>
                     )}
 
-                  <button type="button" onClick={closeDrawer}>
-                    Ακύρωση
-                  </button>
+                  <Button variant="secondary" type="button" onClick={closeDrawer}>Ακύρωση</Button>
 
                   <Button
                     icon={<CheckCircle2 size={18} />}

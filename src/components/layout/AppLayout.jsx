@@ -9,7 +9,7 @@ import NewEntryLauncher from '../launcher/NewEntryLauncher'
 import { useI18n } from '../../i18n'
 import { readSessionValue, removeSessionValue } from '../../core/storage'
 import { isSessionAllowed, signOutUser, validateProductionSession } from '../../services/auth'
-import { IS_PRODUCTION, SESSION_IDLE_MS } from '../../core/runtime'
+import { DEMO_RUNTIME_KEY, IS_PRODUCTION, SESSION_IDLE_MS } from '../../core/runtime'
 import { isSupabaseConfigured, requireSupabase } from '../../integrations/supabase'
 import { writeSessionValue } from '../../core/storage'
 import { canViewModule, moduleForPath } from '../../services/accessControlService'
@@ -116,12 +116,18 @@ export default function AppLayout() {
   const helpPreview=new URLSearchParams(location.search).get('helpPreview')==='1'
   if(user && user.demo!==true && !canViewModule(user,currentModule) && location.pathname!==APP_ROUTES.DASHBOARD) return <Navigate to={APP_ROUTES.DASHBOARD} replace state={{accessDenied:true}}/>
   async function logout(){
+    const leavingDemo=user?.demo===true
     try{await signOutUser()}catch{}
     removeSessionValue(SESSION_KEY)
     removeSessionValue('healthcare-suite.user')
+    removeSessionValue('healthcare-suite.demo')
+    if(leavingDemo) removeSessionValue(DEMO_RUNTIME_KEY)
     setUser(null)
     setGoodbye(true)
-    setTimeout(()=>navigate(APP_ROUTES.LOGIN,{replace:true,state:{signedOut:true}}),900)
+    setTimeout(()=>{
+      if(leavingDemo){window.location.assign(APP_ROUTES.LOGIN);return}
+      navigate(APP_ROUTES.LOGIN,{replace:true,state:{signedOut:true}})
+    },900)
   }
   if(goodbye)return <div className="logout-goodbye"><div><div className="suite-logo">H</div><h2>{t('common.signedOutTitle')}</h2><p>{t('common.signedOutText')}</p></div></div>
   if(helpPreview)return <div className="help-preview-shell"><main className="content-area help-preview-content"><Outlet context={{openNewEntryLauncher:()=>{}}}/></main></div>

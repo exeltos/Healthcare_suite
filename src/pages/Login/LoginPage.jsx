@@ -1,5 +1,5 @@
 import { notifyAction } from '../../components/core/feedback/index'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Languages } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { APP_ROUTES } from '../../config/routes'
@@ -9,21 +9,26 @@ import { removeSessionValue, writeSessionValue } from '../../core/storage'
 import { generateDemoDataset } from '../../data/demoDataGenerator'
 import { clearProductionLocalOperationalCache } from '../../data/productionDataBoundary'
 import { authenticateUser, requestRecovery } from '../../services/auth'
-import { IS_DEMO, IS_PRODUCTION } from '../../core/runtime'
+import { CAN_ENTER_DEMO, DEMO_RUNTIME_KEY, IS_DEMO, IS_PRODUCTION } from '../../core/runtime'
+import { BUILD_VERSION } from '../../config/version'
 
-const BUILD_VERSION = '0.12.0-rc.124'
 
 export default function LoginPage() {
   const [view, setView] = useState('welcome')
   const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState('')
+  const [entryLoading, setEntryLoading] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('enter') === '1' } catch { return false }
+  })
   const navigate = useNavigate()
   const { t, language, setLanguage } = useI18n()
 
   function enterDemo() {
+    setEntryLoading(true)
     if(!IS_DEMO) {
-      setMessage(t('login.demoDisabledProduction'))
-      setView('login')
+      try{window.sessionStorage?.setItem(DEMO_RUNTIME_KEY,'true')}catch{}
+      const target=`${APP_ROUTES.LOGIN}?demo=1&enter=1`
+      window.requestAnimationFrame(() => window.location.assign(target))
       return
     }
     clearProductionLocalOperationalCache()
@@ -34,13 +39,24 @@ export default function LoginPage() {
     navigate(APP_ROUTES.DASHBOARD, { replace: true })
   }
 
+
+  useEffect(()=>{
+    if(!IS_DEMO) return
+    const params=new URLSearchParams(window.location.search)
+    if(params.get('enter')==='1') enterDemo()
+    // Runtime is fixed for this page load; enterDemo intentionally performs
+    // navigation only after the production -> isolated Demo reload boundary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[])
+
   async function handleSubmit(event) {
     event.preventDefault()
     setMessage('')
+    setEntryLoading(true)
     const form = new FormData(event.currentTarget)
     const username = String(form.get('username') || '').trim()
     const password = String(form.get('password') || '').trim()
-    if (!username || !password) { setMessage(t('login.missingCredentials')); return }
+    if (!username || !password) { setEntryLoading(false); setMessage(t('login.missingCredentials')); return }
     try {
       const authenticated = await authenticateUser({ username, password })
       // A normal sign-in must always start from a clean operational workspace.
@@ -52,17 +68,21 @@ export default function LoginPage() {
       navigate(authenticated.user?.platformOwner?APP_ROUTES.PLATFORM:APP_ROUTES.DASHBOARD, { replace: true })
     } catch (error) {
       if(error?.code==='AUTH_NOT_CONFIGURED') {
+        setEntryLoading(false)
         setMessage(t('login.productionAuthRequired'))
         return
       }
       if(error?.code==='EMAIL_REQUIRED') {
+        setEntryLoading(false)
         setMessage(t('login.productionEmailRequired'))
         return
       }
       if(IS_PRODUCTION&&error?.message){
+        setEntryLoading(false)
         setMessage(error.message)
         return
       }
+      setEntryLoading(false)
       setMessage(t('login.invalidCredentials'))
     }
   }
@@ -104,6 +124,7 @@ export default function LoginPage() {
 
   return (
     <main className="login-page-shell">
+      {entryLoading && <div className="login-entry-loading" role="status" aria-live="polite" aria-busy="true"><div className="login-entry-loading__card"><div className="suite-logo login-entry-loading__logo">H</div><span className="login-entry-loading__spinner" aria-hidden="true"/><strong>{t('common.loading')}</strong></div></div>}
       <section className="login-main-card"><div className="login-index-language">
         <button type="button" onClick={() => setLanguage(language === 'el' ? 'en' : 'el')} aria-label={`${t('common.language')}: ${language === 'el' ? 'EN' : 'EL'}`} title={`${t('common.language')}: ${language === 'el' ? 'EN' : 'EL'}`}>
           <Languages size={16}/><span>{language === 'el' ? 'EN' : 'EL'}</span>
@@ -122,12 +143,12 @@ export default function LoginPage() {
           <div className="login-language-row" aria-hidden="true"/>
           {view === 'welcome' ? (
             <section className="login-auth-view"><header className="login-auth-header"><h2>{t('login.welcome')}</h2><p>{t('login.welcomeText')}</p></header>
-              <div className="login-welcome-actions"><button type="button" className="login-primary-button" onClick={() => setView('login')}>{t('login.enter')}</button>{IS_DEMO&&<button type="button" className="login-demo-button" onClick={enterDemo}>{t('login.demoEnter')}</button>}<button type="button" className="login-secondary-button" onClick={() => notifyAction(t('login.supportLater'))}>{t('login.support')}</button></div>
+              <div className="login-welcome-actions"><button type="button" className="login-primary-button" disabled={entryLoading} onClick={() => setView('login')}>{t('login.enter')}</button>{CAN_ENTER_DEMO&&<><button type="button" className="login-demo-button" disabled={entryLoading} onClick={enterDemo}>{t('login.demoEnter')}</button><p className="login-demo-hint">{t('login.demoHint')}</p></>}<button type="button" className="login-secondary-button" onClick={() => notifyAction(t('login.supportLater'))}>{t('login.support')}</button></div>
               <div className={`login-system-status ${IS_PRODUCTION?'is-production':''}`}><span className="login-status-dot"/>{IS_PRODUCTION?t('login.productionMode'):t('login.demoMode')}</div><footer className="login-auth-footer">Healthcare Suite · v{BUILD_VERSION}</footer>
             </section>
           ) : view === 'login' ? (
             <section className="login-auth-view"><button type="button" className="login-back-button" onClick={() => setView('welcome')}>{t('login.back')}</button><header className="login-auth-header"><h2>{t('login.signInTitle')}</h2><p>{t('login.signInText')}</p></header>
-              <form className="login-form-grid" onSubmit={handleSubmit}><label className="login-form-group"><span>{IS_PRODUCTION?t('login.email'):t('login.username')}</span><input name="username" type={IS_PRODUCTION?'email':'text'} autoComplete={IS_PRODUCTION?'email':'username'}/></label><label className="login-form-group"><span>{t('login.password')}</span><div className="login-input-wrapper"><input name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password"/><button type="button" aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')} onClick={() => setShowPassword(v => !v)}>{showPassword ? '🙈' : '👁'}</button></div></label>{message && <div className="login-form-message">{message}</div>}<button type="button" className="login-forgot-link" onClick={() => { setMessage(''); setView('forgot') }}>{t('login.forgotPassword')}</button><button className="login-primary-button" type="submit">{t('login.signIn')}</button></form>
+              <form className="login-form-grid" onSubmit={handleSubmit}><label className="login-form-group"><span>{IS_PRODUCTION?t('login.email'):t('login.username')}</span><input name="username" type={IS_PRODUCTION?'email':'text'} autoComplete={IS_PRODUCTION?'email':'username'}/></label><label className="login-form-group"><span>{t('login.password')}</span><div className="login-input-wrapper"><input name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password"/><button type="button" aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')} onClick={() => setShowPassword(v => !v)}>{showPassword ? '🙈' : '👁'}</button></div></label>{message && <div className="login-form-message">{message}</div>}<button type="button" className="login-forgot-link" onClick={() => { setMessage(''); setView('forgot') }}>{t('login.forgotPassword')}</button><button className="login-primary-button" type="submit" disabled={entryLoading}>{t('login.signIn')}</button></form>
             </section>
           ) : (
             <section className="login-auth-view"><button type="button" className="login-back-button" onClick={() => { setMessage(''); setView('login') }}>{t('login.back')}</button><header className="login-auth-header"><h2>{t('login.forgotTitle')}</h2><p>{t('login.forgotText')}</p></header><form className="login-form-grid" onSubmit={handleRecoverySubmit}><label className="login-form-group"><span>{IS_PRODUCTION?t('login.email'):t('login.username')}</span><input required name="recoveryEmail" type={IS_PRODUCTION?'email':'text'} autoComplete={IS_PRODUCTION?'email':'username'}/></label>{message&&<div className="login-form-message">{message}</div>}<button className="login-primary-button" type="submit">{t('login.sendRecovery')}</button></form></section>

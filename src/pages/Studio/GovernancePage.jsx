@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, BellRing, DatabaseBackup, FileClock, GraduationCap, LockKeyhole, RefreshCw, Save, ShieldCheck } from 'lucide-react'
-import { BackLink, Badge, Button, FormField, FormGrid, FormSection, PageChrome } from '../../components/core'
+import { BackLink, Badge, Button, FormField, FormGrid, FormSection, PageChrome, SearchInput } from '../../components/core'
 import PageHeader from '../../components/core/PageHeader/PageHeader'
 import { APP_ROUTES } from '../../config/routes'
 import { useNavigate } from 'react-router-dom'
@@ -111,7 +111,7 @@ export default function GovernancePage(){
     </div>
 
     {tab==='audit'&&<section className="gov-panel">
-      <div className="gov-panel__head"><div><h2>{L('Αμετάβλητο Audit Trail','Immutable Audit Trail')}</h2><p>{L('Ποιος άλλαξε τι, πότε και σε ποια εγγραφή. Το ιστορικό είναι μόνο για ανάγνωση.','Who changed what, when and on which record. History is read-only.')}</p></div><input value={auditSearch} onChange={e=>setAuditSearch(e.target.value)} placeholder={L('Αναζήτηση οντότητας, ενέργειας, ρόλου…','Search entity, action, role…')}/></div>
+      <div className="gov-panel__head"><div><h2>{L('Αμετάβλητο Audit Trail','Immutable Audit Trail')}</h2><p>{L('Ποιος άλλαξε τι, πότε και σε ποια εγγραφή. Το ιστορικό είναι μόνο για ανάγνωση.','Who changed what, when and on which record. History is read-only.')}</p></div><SearchInput className="gov-search" value={auditSearch} onChange={setAuditSearch} placeholder={L('Αναζήτηση οντότητας, ενέργειας, ρόλου…','Search entity, action, role…')} /></div>
       <div className="gov-table-wrap"><table className="gov-table"><thead><tr><th>{L('Χρόνος','Time')}</th><th>{L('Οντότητα','Entity')}</th><th>{L('Ενέργεια','Action')}</th><th>{L('Ρόλος','Role')}</th><th>{L('Πεδία','Fields')}</th><th>{L('Αιτία / πηγή','Reason / source')}</th></tr></thead><tbody>
         {filteredAudit.length?filteredAudit.map(row=><tr key={row.audit_id}><td>{dt(row.occurred_at,language)}</td><td><strong>{row.entity_type}</strong><small>{row.entity_id||'—'}</small></td><td><Badge tone={row.action==='DELETE'?'danger':row.action==='INSERT'?'success':'neutral'}>{row.action}</Badge></td><td>{row.actor_role||'—'}</td><td>{(row.changed_fields||[]).join(', ')||'—'}</td><td><span>{row.reason||row.source||'—'}</span></td></tr>):<tr><td colSpan="6" className="gov-empty">{L('Δεν υπάρχουν καταγραφές για εμφάνιση.','No audit records to display.')}</td></tr>}
       </tbody></table></div>
@@ -121,12 +121,12 @@ export default function GovernancePage(){
       <div className="gov-panel__head"><div><h2>{L('Πολιτικές ειδοποίησης & κλιμάκωσης','Notification & escalation policies')}</h2><p>{L('Κεντρικά όρια, σοβαρότητα και closed-loop παρακολούθηση για κρίσιμες εκκρεμότητες.','Central thresholds, severity and closed-loop follow-up for critical pending actions.')}</p></div></div>
       <div className="gov-card-list">{policies.map((row,index)=><article className="gov-edit-card" key={row.policy_key}>
         <div className="gov-edit-card__title"><div><strong>{L(...(POLICY_LABELS[row.policy_key]||[row.policy_key,row.policy_key]))}</strong><small>{row.policy_key}</small></div><label className="gov-switch"><input type="checkbox" checked={row.enabled!==false} onChange={e=>setPolicies(v=>v.map((x,i)=>i===index?{...x,enabled:e.target.checked}:x))}/><span>{L('Ενεργή','Enabled')}</span></label></div>
-        <div className="gov-inline-grid">
-          <label><span>{L('Σοβαρότητα','Severity')}</span><select value={row.severity||'warning'} onChange={e=>setPolicies(v=>v.map((x,i)=>i===index?{...x,severity:e.target.value}:x))}><option value="info">Info</option><option value="warning">Warning</option><option value="danger">Danger</option></select></label>
-          <label><span>{L('Κλιμάκωση μετά από ώρες','Escalate after hours')}</span><input type="number" min="1" value={row.escalation_after_hours??''} onChange={e=>setPolicies(v=>v.map((x,i)=>i===index?{...x,escalation_after_hours:e.target.value}:x))}/></label>
-          <label><span>{L('Ρόλοι αποδεκτών','Recipient roles')}</span><input value={(row.settings?.recipientRoles||[]).join(', ')} onChange={e=>setPolicies(v=>v.map((x,i)=>i===index?{...x,settings:{...(x.settings||{}),recipientRoles:e.target.value.split(',').map(s=>s.trim()).filter(Boolean)}}:x))}/></label>
-          <label className="gov-switch gov-switch--inline"><input type="checkbox" checked={!!row.settings?.closedLoop} onChange={e=>setPolicies(v=>v.map((x,i)=>i===index?{...x,settings:{...(x.settings||{}),closedLoop:e.target.checked}}:x))}/><span>Closed loop</span></label>
-        </div>
+        <FormGrid columns={4} className="gov-policy-grid">
+          <FormField label={L('Σοβαρότητα','Severity')}><select value={row.severity||'warning'} onChange={e=>setPolicies(v=>v.map((x,i)=>i===index?{...x,severity:e.target.value}:x))}><option value="info">Info</option><option value="warning">Warning</option><option value="danger">Danger</option></select></FormField>
+          <FormField label={L('Κλιμάκωση μετά από ώρες','Escalate after hours')}><input type="number" min="1" value={row.escalation_after_hours??''} onChange={e=>setPolicies(v=>v.map((x,i)=>i===index?{...x,escalation_after_hours:e.target.value}:x))}/></FormField>
+          <FormField label={L('Ρόλοι αποδεκτών','Recipient roles')}><input value={(row.settings?.recipientRoles||[]).join(', ')} onChange={e=>setPolicies(v=>v.map((x,i)=>i===index?{...x,settings:{...(x.settings||{}),recipientRoles:e.target.value.split(',').map(s=>s.trim()).filter(Boolean)}}:x))}/></FormField>
+          <FormField label="Closed loop"><label className="gov-choice"><input type="checkbox" checked={!!row.settings?.closedLoop} onChange={e=>setPolicies(v=>v.map((x,i)=>i===index?{...x,settings:{...(x.settings||{}),closedLoop:e.target.checked}}:x))}/><span>{L('Απαιτείται επιβεβαίωση ολοκλήρωσης','Completion acknowledgement required')}</span></label></FormField>
+        </FormGrid>
         <div className="gov-card-actions"><Button size="sm" icon={<Save size={15}/>} onClick={()=>savePolicy(row)} disabled={busy}>{L('Αποθήκευση','Save')}</Button></div>
       </article>)}</div>
     </section>}
@@ -135,12 +135,12 @@ export default function GovernancePage(){
       <div className="gov-panel__head"><div><h2>{L('Διατήρηση & αρχειοθέτηση δεδομένων','Data retention & archiving')}</h2><p>{L('Η λήξη περιόδου δημιουργεί υποχρέωση αναθεώρησης· δεν προκαλεί αυτόματη καταστροφή δεδομένων.','Expiry creates review eligibility; it never causes automatic destructive deletion.')}</p></div></div>
       <div className="gov-card-list">{retention.map((row,index)=><article className="gov-edit-card" key={row.policy_key}>
         <div className="gov-edit-card__title"><div><strong>{row.record_category}</strong><small>{row.policy_key}</small></div><label className="gov-switch"><input type="checkbox" checked={row.active!==false} onChange={e=>setRetention(v=>v.map((x,i)=>i===index?{...x,active:e.target.checked}:x))}/><span>{L('Ενεργή','Active')}</span></label></div>
-        <div className="gov-inline-grid gov-inline-grid--wide">
-          <label><span>{L('Έτη διατήρησης','Retention years')}</span><input type="number" min="1" max="100" value={row.retention_years} onChange={e=>setRetention(v=>v.map((x,i)=>i===index?{...x,retention_years:e.target.value}:x))}/></label>
-          <label><span>{L('Διάθεση','Disposition')}</span><select value={row.disposition} onChange={e=>setRetention(v=>v.map((x,i)=>i===index?{...x,disposition:e.target.value}:x))}><option value="archive">{L('Αρχειοθέτηση','Archive')}</option><option value="review_before_delete">{L('Αναθεώρηση πριν διαγραφή','Review before deletion')}</option></select></label>
-          <label><span>{L('Υπεύθυνος','Owner')}</span><input value={row.owner||''} onChange={e=>setRetention(v=>v.map((x,i)=>i===index?{...x,owner:e.target.value}:x))}/></label>
-          <label className="gov-span-2"><span>{L('Νομική / οργανωτική βάση','Legal / organizational basis')}</span><input value={row.legal_basis||''} onChange={e=>setRetention(v=>v.map((x,i)=>i===index?{...x,legal_basis:e.target.value}:x))}/></label>
-        </div>
+        <FormGrid columns={4} className="gov-policy-grid">
+          <FormField label={L('Έτη διατήρησης','Retention years')}><input type="number" min="1" max="100" value={row.retention_years} onChange={e=>setRetention(v=>v.map((x,i)=>i===index?{...x,retention_years:e.target.value}:x))}/></FormField>
+          <FormField label={L('Διάθεση','Disposition')}><select value={row.disposition} onChange={e=>setRetention(v=>v.map((x,i)=>i===index?{...x,disposition:e.target.value}:x))}><option value="archive">{L('Αρχειοθέτηση','Archive')}</option><option value="review_before_delete">{L('Αναθεώρηση πριν διαγραφή','Review before deletion')}</option></select></FormField>
+          <FormField label={L('Υπεύθυνος','Owner')}><input value={row.owner||''} onChange={e=>setRetention(v=>v.map((x,i)=>i===index?{...x,owner:e.target.value}:x))}/></FormField>
+          <FormField label={L('Νομική / οργανωτική βάση','Legal / organizational basis')}><input value={row.legal_basis||''} onChange={e=>setRetention(v=>v.map((x,i)=>i===index?{...x,legal_basis:e.target.value}:x))}/></FormField>
+        </FormGrid>
         <div className="gov-card-actions"><Button size="sm" onClick={()=>saveRetention(row)} disabled={busy}>{L('Αποθήκευση','Save')}</Button></div>
       </article>)}</div>
     </section>}

@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useI18n } from '../../i18n'
 import { notifyAction } from '../../components/core/feedback/index'
 import { previewAttachment } from '../../core/files/attachmentPreview'
 import { ChevronRight, Eye, FileText, Paperclip, Plus, RefreshCcw, Trash2, X } from 'lucide-react'
 import Button from '../../components/core/Button/Button'
+import FormActions from '../../components/core/FormActions/FormActions'
 import Badge from '../../components/core/Badge/Badge'
 import LibraryField from '../../components/core/LibraryField/LibraryField'
 import { RESISTANCE_OPTIONS } from '../../core/constants/clinicalOptions'
+import { SmartDateInput, SmartTimeInput } from '../../components/core/fields/DateTimeControls'
 import { masterNames } from '../../services/masterDataService'
 import { attachmentSectionLabel, deriveOverallResistance, formatDate, formatFileSize, isRepeatSample, normalizeOrganismResults } from './patientWorkflowUtils'
 import { patientDisplayValue } from './patientPresentation'
@@ -62,9 +64,8 @@ export function SampleEditor({ form, setForm, samples, save, cancel, files, uplo
     {!organisms.length ? <div className={`pw-mini-empty ${form.status === 'Θετικό' ? 'is-warning' : ''}`.trim()}>{form.status === 'Θετικό' ? L('Θετικό αποτέλεσμα χωρίς καταχωρημένο μικροοργανισμό. Συμπληρώστε το αποτέλεσμα από το Εργαστήριο.', 'Positive result without a recorded microorganism. Complete the result in Laboratory.') : L('Δεν έχει καταχωρηθεί μικροοργανισμός.', 'No microorganism has been recorded.')}</div> : <div className="pw-organism-list">{organisms.map((item, index) => <div className="pw-organism-row" key={item.id || index}><LibraryField disabled={laboratoryReadOnly} hideLabel libraryKey="microorganisms" value={item.name} allowManual placeholder={L("Μικροοργανισμός", "Microorganism")} onChange={(v) => patchOrganism(index, { name: v })} /><Select disabled={laboratoryReadOnly} value={item.resistance || 'Χωρίς χαρακτηρισμό'} onChange={(v) => patchOrganism(index, { resistance: v })}>{RESISTANCE_OPTIONS.map((x) => <option key={x} value={x}>{patientDisplayValue(x, language)}</option>)}</Select>{!laboratoryReadOnly && <IconButton danger label={L("Αφαίρεση", "Remove")} icon={<Trash2 size={14} />} onClick={() => removeOrganism(index)} />}</div>)}</div>}
   </section>
   {form.id && <AttachmentTools files={files} upload={upload} deleteAttachment={deleteAttachment} />}
-  <div className="pw-form-actions">
-    {saved ? <Button type="button" onClick={cancel}>{L('Κλείσιμο', 'Close')}</Button> : <><Button variant="secondary" type="button" onClick={cancel}>{L('Ακύρωση', 'Cancel')}</Button><Button type="submit">{L('Αποθήκευση', 'Save')}</Button></>}
-  </div></form>
+  {saved ? <FormActions primaryType="button" primaryLabel={L('Κλείσιμο','Close')} onPrimary={cancel} /> : <FormActions onCancel={cancel} />}
+  </form>
 }
 
 export function IsolationEditor({ form, setForm, save, cancel, files = [], upload, deleteAttachment }) {
@@ -89,7 +90,7 @@ export function IsolationEditor({ form, setForm, save, cancel, files = [], uploa
       <span>{L('Επισύναψη', 'Attachment')}</span>
       <div className="pw-inline-attachment-field">{form.id ? <AttachmentTools files={files} upload={upload} deleteAttachment={deleteAttachment} /> : <small>{L('Μετά την πρώτη αποθήκευση μπορείτε να προσθέσετε αρχείο.', 'After the first save you can add a file.')}</small>}</div>
     </div>
-    <div className="pw-form-actions"><Button variant="secondary" type="button" onClick={cancel}>{L('Ακύρωση', 'Cancel')}</Button><Button type="submit">{L('Αποθήκευση', 'Save')}</Button></div>
+    <FormActions onCancel={cancel} />
   </form>
 }
 
@@ -126,24 +127,9 @@ export function Tab({ active, onClick, icon, label, count }) { return <button ty
 export function IconButton({ label, icon, onClick, danger = false }) { return <button type="button" className={`pw-icon-button ${danger ? 'danger' : ''}`} onClick={onClick} title={label} aria-label={label}>{icon}</button> }
 export function EmptyState({ icon, title, text }) { return <div className="pw-empty">{icon}<b>{title}</b><span>{text}</span></div> }
 export function Field({ label, children, wide = false }) { return <label className={`pw-field ${wide ? 'wide' : ''}`}><span>{label}</span>{children}</label> }
-function toGreekDate(value='') {
-  const match=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : String(value||'')
+export function Input({ value, onChange, type, ...props }) {
+  if (type === 'date') return <SmartDateInput value={value || ''} onValueChange={onChange} {...props} />
+  if (type === 'time') return <SmartTimeInput value={value || ''} onValueChange={onChange} {...props} />
+  return <input type={type} value={value || ''} onChange={(event) => onChange(event.target.value)} {...props} />
 }
-function toIsoDate(value='') {
-  const text=String(value||'').trim()
-  if(!text)return ''
-  const match=text.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/)
-  if(!match)return null
-  const day=match[1].padStart(2,'0'),month=match[2].padStart(2,'0'),year=match[3]
-  const iso=`${year}-${month}-${day}`
-  const probe=new Date(`${iso}T12:00:00`)
-  return Number.isNaN(probe.getTime()) || probe.getFullYear()!==Number(year) || probe.getMonth()+1!==Number(month) || probe.getDate()!==Number(day) ? null : iso
-}
-function LocalizedDateInput({ value, onChange, disabled, ...props }) {
-  const [text,setText]=useState(()=>toGreekDate(value))
-  useEffect(()=>setText(toGreekDate(value)),[value])
-  return <input {...props} disabled={disabled} type="text" inputMode="numeric" placeholder="ηη/μμ/εεεε" value={text} onChange={(event)=>{const next=event.target.value.replace(/[^0-9\/.-]/g,'').slice(0,10);setText(next);const iso=toIsoDate(next);if(iso!==null)onChange?.(iso)}} onBlur={()=>{const iso=toIsoDate(text);if(iso===null)setText(toGreekDate(value));else setText(toGreekDate(iso))}} />
-}
-export function Input({ value, onChange, type, ...props }) { return type === 'date' ? <LocalizedDateInput value={value} onChange={onChange} {...props} /> : <input type={type} value={value || ''} onChange={(event) => onChange(event.target.value)} {...props} /> }
 export function Select({ value, onChange, children, ...props }) { return <select value={value || ''} onChange={(event) => onChange(event.target.value)} {...props}>{children}</select> }

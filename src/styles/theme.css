@@ -24,11 +24,11 @@
   --success-border: #b9e2ce;
   --warning: #b7791f;
   --warning-dark: #8d5b12;
-  --warning-soft: var(--surface)7e7;
+  --warning-soft: #fff7e7;
   --warning-border: #ecd39d;
   --danger: #c64b47;
   --danger-dark: #963a37;
-  --danger-soft: var(--surface)0ef;
+  --danger-soft: #fff0ef;
   --danger-border: #efc0bd;
   --info: #237b94;
   --info-dark: #195e72;
@@ -73,6 +73,13 @@
   --control-height-sm: 36px;
   --control-height: 44px;
   --control-height-lg: 50px;
+  --control-radius: var(--radius-md);
+  --control-padding-x: 12px;
+  --control-font-size: .86rem;
+  --field-label-size: .78rem;
+  --field-gap: 6px;
+  --placeholder: color-mix(in srgb, var(--muted) 82%, var(--surface));
+  --control-border-hover: color-mix(in srgb, var(--primary) 42%, var(--border-strong));
   --toolbar-height: 60px;
   --focus-ring: color-mix(in srgb, var(--primary) 24%, transparent);
 

@@ -3,6 +3,7 @@ import { useAppEvents } from '../../../core/events'
 import { BookOpen, PencilLine } from 'lucide-react'
 import { activeMasterItems, MASTER_DATA_EVENT, upsertMasterItemAsync } from '../../../services/masterDataService'
 import './LibraryField.css'
+import Button from '../Button/Button'
 import { useI18n } from '../../../i18n'
 
 export default function LibraryField({
@@ -32,6 +33,8 @@ export default function LibraryField({
   )
 
   const hasHeader = (!hideLabel && label) || (allowManual && !disabled && !hideLabel)
+  const currentValue = String(value || '').trim()
+  const currentValueInLibrary = !currentValue || items.some((item) => String(item?.name || '').trim() === currentValue)
 
   const saveManual = async () => {
     if (!saveManualToLibrary || disabled) return
@@ -47,8 +50,10 @@ export default function LibraryField({
         <span className="core-library-field__header">
           {!hideLabel && label ? <span className="core-library-field__label">{label}</span> : <span />}
           {allowManual && !disabled && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               className="core-library-field__mode"
               onClick={(event) => {
                 event.preventDefault()
@@ -59,7 +64,7 @@ export default function LibraryField({
             >
               {manual ? <BookOpen size={13} /> : <PencilLine size={13} />}
               {manual ? L('Από βιβλιοθήκη', 'From library') : L('Χειροκίνητα', 'Manual')}
-            </button>
+            </Button>
           )}
         </span>
       )}
@@ -78,6 +83,9 @@ export default function LibraryField({
       ) : (
         <select disabled={disabled} value={value || ''} onChange={(event) => onChange?.(event.target.value)}>
           {(allowEmpty || !value) && <option value="">{placeholder}</option>}
+          {currentValue && !currentValueInLibrary ? (
+            <option value={currentValue}>{currentValue}</option>
+          ) : null}
           {items.map((item) => (
             <option key={item.id} value={item.name}>{getOptionLabel ? getOptionLabel(item) : item.name}</option>
           ))}
@@ -85,8 +93,10 @@ export default function LibraryField({
       )}
 
       {allowManual && !disabled && hideLabel && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           className="core-library-field__mode core-library-field__mode--below"
           onClick={(event) => {
             event.preventDefault()
@@ -96,7 +106,7 @@ export default function LibraryField({
         >
           {manual ? <BookOpen size={13} /> : <PencilLine size={13} />}
           {manual ? L('Από βιβλιοθήκη', 'From library') : L('Χειροκίνητα', 'Manual')}
-        </button>
+        </Button>
       )}
     </label>
   )

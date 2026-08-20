@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useMemo, useRef } from 'react'
 import IconButton from '../IconButton/IconButton'
 import './Drawer.css'
 
@@ -15,6 +15,7 @@ export default function Drawer({
   description,
   width = '960px',
   position = 'right',
+  presentation = 'auto',
   header,
   actions,
   footer,
@@ -31,9 +32,14 @@ export default function Drawer({
   const titleId = useId()
   const descriptionId = useId()
 
-  // Keep mutable drawer actions current without restarting the focus-trap effect.
-  // Parent pages commonly pass inline callbacks; depending on those callbacks here
-  // would tear down/recreate the effect on every keystroke and steal input focus.
+  const normalizedWidth = typeof width === 'number' ? `${width}px` : width
+  const resolvedPresentation = useMemo(() => {
+    if (presentation === 'modal' || presentation === 'workspace') return presentation
+    const numericWidth = typeof width === 'number' ? width : Number.parseFloat(String(width))
+    return Number.isFinite(numericWidth) && numericWidth <= 620 ? 'modal' : 'workspace'
+  }, [presentation, width])
+  const isModal = resolvedPresentation === 'modal'
+
   onCloseRef.current = onClose
   closeOnEscapeRef.current = closeOnEscape
 
@@ -42,7 +48,7 @@ export default function Drawer({
 
     const previousActive = document.activeElement
     const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    if (isModal) document.body.style.overflow = 'hidden'
 
     const panel = panelRef.current
     const firstFocusable = panel?.querySelector(focusableSelector)
@@ -55,7 +61,7 @@ export default function Drawer({
         return
       }
 
-      if (event.key !== 'Tab' || !panel) return
+      if (!isModal || event.key !== 'Tab' || !panel) return
       const focusable = [...panel.querySelectorAll(focusableSelector)]
       if (!focusable.length) {
         event.preventDefault()
@@ -76,7 +82,7 @@ export default function Drawer({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => {
-      document.body.style.overflow = previousOverflow
+      if (isModal) document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', handleKeyDown)
       previousActive?.focus?.()
     }
@@ -84,21 +90,19 @@ export default function Drawer({
 
   if (!open) return null
 
-  const normalizedWidth = typeof width === 'number' ? `${width}px` : width
-
   return (
     <div
-      className="core-drawer-backdrop"
+      className={`core-drawer-backdrop core-drawer-backdrop--${resolvedPresentation}`}
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget && closeOnBackdrop) onClose?.()
+        if (isModal && event.target === event.currentTarget && closeOnBackdrop) onClose?.()
       }}
     >
       <aside
         ref={panelRef}
-        className={`core-drawer core-drawer--${position}`}
+        className={`core-drawer core-drawer--${position} core-drawer--${resolvedPresentation}`}
         style={{ '--core-drawer-width': normalizedWidth }}
-        role="dialog"
-        aria-modal="true"
+        role={isModal ? 'dialog' : 'region'}
+        aria-modal={isModal ? 'true' : undefined}
         aria-labelledby={title ? titleId : undefined}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}

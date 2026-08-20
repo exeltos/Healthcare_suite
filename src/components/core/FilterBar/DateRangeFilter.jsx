@@ -14,6 +14,12 @@ export default function DateRangeFilter({
   onFromChange,
   onToChange,
   label = 'Περίοδος',
+  helperText = 'Επιλέξτε συγκεκριμένο χρονικό διάστημα.',
+  fromLabel = 'Από',
+  toLabel = 'Έως',
+  clearLabel = 'Καθαρισμός',
+  applyLabel = 'Εφαρμογή',
+  closeLabel = 'Κλείσιμο',
   className = '',
 }) {
   const [open, setOpen] = useState(false)
@@ -65,16 +71,16 @@ export default function DateRangeFilter({
           <div className="core-date-range-filter__popover-header">
             <div>
               <strong>{label}</strong>
-              <span>Επιλέξτε συγκεκριμένο χρονικό διάστημα.</span>
+              <span>{helperText}</span>
             </div>
-            <button type="button" className="core-date-range-filter__close" onClick={() => setOpen(false)} aria-label="Κλείσιμο">
+            <button type="button" className="core-date-range-filter__close" onClick={() => setOpen(false)} aria-label={closeLabel}>
               <X size={16} />
             </button>
           </div>
 
           <div className="core-date-range-filter__fields">
             <label>
-              <span>Από</span>
+              <span>{fromLabel}</span>
               <input
                 type="date"
                 value={from}
@@ -83,7 +89,7 @@ export default function DateRangeFilter({
               />
             </label>
             <label>
-              <span>Έως</span>
+              <span>{toLabel}</span>
               <input
                 type="date"
                 value={to}
@@ -103,10 +109,10 @@ export default function DateRangeFilter({
                 onToChange?.('')
               }}
             >
-              Καθαρισμός
+              {clearLabel}
             </button>
             <button type="button" className="core-date-range-filter__apply" onClick={() => setOpen(false)}>
-              Εφαρμογή
+              {applyLabel}
             </button>
           </div>
         </div>

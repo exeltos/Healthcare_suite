@@ -303,12 +303,23 @@ export function LaboratoryResultSection({ form, setForm, normalizeMicroorganismR
         value={form.criticalCommunicatedTo || ''}
         onChange={(e) => setForm({ ...form, criticalCommunicatedTo: e.target.value })}
       /> : null}
-      {form.criticalResult ? <TextField
-        type="datetime-local"
+      {form.criticalResult ? <DateField
         disabled={readOnly}
-        label={L('Ημερομηνία / ώρα γνωστοποίησης *', 'Communication date / time *')}
-        value={String(form.criticalCommunicatedAt || '').slice(0,16)}
-        onChange={(e) => setForm({ ...form, criticalCommunicatedAt: e.target.value })}
+        label={L('Ημερομηνία γνωστοποίησης *', 'Communication date *')}
+        value={String(form.criticalCommunicatedAt || '').slice(0,10)}
+        onChange={(e) => {
+          const time = String(form.criticalCommunicatedAt || '').slice(11,16)
+          setForm({ ...form, criticalCommunicatedAt: `${e.target.value}${time ? `T${time}` : ''}` })
+        }}
+      /> : null}
+      {form.criticalResult ? <TimeField
+        disabled={readOnly}
+        label={L('Ώρα γνωστοποίησης *', 'Communication time *')}
+        value={String(form.criticalCommunicatedAt || '').slice(11,16)}
+        onChange={(e) => {
+          const date = String(form.criticalCommunicatedAt || '').slice(0,10)
+          setForm({ ...form, criticalCommunicatedAt: `${date || new Date().toISOString().slice(0,10)}T${e.target.value}` })
+        }}
       /> : null}
     </div> : null}
 

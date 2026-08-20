@@ -1,4 +1,5 @@
 import './Pagination.css'
+import IconButton from '../IconButton/IconButton'
 
 export default function Pagination({
   page = 1,
@@ -25,9 +26,9 @@ export default function Pagination({
         </label>
       ) : null}
       <div className="core-pagination__buttons">
-        <button type="button" onClick={() => onPageChange?.(safePage - 1)} disabled={safePage <= 1} aria-label="Προηγούμενη σελίδα">‹</button>
+        <IconButton onClick={() => onPageChange?.(safePage - 1)} disabled={safePage <= 1} label="Προηγούμενη σελίδα">‹</IconButton>
         <span>{safePage} / {pageCount}</span>
-        <button type="button" onClick={() => onPageChange?.(safePage + 1)} disabled={safePage >= pageCount} aria-label="Επόμενη σελίδα">›</button>
+        <IconButton onClick={() => onPageChange?.(safePage + 1)} disabled={safePage >= pageCount} label="Επόμενη σελίδα">›</IconButton>
       </div>
     </div>
   )

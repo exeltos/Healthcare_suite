@@ -5,4 +5,5 @@ export {
   feedbackInfo,
   feedbackWarning,
   feedbackError,
+  feedbackSaved,
 } from './feedbackBus'

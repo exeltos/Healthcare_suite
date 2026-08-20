@@ -1,10 +1,11 @@
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
+import { feedbackSaved } from '../../core/feedback'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { APP_EVENTS, useAppEvents } from '../../core/events'
 import {
   Activity, ArrowLeft, CalendarDays, CheckCircle2, ChevronRight, ClipboardList,
   Edit3, Eye, FileText, FlaskConical, History, LogIn, LogOut, Paperclip,
-  Pill, Plus, Printer, RefreshCcw, Save, ShieldAlert, X,
+  Pill, Plus, Printer, RefreshCcw, Save, ShieldAlert, Trash2, X,
 } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useI18n } from '../../i18n'
@@ -30,7 +31,6 @@ import {
   DEPARTMENT_OPTIONS, RESISTANCE_OPTIONS,
 } from '../../core/constants/clinicalOptions'
 import { masterNames, upsertMasterItem } from '../../services/masterDataService'
-import { IS_PRODUCTION, persistenceRuntimeLabel } from '../../core/runtime'
 import './PatientWorkflowPage.css'
 import { PatientHome, CaseWorkspace, buildPatientTimeline, deriveOverallResistance, formatDate, getPatientSignals, getSampleDescendants, getTherapies, calculateHospitalDays, isRepeatSample, normalizeOrganismResults, sampleMicroorganismLabel, today } from './PatientWorkflowSections'
 
@@ -85,6 +85,7 @@ export default function PatientWorkflowPage() {
   const [isolationForm, setIsolationForm] = useState(null)
   const [attachmentTarget, setAttachmentTarget] = useState(null)
   const [focusedRecord, setFocusedRecord] = useState(null)
+  const [homeReturnTab, setHomeReturnTab] = useState(() => location.state?.patientTab || 'summary')
   const fileRef = useRef(null)
   const refreshInFlightRef = useRef(false)
 
@@ -190,17 +191,13 @@ export default function PatientWorkflowPage() {
       setPatient(saved)
       setPatientForm(saved)
       setEditingPatient(false)
-      notifyAction(
-        persistenceRuntimeLabel()==='supabase'
-          ? L('Ο ασθενής αποθηκεύτηκε στο Supabase.','Patient saved to Supabase.')
-          : L('Demo/local mode: ο ασθενής αποθηκεύτηκε μόνο στον browser και όχι στο Supabase.','Demo/local mode: patient saved only in the browser, not Supabase.')
-      )
+      feedbackSaved({ title: L('Αποθηκεύτηκε','Saved'), message: L('Αποθήκευση','Saved') })
       if (isNewPatient) {
         navigate(routeFor.patientWorkflow(saved.id), { replace: true, state: { patientTab: 'summary' } })
       }
     }catch(error){
       console.error('Patient persistence failed',error)
-      notifyAction(L(`Η αποθήκευση στο Supabase απέτυχε: ${error?.message||'Άγνωστο σφάλμα'}`,`Supabase save failed: ${error?.message||'Unknown error'}`))
+      notifyAction(L(`Η αποθήκευση απέτυχε: ${error?.message||'Άγνωστο σφάλμα'}`,`Save failed: ${error?.message||'Unknown error'}`))
     }
   }
   async function removePatient() {
@@ -237,6 +234,7 @@ export default function PatientWorkflowPage() {
     })
     await refreshAll(created.id)
     setActiveCase(created)
+    setHomeReturnTab(options.openSample ? 'samples' : 'surveillance')
     setWorkspaceTab(options.openSample ? 'samples' : 'assessment')
     setScreen('workspace')
     if (options.openSample) beginSampleForCase(created)
@@ -276,16 +274,18 @@ export default function PatientWorkflowPage() {
   function openCase(item, options = {}) {
     if (!item) return
     setActiveCase(item)
+    setHomeReturnTab(options.returnTab || (options.tab === 'care' ? 'care' : options.tab === 'samples' ? 'samples' : 'surveillance'))
     setWorkspaceTab(options.tab || 'assessment')
     setSampleForm(null)
     setIsolationForm(null)
     setFocusedRecord(options.recordType ? { type: options.recordType, id: options.recordId || null } : null)
     setScreen('workspace')
   }
-  function openCaseRecord({ caseId, tab = 'assessment', recordType = '', recordId = '' } = {}) {
+  function openCaseRecord({ caseId, tab = 'assessment', recordType = '', recordId = '', returnTab = '' } = {}) {
     const related = cases.find((item) => String(item.id) === String(caseId))
     if (!related) return
     setActiveCase(related)
+    setHomeReturnTab(returnTab || (tab === 'care' ? 'care' : tab === 'samples' ? 'samples' : 'surveillance'))
     setWorkspaceTab(tab)
     setFocusedRecord(recordType ? { type: recordType, id: recordId } : null)
     setSampleForm(recordType === 'sample' ? { ...(samples.find((item) => String(item.id) === String(recordId)) || {}) } : null)
@@ -404,7 +404,6 @@ export default function PatientWorkflowPage() {
   const timeline = buildPatientTimeline({ patient: patientForm, cases, samples, isolations, notifiableDiseases, language })
 
   return <>
-  {!IS_PRODUCTION&&<div className="patient-runtime-warning" role="status">{L('Demo/local mode — οι αλλαγές ασθενών δεν αποθηκεύονται στο Supabase.','Demo/local mode — patient changes are not saved to Supabase.')}</div>}
   <WorkspaceShell className="pw-page-shell" shellClassName="pw-page">
     <WorkspaceHeader
       backLabel={screen === 'home' ? L('Επιστροφή στους ασθενείς', 'Back to patients') : L('Ένα βήμα πίσω', 'Back one step')}
@@ -414,7 +413,10 @@ export default function PatientWorkflowPage() {
       title={patientForm.fullName || (isNewPatient ? L('Νέος ασθενής', 'New patient') : L('Ασθενής', 'Patient'))}
       badges={<>{signals.positive && <Badge tone="danger">{L("Θετικό", "Positive")}</Badge>}{signals.resistance && <Badge tone="danger">{signals.resistance}</Badge>}{signals.isolation && <Badge tone="warning">{L("Απομόνωση", "Isolation")}</Badge>}{signals.pending && <Badge tone="neutral">{L("Εκκρεμές", "Pending")}</Badge>}{!signals.positive && !signals.isolation && !signals.pending && <Badge tone="success">{L("Χωρίς ενεργή ένδειξη", "No active flag")}</Badge>}</>}
       meta={`${patientForm.patientCode || L('Χωρίς κωδικό', 'No code')} · ${patientForm.room || L('Χωρίς κλίνη', 'No bed')}${patientForm.admissionDate ? ` · ${L('Εισαγωγή', 'Admission')} ${formatDate(patientForm.admissionDate)}` : ''}`}
-      actions={isNewPatient ? null : <CoreIconButton label={L("Εκτύπωση καρτέλας ασθενούς", "Print patient record")} onClick={() => window.print()}><Printer size={17} /></CoreIconButton>}
+      actions={isNewPatient ? null : <>
+        <CoreIconButton label={L("Εκτύπωση καρτέλας ασθενούς", "Print patient record")} onClick={() => window.print()}><Printer size={17} /></CoreIconButton>
+        <CoreIconButton variant="danger" label={L("Διαγραφή ασθενούς", "Delete patient")} onClick={removePatient}><Trash2 size={17} /></CoreIconButton>
+      </>}
     />
     <input ref={fileRef} type="file" hidden onChange={uploadFile} />
     <main className="pw-page-body">
@@ -422,7 +424,7 @@ export default function PatientWorkflowPage() {
         patient={patientForm} isNew={isNewPatient} editing={editingPatient} setEditing={setEditingPatient} setPatient={setPatientForm} savePatient={savePatient} onCancelNew={() => navigate(APP_ROUTES.PATIENTS)}
         activeCases={activeCases} closedCases={closedCases} cases={cases} samples={samples} isolations={isolations} attachments={attachments} timeline={timeline} notifiableDiseases={notifiableDiseases}
         createCase={createCase} createSample={() => navigate(routeFor.laboratoryNewWorkspace(), { state: { prefillPatient: { id: patient.id, fullName: patient.fullName, patientCode: patient.patientCode, department: patient.department, room: patient.room, admissionDate: patient.admissionDate }, returnContext: { path: routeFor.patientWorkflow(patient.id), label: L('Πίσω στα δείγματα ασθενούς', 'Back to patient samples'), patientTab: 'samples' } } })} openCase={openCase} openCaseRecord={openCaseRecord}
-        initialTab={location.state?.patientTab || 'summary'} highlightedSampleId={location.state?.highlightedSampleId || ''}
+        initialTab={homeReturnTab} highlightedSampleId={location.state?.highlightedSampleId || ''}
         openLaboratorySample={(sample) => navigate(routeFor.laboratoryRecordWorkspace(encodeURIComponent('Ασθενής'), encodeURIComponent(sample.id)), { state: { returnContext: { path: routeFor.patientWorkflow(patient.id), label: L('Πίσω στα δείγματα ασθενούς', 'Back to patient samples'), patientTab: 'samples', highlightedSampleId: sample.id } } })}
         upload={(target = { step: 'patient-records' }) => requestAttachment(target)} deleteAttachment={async (id) => { if (!confirmAction('Να διαγραφεί το συνημμένο αρχείο;')) return; const item=attachments.find((x)=>String(x.id)===String(id)); if(item) await deleteClinicalAttachment(item); await refreshAll() }}
         saveNotifiable={saveNotifiableRecord} deleteNotifiable={removeNotifiableRecord}

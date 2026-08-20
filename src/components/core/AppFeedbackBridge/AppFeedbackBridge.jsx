@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { APP_EVENTS, subscribeAppEvents } from '../../../core/events'
-import { feedbackSuccess } from '../../../core/feedback'
+import { feedbackSaved, feedbackSuccess } from '../../../core/feedback'
 
 const MUTATION_EVENTS = [
   APP_EVENTS.MASTER_DATA_UPDATED,
@@ -85,7 +85,7 @@ export default function AppFeedbackBridge() {
       if (intentType === 'delete') {
         feedbackSuccess('Η διαγραφή ολοκληρώθηκε επιτυχώς.', { title: 'Διαγράφηκε' })
       } else {
-        feedbackSuccess('Η καταχώρηση αποθηκεύτηκε επιτυχώς.')
+        feedbackSaved()
       }
     })
 

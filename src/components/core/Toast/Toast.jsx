@@ -32,7 +32,7 @@ export function ToastProvider({ children }) {
         {items.map((item) => (
           <div key={item.id} className={`core-toast core-toast--${item.type}`} role="status">
             <span className="core-toast__mark" aria-hidden="true">
-              {item.type === 'success' ? '✓' : item.type === 'error' ? '!' : item.type === 'warning' ? '!' : 'i'}
+              {['success','saved-demo','saved-production'].includes(item.type) ? '✓' : item.type === 'error' ? '!' : item.type === 'warning' ? '!' : 'i'}
             </span>
             <div className="core-toast__content">
               {item.title && <strong>{item.title}</strong>}

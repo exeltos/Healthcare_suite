@@ -1,4 +1,5 @@
 import { confirmAction, notifyAction } from '../core/feedback/index'
+import Button from '../core/Button/Button'
 import { EntryFormSection } from '../forms/EntryFormChrome'
 import { required, validateValues } from '../../core/forms'
 import { useI18n } from '../../i18n'
@@ -86,7 +87,7 @@ export function WhoEntryFlow({
       onSubmit={onSubmit}
     >
       <EntryFormSection
-        className="who-session-card"
+        className="who-session-card who-entry-session-card"
         eyebrow={L('Στοιχεία συνεδρίας','Session details')}
         title={L('Άμεση παρατήρηση WHO','Direct WHO observation')}
         description={L('Συμπληρώστε τα βασικά στοιχεία της συνεδρίας πριν προσθέσετε τις επιμέρους ευκαιρίες.','Complete the session details before adding individual opportunities.')}
@@ -302,12 +303,7 @@ export function WhoEntryFlow({
                   {observation.gloves ? ` · ${L('Γάντια','Gloves')}` : ''}
                 </small>
               </div>
-              <button
-                type="button"
-                onClick={() => deleteObservation(observation.id)}
-              >
-                {L('Διαγραφή','Delete')}
-              </button>
+              <Button variant="danger" size="sm" type="button" onClick={() => deleteObservation(observation.id)}>{L('Διαγραφή','Delete')}</Button>
             </article>
           )
         })}
@@ -527,9 +523,7 @@ export function EnvironmentEntryFlow({
               <small>{L('Εκκρεμεί εργαστηριακό αποτέλεσμα','Laboratory result pending')}</small>
             </div>
             <span className="environment-result result-Εκκρεμεί">{L('Εκκρεμεί','Pending')}</span>
-            <button type="button" onClick={() => deleteSample(sample.id)}>
-              Διαγραφή
-            </button>
+            <Button variant="danger" size="sm" type="button" onClick={() => deleteSample(sample.id)}>Διαγραφή</Button>
           </article>
         ))}
 
@@ -550,9 +544,7 @@ export function EnvironmentEntryFlow({
         >
           Πίσω
         </button>
-        <button className="primary" type="submit">
-          Αποθήκευση περιβαλλοντικού ελέγχου
-        </button>
+        <Button type="submit">Αποθήκευση περιβαλλοντικού ελέγχου</Button>
       </div>
     </form>
   )

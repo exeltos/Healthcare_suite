@@ -107,7 +107,7 @@
   top: 0;
   z-index: 1;
   color: var(--muted);
-  background: #f7fafb;
+  background: var(--surface-subtle);
   font-size: 0.67rem;
   text-transform: uppercase;
 }
@@ -384,7 +384,7 @@
   padding: 10px 12px;
   border-radius: 9px;
   color: var(--muted);
-  background: #f7fafb;
+  background: var(--surface-subtle);
   font-size: 0.74rem;
 }
 

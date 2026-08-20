@@ -125,7 +125,7 @@ export default function StudioConfigPage({ moduleKey }){
       description={presentation.description}
       width={1040}
       position="center"
-      footer={<FormActions form={`studio-${moduleKey}-form`} onCancel={close} extraActions={editing?<Button variant="danger" icon={<Trash2 size={16}/>} onClick={remove}>{L('Διαγραφή','Delete')}</Button>:null}/>}
+      footer={<FormActions form={`studio-${moduleKey}-form`} onCancel={close} destructive={editing?<Button variant="danger" icon={<Trash2 size={16}/>} onClick={remove}>{L('Διαγραφή','Delete')}</Button>:null}/>}
     >
       <form id={`studio-${moduleKey}-form`} onSubmit={save}>
         <FormSection title={L('Ρύθμιση','Configuration')}>

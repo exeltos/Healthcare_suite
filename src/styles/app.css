@@ -212,15 +212,24 @@
 .footer {
   position: relative;
   z-index: 30;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
   align-items: center;
-  justify-content: space-between;
+  gap: 14px;
   padding: 0 18px;
   border-top: 1px solid var(--border);
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 97%, var(--primary-softer));
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: var(--font-size-xs);
+  box-shadow: 0 -1px 8px rgba(12,54,62,.025);
 }
+.footer__brand{display:inline-flex;align-items:center;gap:7px;min-width:0;font-weight:700;color:var(--text-soft)}
+.footer__brand small{font-size:.68rem;font-weight:600;color:var(--muted)}
+.footer__environment{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:.7rem;font-weight:700;color:var(--text-soft)}
+.footer__environment i{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px var(--success-soft)}
+.footer__environment.is-demo i{background:var(--info);box-shadow:0 0 0 3px var(--info-soft)}
+.footer__secure{justify-self:end;white-space:nowrap}
+@media(max-width:760px){.footer{grid-template-columns:1fr auto}.footer__environment{display:none}.footer__secure{justify-self:end}.footer__brand small{display:none}}
 
 /* NEW ENTRY */
 
@@ -468,6 +477,7 @@ html{font-size:calc(16px * var(--access-text-scale,1))}
 .accessibility-popover{display:grid;gap:10px}.accessibility-popover>strong{padding:4px 3px 8px;border-bottom:1px solid var(--border)}
 .access-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.access-stepper{display:flex;align-items:center;gap:6px}.access-stepper button{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--border);border-radius:8px;background:var(--surface)}.access-stepper b{min-width:44px;text-align:center;font-size:.78rem}
 .access-option,.access-reset,.user-popover button{width:100%;min-height:38px;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:0 10px;border:0;border-radius:9px;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer}.access-option:hover,.access-reset:hover,.user-popover button:hover{background:var(--surface-subtle)}.access-reset{justify-content:flex-start;color:var(--muted);border-top:1px solid var(--border);border-radius:0;padding-top:8px}
+.topbar-demo-badge{display:inline-flex;align-items:center;height:30px;padding:0 10px;border:1px solid rgba(11,107,117,.22);border-radius:999px;background:#eef8f9;color:#0b6b75;font-size:11px;font-weight:800;letter-spacing:.06em}
 .user-popover{width:210px}.user-popover button{justify-content:flex-start}.user-popover .logout-menu-item{color:#b42332}
 .logout-goodbye{min-height:100vh;display:grid;place-items:center;background:#f4f8fa;text-align:center}.logout-goodbye>div{display:grid;justify-items:center;gap:12px;padding:38px}.logout-goodbye h2{margin:5px 0 0}.logout-goodbye p{margin:0;color:var(--muted)}
 .access-high-contrast{filter:contrast(1.14)}
@@ -758,3 +768,17 @@ input[type="time"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   cursor:pointer;
 }
+
+/* rc.163 — full record workspaces use all vertical space; the general suite footer is hidden. */
+.app-shell:has(.core-drawer-backdrop--workspace),
+.app-shell:has(.hybrid-launcher--who-direct){
+  grid-template-rows:var(--topbar-height) minmax(0,1fr) 0px;
+}
+.app-shell:has(.core-drawer-backdrop--workspace) > footer,
+.app-shell:has(.hybrid-launcher--who-direct) > footer{
+  display:none;
+}
+.app-shell:has(.core-drawer-backdrop--workspace) .core-drawer-backdrop--workspace{
+  bottom:0;
+}
+

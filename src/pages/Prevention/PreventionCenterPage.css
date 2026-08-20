@@ -78,7 +78,7 @@
 .prevention-recent-list{display:flex;flex-direction:column}
 .prevention-recent-list button{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:13px 18px;border:0;border-bottom:1px solid var(--border);background:var(--surface);text-align:left}
 .prevention-recent-list button:last-child{border-bottom:0}
-.prevention-recent-list button:hover{background:#f7fafb}
+.prevention-recent-list button:hover{background:var(--surface-subtle)}
 .prevention-recent-list__icon{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:rgba(11,107,117,.08);color:var(--primary)}
 .prevention-recent-list__main strong{display:block;color:var(--text);font-size:.87rem}
 .prevention-recent-list__main small{display:block;margin-top:3px;color:var(--muted);font-size:.78rem}

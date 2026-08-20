@@ -1,4 +1,5 @@
 import './SearchInput.css'
+import IconButton from '../IconButton/IconButton'
 
 export default function SearchInput({
   value,
@@ -20,14 +21,13 @@ export default function SearchInput({
         disabled={disabled}
       />
       {value && !disabled ? (
-        <button
-          type="button"
+        <IconButton
           className="core-search-input__clear"
           onClick={() => onChange?.('')}
-          aria-label="Καθαρισμός αναζήτησης"
+          label="Καθαρισμός αναζήτησης"
         >
           ×
-        </button>
+        </IconButton>
       ) : null}
     </label>
   )

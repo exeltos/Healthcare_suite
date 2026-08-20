@@ -120,19 +120,26 @@
 }
 
 @media (min-width: 1080px) {
+  /* Lists may have many filters. Never hide controls off the right edge;
+     keep a stable toolbar and wrap cleanly to a second row when required. */
+  .core-list-workspace__filters {
+    align-items: stretch;
+  }
   .core-list-workspace__filters .core-filter-bar__main {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    align-content: flex-start;
   }
   .core-list-workspace__filters .core-filter-bar__search {
-    flex: 1 1 360px;
-    min-width: 260px;
+    flex: 1 1 320px;
+    min-width: 250px;
+    max-width: 420px;
   }
   .core-list-workspace__filters.core-filter-bar--equal-controls .core-filter-bar__main > select,
   .core-list-workspace__filters.core-filter-bar--equal-controls .core-filter-bar__main > input {
-    flex: 0 1 220px;
-    width: 220px;
-    min-width: 170px;
-    max-width: 230px;
+    flex: 1 1 180px;
+    width: auto;
+    min-width: 165px;
+    max-width: 220px;
   }
 }
 

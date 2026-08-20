@@ -101,3 +101,52 @@
 .ew-field .ew-date-input::placeholder{color:#91a0a5;font:inherit}
 .ew-field .ew-date-input:focus{outline:2px solid color-mix(in srgb,var(--primary) 18%,transparent);border-color:var(--primary);box-shadow:none}
 .ew-field .ew-date-input:disabled{background:#f6f8f9;color:#4e6472;cursor:default}
+
+/* rc.147 — Employee workspace final consistency pass. */
+.ew-page{
+  --ew-control-height:var(--control-height,42px);
+  --ew-control-radius:var(--control-radius,10px);
+}
+
+.ew-field input,
+.ew-field select,
+.ew-field textarea,
+.ew-grid .core-control,
+.ew-grid .library-field input,
+.ew-grid .library-field select{
+  border-radius:var(--ew-control-radius);
+  font:inherit;
+}
+
+.ew-field input,
+.ew-field select,
+.ew-grid .core-control{
+  min-height:var(--ew-control-height);
+  height:var(--ew-control-height);
+}
+
+.ew-vaccine-form .ew-form-actions,
+.ew-occupational-form .ew-form-actions{
+  position:sticky;
+  bottom:0;
+  z-index:8;
+  margin-top:auto;
+  padding:12px 17px 14px;
+  border-top:1px solid var(--border);
+  background:var(--surface);
+}
+
+.ew-health-tabs{
+  position:sticky;
+  top:0;
+  z-index:9;
+}
+
+.ew-grid .core-date-time-control{
+  width:100%;
+  min-width:0;
+}
+
+
+/* rc.157 — local form action positioning retired in favor of core FormActions. */
+.pw-form-actions,.pw-save-bar,.ew-form-actions,.lw-form-actions{position:static!important;transform:none!important}

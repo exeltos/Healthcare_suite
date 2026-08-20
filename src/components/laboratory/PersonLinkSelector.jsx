@@ -19,8 +19,8 @@ export default function PersonLinkSelector({
 }) {
   return <div className="lw-patient-selector">
     <div className="lw-mode-switch" role="group" aria-label={ariaLabel}>
-      <button type="button" className={mode === 'existing' ? 'is-active' : ''} onClick={() => onModeChange('existing')}><Users size={16} /> {existingLabel}</button>
-      <button type="button" className={mode === 'new' ? 'is-active' : ''} onClick={() => onModeChange('new')}><UserPlus size={16} /> {newLabel}</button>
+      <Button size="sm" variant={mode === 'existing' ? 'primary' : 'ghost'} icon={<Users size={16} />} onClick={() => onModeChange('existing')}>{existingLabel}</Button>
+      <Button size="sm" variant={mode === 'new' ? 'primary' : 'ghost'} icon={<UserPlus size={16} />} onClick={() => onModeChange('new')}>{newLabel}</Button>
     </div>
     {mode === 'existing' ? <div className="lw-grid lw-grid--two">
       <SelectField label={fieldLabel} value={selectedId} options={options} onChange={(event) => onSelect(event.target.value)} />

@@ -1,1 +1,35 @@
-.antimicrobial-tabs{display:flex;gap:8px;padding:0 0 16px;border-bottom:1px solid var(--border,#d8e4e7)}.antimicrobial-tabs button{border:1px solid var(--border,#d8e4e7);background:#fff;border-radius:10px;padding:11px 16px;font:inherit;font-weight:700;color:var(--text-muted,#617983);cursor:pointer}.antimicrobial-tabs button.active{background:var(--primary,#087d84);color:#fff;border-color:var(--primary,#087d84)}.amc-method-note{display:flex;gap:12px;align-items:center;margin:16px 0;padding:12px 16px;border-radius:12px;background:#f2f8f8;border:1px solid #d7e7e8}.amc-method-note strong{color:#087d84;white-space:nowrap}.amc-method-note span{color:#526c76}.amc-calculation{display:flex;gap:28px;margin-top:16px;padding:14px 16px;background:#f7fafb;border:1px solid #dbe6e9;border-radius:12px}.amc-calculation strong{margin-left:8px;color:#0b3740}
+.antimicrobial-tabs{display:flex;gap:8px;padding:0 0 16px;border-bottom:1px solid var(--border,#d8e4e7)}.antimicrobial-tabs button{border:1px solid var(--border,#d8e4e7);background:var(--surface);border-radius:10px;padding:11px 16px;font:inherit;font-weight:700;color:var(--text-muted,#617983);cursor:pointer}.antimicrobial-tabs button.active{background:var(--primary,#087d84);color:var(--surface);border-color:var(--primary,#087d84)}.amc-method-note{display:flex;gap:12px;align-items:center;margin:16px 0;padding:12px 16px;border-radius:12px;background:#f2f8f8;border:1px solid #d7e7e8}.amc-method-note strong{color:#087d84;white-space:nowrap}.amc-method-note span{color:#526c76}.amc-calculation{display:flex;gap:28px;margin-top:16px;padding:14px 16px;background:var(--surface-subtle);border:1px solid #dbe6e9;border-radius:12px}.amc-calculation strong{margin-left:8px;color:#0b3740}
+
+/* rc.154 — antimicrobial surveillance final consistency pass. */
+.antimicrobial-tabs{
+  position:sticky;
+  top:0;
+  z-index:4;
+  background:var(--surface);
+}
+.antimicrobial-tabs .lds-button{
+  min-height:38px;
+  box-shadow:none;
+}
+.antimicrobial-tabs .lds-button.active{
+  background:var(--primary);
+  color:var(--surface);
+  border-color:var(--primary);
+}
+.antimicrobial-tabs .lds-button:not(.active){
+  background:var(--surface);
+  color:var(--text-soft);
+  border-color:var(--border-strong);
+}
+.amc-method-note{
+  background:var(--primary-softer);
+  border-color:var(--border);
+}
+.amc-method-note strong{color:var(--primary)}
+.amc-method-note span{color:var(--text-soft)}
+.amc-calculation{
+  background:var(--surface-muted);
+  border-color:var(--border);
+}
+.amc-calculation strong{color:var(--text)}
+

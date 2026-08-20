@@ -24,3 +24,20 @@
 .org-finalized-action__copy small{font-size:.78rem;color:var(--text-muted)}
 .org-finalized-action select{min-width:145px}
 @media(max-width:760px){.org-finalized-action{align-items:stretch;flex-direction:column}.org-finalized-action select{width:100%}}
+
+/* rc.166 committee governance: immutable meeting-attendance snapshot summary */
+.org-meeting-attendance-summary{display:grid;gap:3px;margin-top:6px;color:var(--text-muted,#6b7d86)}
+.org-meeting-attendance-summary small{line-height:1.45}
+
+/* rc.167 — unified training assessment and structured committee agenda */
+.org-attendance-list--presence-only .org-attendance-row{grid-template-columns:minmax(280px,1fr) 190px}
+.org-assessment-list{display:grid;gap:10px}
+.org-assessment-card{border:1px solid var(--border-subtle,#dfe7e5);border-radius:12px;background:var(--surface);padding:12px 14px;display:grid;gap:12px}
+.org-agenda-list{display:grid;gap:10px}
+.org-agenda-item{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:start;padding:12px;border:1px solid var(--border-subtle,#dfe7e5);border-radius:12px;background:var(--surface)}
+.org-agenda-item__index{width:30px;height:30px;border-radius:999px;display:grid;place-items:center;background:var(--surface-soft,#f3faf8);font-weight:800;color:var(--text)}
+.org-agenda-item__body{display:grid;gap:10px;min-width:0}
+.org-finalized-agenda{display:grid;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-subtle,#dfe7e5)}
+.org-finalized-agenda>div{padding:7px 9px;border-radius:8px;background:var(--surface-soft,#f3faf8)}
+.org-finalized-agenda p{margin:3px 0 0!important}
+@media(max-width:900px){.org-attendance-list--presence-only .org-attendance-row,.org-agenda-item{grid-template-columns:1fr}.org-agenda-item__index{display:none}}

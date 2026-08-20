@@ -1,4 +1,5 @@
 import { notifyAction } from '../core/feedback/index'
+import Button from '../core/Button/Button'
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { APP_EVENTS, useAppEvents } from '../../core/events'
 import {
@@ -353,11 +354,12 @@ export default function NewEntryLauncher({ user, open, onClose, initialTypeId = 
         onMouseDown={(event) => event.stopPropagation()}
       >
         <EntryFormHeader
+          compact={initialTypeId === 'hand-hygiene'}
           eyebrow={initialTypeId ? L('Πρόληψη λοιμώξεων','Infection Prevention') : 'Healthcare Suite'}
           title={initialTypeId === 'hand-hygiene' ? L('Νέα παρατήρηση Υγιεινής Χεριών','New Hand Hygiene Observation') : L('Νέα καταχώρηση','New Entry')}
           description={
             initialTypeId === 'hand-hygiene'
-              ? L('Καταγραφή συνεδρίας και ευκαιριών σύμφωνα με τα 5 Σημεία του Παγκόσμιου Οργανισμού Υγείας.','Record a session and opportunities according to the WHO 5 Moments.')
+              ? ''
               : L('Επιλέξτε τον τύπο καταχώρησης και ακολουθήστε τα αντίστοιχα βήματα.','Select the entry type and follow the corresponding steps.')
           }
           onClose={resetAndClose}
@@ -751,9 +753,7 @@ export default function NewEntryLauncher({ user, open, onClose, initialTypeId = 
                   Πίσω
                 </button>
 
-                <button className="primary" type="submit">
-                  Αποθήκευση καταχώρησης
-                </button>
+                <Button type="submit">Αποθήκευση καταχώρησης</Button>
               </div>
             </form>
           )}
@@ -772,6 +772,7 @@ export default function NewEntryLauncher({ user, open, onClose, initialTypeId = 
 
         {(step === 4 || initialTypeId === 'hand-hygiene') && selectedType?.id === 'hand-hygiene' && (
           <EntryFormFooter
+            compact={Boolean(initialTypeId)}
             onCancel={resetAndClose}
             showBack={!initialTypeId}
             onBack={() => {

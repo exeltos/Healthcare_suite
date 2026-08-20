@@ -1,4 +1,5 @@
 import { APP_ROUTES, routeFor } from '../../config/routes'
+import { feedbackSaved } from '../../core/feedback'
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppEvents } from '../../core/events'
@@ -162,7 +163,7 @@ export default function EmployeeWorkspacePage() {
       setForm(saved)
       editingProfileRef.current = false
       setEditingProfile(false)
-      notifyAction(isNewEmployee ? L('Ο εργαζόμενος δημιουργήθηκε και αποθηκεύτηκε στο Supabase.', 'Employee created and saved to Supabase.') : L('Τα στοιχεία του εργαζομένου αποθηκεύτηκαν στο Supabase.', 'Employee details saved to Supabase.'))
+      feedbackSaved({ title: L('Αποθηκεύτηκε','Saved'), message: L('Αποθήκευση','Saved') })
       if(isNewEmployee){
         navigate(routeFor.employeeWorkspace(saved.id), { replace:true, state:{ createdEmployee:true } })
       }
@@ -199,7 +200,7 @@ export default function EmployeeWorkspacePage() {
       setVaccinations(await loadPreventionRecords('staff_vaccination'))
       setLastVaccinationId(saved.id)
       setSelectedVaccination(null)
-      notifyAction(L('Ο εμβολιασμός αποθηκεύτηκε.', 'Vaccination saved.'))
+      feedbackSaved()
     } catch(error) {
       console.error('Employee vaccination save failed',error)
       notifyAction(String(error?.message||'') || L('Η αποθήκευση του εμβολιασμού απέτυχε.', 'Vaccination save failed.'))
@@ -224,7 +225,7 @@ export default function EmployeeWorkspacePage() {
       await saveEmployeeOccupationalVisit(employee.id,occupationalDraft)
       setOccupationalVisitsState(await loadEmployeeOccupationalVisits(employee.id))
       setOccupationalDraft(null)
-      notifyAction(L('Η επίσκεψη στον ιατρό εργασίας αποθηκεύτηκε.', 'Occupational-health visit saved.'))
+      feedbackSaved()
     } catch(error) {
       console.error('Occupational-health save failed',error)
       notifyAction(String(error?.message||'') || L('Η αποθήκευση της επίσκεψης απέτυχε.', 'Occupational-health visit save failed.'))

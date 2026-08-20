@@ -32,15 +32,15 @@
   box-shadow:0 7px 20px rgba(16,55,64,.16);
 }
 .analytics-fullscreen-panel .full-report-head>div>span{color:rgba(255,255,255,.72);letter-spacing:.11em;font-weight:900}
-.analytics-fullscreen-panel .full-report-head h2{margin:4px 0 3px;color:#fff;font-size:25px;letter-spacing:-.015em}
+.analytics-fullscreen-panel .full-report-head h2{margin:4px 0 3px;color:var(--surface);font-size:25px;letter-spacing:-.015em}
 .analytics-fullscreen-panel .full-report-head p{margin:0;color:rgba(255,255,255,.78);font-size:12px}
-.analytics-fullscreen-panel .analytics-back-button{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff}
+.analytics-fullscreen-panel .analytics-back-button{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:var(--surface)}
 .analytics-fullscreen-panel .analytics-back-button:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.48)}
 .analytics-fullscreen-panel .full-report-toolbar{background:#f2f7f8;border-bottom:1px solid #dbe7e9}
 .analytics-fullscreen-panel .analytics-hub-tabs{gap:9px;padding-top:12px;padding-bottom:11px;background:#f8fbfb;border-bottom:1px solid #dce8ea}
-.analytics-fullscreen-panel .analytics-hub-tabs button{height:38px;padding:0 16px;border:1px solid #d8e5e7;border-radius:9px;background:#fff;color:#536d74;box-shadow:0 1px 2px rgba(18,48,57,.03)}
+.analytics-fullscreen-panel .analytics-hub-tabs button{height:38px;padding:0 16px;border:1px solid #d8e5e7;border-radius:9px;background:var(--surface);color:#536d74;box-shadow:0 1px 2px rgba(18,48,57,.03)}
 .analytics-fullscreen-panel .analytics-hub-tabs button:hover{border-color:#aacdd1;background:#f4fafa;color:#0b7079}
-.analytics-fullscreen-panel .analytics-hub-tabs button.is-active{border-color:#0b7b84;background:#0b7b84;color:#fff;box-shadow:0 5px 14px rgba(11,123,132,.18)}
+.analytics-fullscreen-panel .analytics-hub-tabs button.is-active{border-color:#0b7b84;background:#0b7b84;color:var(--surface);box-shadow:0 5px 14px rgba(11,123,132,.18)}
 .analytics-hub-scroll{background:#f8fbfb}
 .full-report-section{box-shadow:0 2px 9px rgba(18,48,57,.035)}
 .compare-bar-row{grid-template-columns:minmax(155px,1fr) minmax(180px,2fr) 106px}

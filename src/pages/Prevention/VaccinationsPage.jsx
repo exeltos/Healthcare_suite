@@ -5,6 +5,7 @@ import { CalendarClock, Download, Plus, Printer, ShieldCheck, Syringe, Trash2, U
 import HybridMultiSelector from '../../components/core/HybridMultiSelector/HybridMultiSelector'
 import {
   Button,
+  DateField,
   Drawer,
   EntityCell,
   EntitySummary,
@@ -190,10 +191,10 @@ export default function VaccinationsPage() {
         {editing && <FormSection title={L("Εργαζόμενος","Employee")}><FormGrid columns={2}><FormField label={L("Ονοματεπώνυμο","Full name")}><input disabled value={editing.employeeName || ''}/></FormField><FormField label={L("Τμήμα / ιδιότητα","Department / category")}><input disabled value={[editing.department, editing.professionalCategory].filter(Boolean).join(' · ')}/></FormField></FormGrid></FormSection>}
         <FormSection title={L("Στοιχεία εμβολιασμού","Vaccination details")}><FormGrid columns={2}>
           <FormField label={L("Εμβόλιο","Vaccine")} required error={errors.vaccine}><LibraryField hideLabel allowManual libraryKey="vaccines" value={form.vaccine} onChange={(value) => setField('vaccine', value)} placeholder={L("Επιλέξτε ή γράψτε εμβόλιο","Select or enter vaccine")}/></FormField>
-          <FormField label={L("Ημερομηνία","Date")} required error={errors.date}><input required type="date" value={form.date} onChange={(e) => setField('date', e.target.value)}/></FormField>
+          <DateField label={L("Ημερομηνία","Date")} required error={errors.date} value={form.date} onValueChange={(value) => setField('date', value)}/>
           <FormField label={L("Δόση","Dose")}><input value={form.dose} onChange={(e) => setField('dose', e.target.value)}/></FormField>
           <FormField label={L("Παρτίδα","Lot")}><input value={form.lot} onChange={(e) => setField('lot', e.target.value)}/></FormField>
-          <FormField label={L("Ισχύει έως","Valid until")}><input type="date" value={form.validUntil} onChange={(e) => setField('validUntil', e.target.value)}/></FormField>
+          <DateField label={L("Ισχύει έως","Valid until")} value={form.validUntil} onValueChange={(value) => setField('validUntil', value)}/>
         </FormGrid></FormSection>
         <FormSection title={L("Σημειώσεις","Notes")}><FormField label={L("Σημειώσεις","Notes")}><textarea rows="5" value={form.notes} onChange={(e) => setField('notes', e.target.value)}/></FormField></FormSection>
       </Form>

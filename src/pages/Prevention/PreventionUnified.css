@@ -30,3 +30,46 @@
   .who-session-card .who-session-observations .prevention-observation-list{height:auto;overflow:visible;padding-right:0;}
 }
 
+/* rc.159 — shared smart date controls in prevention filters/forms. */
+.prevention-unified-page .core-list-workspace .core-date-time-control,
+.records-unified-page .core-list-workspace .core-date-time-control{
+  min-width:150px;
+  height:var(--control-height,42px);
+}
+
+/* rc.160 — WHO detail uses vertical space for observations, not static metadata. */
+.who-session-card{
+  gap:10px;
+}
+.who-session-card>.core-entity-summary{
+  gap:8px;
+}
+.who-session-card>.core-entity-summary .core-stat-card{
+  min-height:66px;
+  padding:10px 12px;
+}
+.who-session-card .who-session-details{
+  padding:10px 12px;
+}
+.who-session-card .who-session-details .core-form-section__header{
+  margin-bottom:8px;
+}
+.who-session-card .who-session-details .core-form-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+}
+.who-session-card .who-session-details .prevention-readonly{
+  min-height:46px;
+  padding:8px 10px;
+  gap:2px;
+}
+.who-session-card .who-session-observations{
+  padding:10px 12px;
+}
+.who-session-card .who-session-observations .core-form-section__header{
+  margin-bottom:8px;
+}
+@media(max-width:1000px){
+  .who-session-card .who-session-details .core-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+

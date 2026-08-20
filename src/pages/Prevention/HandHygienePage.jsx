@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useServiceCollection } from '../../core/hooks'
 import { useOutletContext } from 'react-router-dom'
-import { BarChart3, CheckCircle2, Download, Hand, ListChecks, Plus, Printer, TrendingUp, Users, XCircle } from 'lucide-react'
+import { BarChart3, CheckCircle2, Download, Hand, ListChecks, Plus, Printer, Trash2, TrendingUp, Users, XCircle } from 'lucide-react'
 import {
   Badge,
   Button,
+  DateRangeFilter,
   Drawer,
   EntityCell,
   EntitySummary,
+  FormActions,
   FormGrid,
   FormSection,
   ListWorkspace,
@@ -18,7 +20,7 @@ import {
 import { normalizeText, selectedRows, sortRows, uniqueSortedValues } from '../../core/utils/entityList'
 import { downloadCsv, printRows } from '../../core/utils/listExport'
 import { HAND_HYGIENE_EVENT, loadHandHygieneSessions } from '../../services/preventionService'
-import { loadPreventionRecords } from '../../services/backend/preventionBackendService'
+import { deletePreventionRecord, loadPreventionRecords } from '../../services/backend/preventionBackendService'
 import './PreventionUnified.css'
 import { masterNames } from '../../services/masterDataService'
 import { useI18n } from '../../i18n'
@@ -26,6 +28,7 @@ import { loadCurrentProfile } from '../../services/profile/profileService'
 import { filterRowsByDepartmentScope } from '../../services/accessControlService'
 import { preventionDisplayValue } from './preventionPresentation'
 import { calculateWhoCompliance } from '../../core/utils/observationMetrics'
+import { confirmAction, notifyAction } from '../../components/core/feedback/index'
 
 const MOMENT_LABELS = {
   moment1: '1. Πριν την επαφή με τον ασθενή', moment2: '2. Πριν από καθαρό / άσηπτο χειρισμό', moment3: '3. Μετά από κίνδυνο έκθεσης σε σωματικά υγρά', moment4: '4. Μετά την επαφή με τον ασθενή', moment5: '5. Μετά την επαφή με το περιβάλλον του ασθενούς',
@@ -54,6 +57,7 @@ export default function HandHygienePage(){
   const [sort,setSort]=useState({key:'date',direction:'desc'})
   const [selectedKeys,setSelectedKeys]=useState([])
   const [selectedSession,setSelectedSession]=useState(null)
+  const [deletingSession,setDeletingSession]=useState(false)
   const currentUser=useMemo(()=>loadCurrentProfile(language),[language])
   const scopedRecords=useMemo(()=>filterRowsByDepartmentScope(records,currentUser,row=>row.department),[records,currentUser])
 
@@ -69,6 +73,20 @@ export default function HandHygienePage(){
   const selected=useMemo(()=>selectedRows(visibleRows,selectedKeys,mode==='sessions'?(row)=>row.id:(row)=>row._key),[visibleRows,selectedKeys,mode])
 
   function clearFilters(){setSearch('');setDepartment('');setCategory('');setMoment('');setResult('');setDateFrom('');setDateTo('')}
+  async function removeSelectedSession(){
+    if(!selectedSession?.id||deletingSession)return
+    const confirmed=confirmAction(L('Να διαγραφεί οριστικά η συγκεκριμένη συνεδρία WHO;','Permanently delete this WHO session?'))
+    if(!confirmed)return
+    setDeletingSession(true)
+    try{
+      await deletePreventionRecord('hand_hygiene',selectedSession.id)
+      setRecords(await loadPreventionRecords('hand_hygiene'))
+      setSelectedSession(null)
+      notifyAction(L('Η συνεδρία WHO διαγράφηκε.','WHO session deleted.'))
+    }catch(error){
+      notifyAction(error?.message||L('Η διαγραφή της συνεδρίας WHO απέτυχε.','WHO session deletion failed.'))
+    }finally{setDeletingSession(false)}
+  }
   const activeFilterCount=[search,department,category,moment,result,dateFrom,dateTo].filter(Boolean).length
 
   const sessionColumns=[
@@ -98,16 +116,16 @@ export default function HandHygienePage(){
       stats={<EntitySummary columns={4} ariaLabel={L('Σύνολα υγιεινής χεριών','Hand hygiene totals')}><StatCard compact icon={TrendingUp} label={L('Συμμόρφωση','Compliance')} value={`${summary.rate}%`}/><StatCard compact icon={ListChecks} label={L('Παρατηρήσεις','Observations')} value={summary.opportunities}/><StatCard compact icon={XCircle} label={L('Μη συμμορφώσεις','Non-compliant')} value={summary.missed}/><StatCard compact icon={Users} label={L('Τμήματα','Departments')} value={summary.departments}/></EntitySummary>}
       searchValue={search} onSearchChange={setSearch} searchPlaceholder={L('Αναζήτηση τμήματος, παρατηρητή ή επαγγελματία…','Search department, observer or professional…')}
       activeFilterCount={activeFilterCount} onClearFilters={clearFilters}
-      filters={<><select value={mode} onChange={e=>setMode(e.target.value)} aria-label={L('Προβολή','View')}><option value="sessions">{L('Συνεδρίες WHO','WHO sessions')}</option><option value="observations">{L('Παρατηρήσεις','Observations')}</option></select><select value={department} onChange={e=>setDepartment(e.target.value)} aria-label={L('Τμήμα','Department')}><option value="">{L('Όλα τα τμήματα','All departments')}</option>{departments.map(item=><option key={item}>{item}</option>)}</select><select value={category} onChange={e=>setCategory(e.target.value)} aria-label={L('Κατηγορία','Category')}><option value="">{L('Όλες οι κατηγορίες','All categories')}</option>{categories.map(item=><option key={item}>{item}</option>)}</select><select value={result} onChange={e=>setResult(e.target.value)} aria-label={L('Αποτέλεσμα','Result')}><option value="">{L('Όλα τα αποτελέσματα','All results')}</option><option value="compliant">{L('Συμμόρφωση','Compliant')}</option><option value="missed">{L('Μη συμμόρφωση','Non-compliant')}</option></select><input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} aria-label={L('Από ημερομηνία','From date')}/><input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} aria-label={L('Έως ημερομηνία','To date')}/></>}
+      filters={<><select value={mode} onChange={e=>setMode(e.target.value)} aria-label={L('Προβολή','View')}><option value="sessions">{L('Συνεδρίες WHO','WHO sessions')}</option><option value="observations">{L('Παρατηρήσεις','Observations')}</option></select><select value={department} onChange={e=>setDepartment(e.target.value)} aria-label={L('Τμήμα','Department')}><option value="">{L('Όλα τα τμήματα','All departments')}</option>{departments.map(item=><option key={item}>{item}</option>)}</select><select value={category} onChange={e=>setCategory(e.target.value)} aria-label={L('Κατηγορία','Category')}><option value="">{L('Όλες οι κατηγορίες','All categories')}</option>{categories.map(item=><option key={item}>{item}</option>)}</select><select value={moment} onChange={e=>setMoment(e.target.value)} aria-label="WHO Moment"><option value="">{L('Όλα τα WHO Moments','All WHO Moments')}</option>{Object.entries(MOMENT_LABELS).map(([key,label])=><option key={key} value={key}>{preventionDisplayValue(label,language)||label}</option>)}</select><select value={result} onChange={e=>setResult(e.target.value)} aria-label={L('Αποτέλεσμα','Result')}><option value="">{L('Όλα τα αποτελέσματα','All results')}</option><option value="compliant">{L('Συμμόρφωση','Compliant')}</option><option value="missed">{L('Μη συμμόρφωση','Non-compliant')}</option></select><DateRangeFilter from={dateFrom} to={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} label={L('Περίοδος','Period')} helperText={L('Επιλέξτε συγκεκριμένο χρονικό διάστημα.','Select a specific date range.')} fromLabel={L('Από','From')} toLabel={L('Έως','To')} clearLabel={L('Καθαρισμός','Clear')} applyLabel={L('Εφαρμογή','Apply')} closeLabel={L('Κλείσιμο','Close')}/></>}
       selectedCount={selected.length} selectedLabel={mode==='sessions'?L('συνεδρίες','sessions'):L('παρατηρήσεις','observations')} onClearSelection={()=>setSelectedKeys([])}
       bulkActions={<><Button variant="secondary" size="sm" icon={<Printer size={16}/>} onClick={printSelected}>{L('Εκτύπωση / PDF','Print / PDF')}</Button><Button variant="secondary" size="sm" icon={<Download size={16}/>} onClick={exportSelected}>{L('Εξαγωγή CSV','Export CSV')}</Button></>}
       columns={mode==='sessions'?sessionColumns:observationColumns} rows={visibleRows} getRowKey={mode==='sessions'?(row)=>row.id:(row)=>row._key} onRowClick={row=>setSelectedSession(mode==='sessions'?row:row.session)} selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys} sort={sort} onSortChange={setSort} ariaLabel={L('Υγιεινή χεριών','Hand hygiene')} footer={<span>{visibleRows.length} {mode==='sessions'?L('συνεδρίες','sessions'):L('παρατηρήσεις','observations')}</span>} emptyTitle={mode==='sessions'?L('Δεν υπάρχουν συνεδρίες','No sessions'):L('Δεν υπάρχουν παρατηρήσεις','No observations')}
     />
 
-    <Drawer open={Boolean(selectedSession)} onClose={()=>setSelectedSession(null)} title={L('Συνεδρία WHO','WHO session')} description={selectedSession?`${displayDate(selectedSession.date,language)} · ${selectedSession.department||L('Χωρίς τμήμα','No department')}`:''} width={1080} position="center">
+    <Drawer open={Boolean(selectedSession)} onClose={()=>setSelectedSession(null)} title={L('Συνεδρία WHO','WHO session')} description={selectedSession?`${displayDate(selectedSession.date,language)} · ${selectedSession.department||L('Χωρίς τμήμα','No department')}`:''} width={1080} position="center" footer={selectedSession?<FormActions showPrimary={false} onCancel={()=>setSelectedSession(null)} cancelLabel={L('Κλείσιμο','Close')} destructive={<Button variant="danger" icon={<Trash2 size={16}/>} onClick={removeSelectedSession} disabled={deletingSession}>{deletingSession?L('Διαγραφή…','Deleting…'):L('Διαγραφή','Delete')}</Button>}/>:null}>
       {selectedSession&&<div className="prevention-unified-form who-session-card">
         <EntitySummary columns={4} ariaLabel={L('Σύνολα συνεδρίας','Session totals')}><StatCard compact icon={Hand} label={L('Παρατηρήσεις','Observations')} value={getSessionStats(selectedSession).opportunities}/><StatCard compact icon={CheckCircle2} label={L('Συμμορφώσεις','Compliant')} value={getSessionStats(selectedSession).compliant}/><StatCard compact icon={XCircle} label={L('Μη συμμορφώσεις','Non-compliant')} value={getSessionStats(selectedSession).missed}/><StatCard compact icon={BarChart3} label="Ποσοστό" value={`${getSessionStats(selectedSession).rate}%`}/></EntitySummary>
-        <FormSection className="who-session-details" title={L('Στοιχεία συνεδρίας','Session details')}><FormGrid columns={2}><div className="prevention-readonly"><span>{L('Μονάδα','Facility')}</span><strong>{selectedSession.facility||'—'}</strong></div><div className="prevention-readonly"><span>{L('Τμήμα / περιοχή','Department / area')}</span><strong>{[selectedSession.department,selectedSession.ward].filter(Boolean).join(' · ')||'—'}</strong></div><div className="prevention-readonly"><span>{L('Παρατηρητής','Observer')}</span><strong>{selectedSession.observer||'—'}</strong></div><div className="prevention-readonly"><span>{L('Ώρα','Time')}</span><strong>{[selectedSession.startTime,selectedSession.endTime].filter(Boolean).join(' – ')||'—'}</strong></div></FormGrid></FormSection>
+        <FormSection className="who-session-details" title={L('Στοιχεία συνεδρίας','Session details')}><FormGrid columns={4}><div className="prevention-readonly"><span>{L('Μονάδα','Facility')}</span><strong>{selectedSession.facility||'—'}</strong></div><div className="prevention-readonly"><span>{L('Τμήμα / περιοχή','Department / area')}</span><strong>{[selectedSession.department,selectedSession.ward].filter(Boolean).join(' · ')||'—'}</strong></div><div className="prevention-readonly"><span>{L('Παρατηρητής','Observer')}</span><strong>{selectedSession.observer||'—'}</strong></div><div className="prevention-readonly"><span>{L('Ώρα','Time')}</span><strong>{[selectedSession.startTime,selectedSession.endTime].filter(Boolean).join(' – ')||'—'}</strong></div></FormGrid></FormSection>
         <FormSection className="who-session-observations" title={L('Επιμέρους παρατηρήσεις','Individual observations')}><div className="prevention-observation-list">{(selectedSession.observations||[]).map((item,index)=><article key={item.id||index}><span className="prevention-observation-index">{index+1}</span><div><strong>{item.professionalCode||item.employeeName||L('Χωρίς κωδικό','No code')}</strong><small>{item.professionalCategory||'—'}</small><p>{preventionDisplayValue(MOMENT_LABELS[item.moment], language)||item.moment||'—'}</p></div><div><span>{preventionDisplayValue(ACTION_LABELS[item.action], language)||item.action||'—'}</span><Badge tone={isCompliant(item)?'success':'danger'}>{isCompliant(item)?L('Συμμόρφωση','Compliant'):L('Μη συμμόρφωση','Non-compliant')}</Badge></div></article>)}</div></FormSection>
       </div>}
     </Drawer>

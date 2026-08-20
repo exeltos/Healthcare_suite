@@ -36,6 +36,7 @@ export default function Header({ navigationControl, onLogout, user }) {
     <header className="topbar">
       <div className="topbar-left">{navigationControl}<div className="suite-brand"><div className="suite-logo">H</div><div><strong>Healthcare Suite</strong><span>Clinical Quality &amp; Surveillance</span></div></div></div>
       <div className="topbar-actions">
+        {user?.demo===true&&<span className="topbar-demo-badge">DEMO</span>}
         <LanguageSwitcher compact/><IconButton className="icon-button" label={L('Βοήθεια','Help')} onClick={()=>setHelpOpen(true)}><CircleHelp size={19}/></IconButton>
         <div className="header-popover-wrap" ref={accessRef}>
           <IconButton className="icon-button" label={t('common.accessibility')} onClick={()=>{setAccessOpen(v=>!v);setUserOpen(false)}}><Accessibility size={19}/></IconButton>

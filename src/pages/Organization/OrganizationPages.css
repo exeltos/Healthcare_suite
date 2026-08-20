@@ -26,7 +26,7 @@
 .document-attachment__info strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#29464e;font-size:13px}
 .document-attachment__info small{display:block;margin-top:2px;color:#87999f;font-size:11px}
 .document-attachment__actions{display:flex;gap:5px}
-.document-attachment__actions button{display:grid;place-items:center;width:31px;height:31px;border:1px solid #dbe6e8;border-radius:8px;background:#f7fafb;color:#45636b;cursor:pointer}
+.document-attachment__actions button{display:grid;place-items:center;width:31px;height:31px;border:1px solid #dbe6e8;border-radius:8px;background:var(--surface-subtle);color:#45636b;cursor:pointer}
 .document-attachment__actions button:hover{background:#edf5f6;color:#0b747d}
 .document-attachment__actions button.danger:hover{border-color:#eccdcd;background:var(--surface)1f1;color:#b54141}
 

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Plus, Search, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
+import SearchInput from '../SearchInput/SearchInput'
 import { required, validateValues } from '../../../core/forms'
 import { useI18n } from '../../../i18n'
 import './HybridMultiSelector.css'
@@ -76,7 +77,7 @@ export default function HybridMultiSelector({
     </div>
 
     {mode === 'list' ? <>
-      <label className="hybrid-multi-search"><Search size={15}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={L('Αναζήτηση...','Search...')} /></label>
+      <SearchInput className="hybrid-multi-search" value={query} onChange={setQuery} placeholder={L('Αναζήτηση…','Search…')} ariaLabel={L('Αναζήτηση συμμετέχοντα','Search participant')} />
       <div className="hybrid-multi-list">
         {filtered.map((item) => {
           const id = String(getId(item))

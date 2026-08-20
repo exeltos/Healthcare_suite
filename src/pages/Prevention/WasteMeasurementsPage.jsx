@@ -5,6 +5,7 @@ import { Boxes, Download, Gauge, Plus, Printer, Recycle, Trash2, Weight } from '
 import {
   Badge,
   Button,
+  DateField,
   Drawer,
   EntityCell,
   EntitySummary,
@@ -26,6 +27,7 @@ import '../Records/RecordsUnified.css'
 import { masterNames } from '../../services/masterDataService'
 import { loadDailyCensus } from '../../services/indicatorSourceDataService'
 import { useI18n } from '../../i18n'
+import { SmartDateInput } from '../../components/core/fields/DateTimeControls'
 
 const EMPTY_RECORD={date:'',department:'',wasteType:'',weightKg:'',containers:'',patientDays:'',collectionCompany:'',documentNumber:'',responsible:'',notes:''}
 function number(value){const parsed=Number(String(value??'').replace(',','.'));return Number.isFinite(parsed)?parsed:0}
@@ -89,7 +91,7 @@ export default function WasteMeasurementsPage(){
       stats={<EntitySummary columns={4} ariaLabel={L('Σύνολα αποβλήτων','Waste totals')}><StatCard compact icon={Weight} label={L('Συνολικό βάρος','Total weight')} value={`${formatNumber(metrics.totalWeight,1)} kg`}/><StatCard compact icon={Boxes} label={L('Περιέκτες','Containers')} value={formatNumber(metrics.totalContainers,0)}/><StatCard compact icon={Gauge} label={L('Δείκτης','Indicator')} value={`${formatNumber(metrics.indicator,1)} kg / 1.000`}/><StatCard compact icon={Recycle} label={L('Επικίνδυνα','Hazardous')} value={`${formatNumber(metrics.hazardousPercent,1)}%`} tone={metrics.hazardousPercent?'warning':'default'}/></EntitySummary>}
       searchValue={search} onSearchChange={setSearch} searchPlaceholder={L('Αναζήτηση τμήματος, εταιρείας ή παραστατικού…','Search department, company or document…')}
       activeFilterCount={[search,departmentFilter,typeFilter,dateFrom,dateTo].filter(Boolean).length} onClearFilters={clearFilters}
-      filters={<><input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} aria-label={L('Από','From')}/><input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} aria-label={L('Έως','To')}/><select value={departmentFilter} onChange={e=>setDepartmentFilter(e.target.value)} aria-label={L('Τμήμα','Department')}><option value="">{L('Όλα τα τμήματα','All departments')}</option>{departments.map(item=><option key={item}>{item}</option>)}</select><select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} aria-label={L('Κατηγορία','Category')}><option value="">{L('Όλες οι κατηγορίες','All categories')}</option>{wasteTypes.map(item=><option key={item}>{item}</option>)}</select></>}
+      filters={<><SmartDateInput value={dateFrom} onValueChange={setDateFrom} aria-label={L('Από','From')}/><SmartDateInput value={dateTo} onValueChange={setDateTo} aria-label={L('Έως','To')}/><select value={departmentFilter} onChange={e=>setDepartmentFilter(e.target.value)} aria-label={L('Τμήμα','Department')}><option value="">{L('Όλα τα τμήματα','All departments')}</option>{departments.map(item=><option key={item}>{item}</option>)}</select><select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} aria-label={L('Κατηγορία','Category')}><option value="">{L('Όλες οι κατηγορίες','All categories')}</option>{wasteTypes.map(item=><option key={item}>{item}</option>)}</select></>}
       selectedCount={selectedRecords.length} selectedLabel={L('μετρήσεις','measurements')} onClearSelection={()=>setSelectedKeys([])}
       bulkActions={<><Button variant="secondary" size="sm" icon={<Printer size={16}/>} onClick={printSelected}>{L('Εκτύπωση / PDF','Print / PDF')}</Button><Button variant="secondary" size="sm" icon={<Download size={16}/>} onClick={exportSelected}>{L('Εξαγωγή CSV','Export CSV')}</Button></>}
       columns={columns} rows={filtered} getRowKey={row=>row.id} onRowClick={openRecord} selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys} sort={sort} onSortChange={setSort} ariaLabel={L('Μετρήσεις αποβλήτων','Waste measurements')} footer={<span>{filtered.length} {L('εγγραφές','records')}</span>} emptyTitle={L('Δεν υπάρχουν μετρήσεις','No measurements')}
@@ -99,7 +101,7 @@ export default function WasteMeasurementsPage(){
       <form id="waste-record-form" className="records-unified-form" onSubmit={save}>
         <FormSection title={L('Βασικά στοιχεία','Basic details')}>
           <FormGrid columns={2}>
-            <FormField label={L('Ημερομηνία','Date')} required><input type="date" value={greekToIso(formData.date)} onChange={e=>setField('date',isoToGreek(e.target.value))}/></FormField>
+            <DateField label={L('Ημερομηνία','Date')} required value={greekToIso(formData.date)} onValueChange={value=>setField('date',isoToGreek(value))}/>
             <FormField label={L('Τμήμα','Department')} required><LibraryField hideLabel libraryKey="departments" value={formData.department} onChange={value=>setField('department',value)} placeholder={L('Επιλέξτε ή γράψτε τμήμα','Select or enter department')}/></FormField>
             <FormField label={L('Κατηγορία αποβλήτου','Waste category')} required><LibraryField hideLabel allowManual libraryKey="waste-types" value={formData.wasteType} onChange={value=>setField('wasteType',value)} placeholder={L('Επιλέξτε ή γράψτε κατηγορία','Select or enter category')}/></FormField>
             <FormField label={L('Υπεύθυνος καταχώρησης','Recorded by')}><input value={formData.responsible} onChange={e=>setField('responsible',e.target.value)}/></FormField>

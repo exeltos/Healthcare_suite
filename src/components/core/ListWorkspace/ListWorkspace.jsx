@@ -59,6 +59,7 @@ export default function ListWorkspace({
           onSortChange={onSortChange}
           ariaLabel={ariaLabel}
           showRowCount={false}
+          footer={footer}
           emptyTitle={emptyTitle}
           emptyMessage={emptyMessage}
           highlightedKey={highlightedKey}

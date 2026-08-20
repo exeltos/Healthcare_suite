@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
 import {
   Activity,
-  CheckCircle2,
   Clock3,
   FileText,
   FlaskConical,
@@ -26,7 +25,7 @@ import {
 } from '../../services/patientSamplesService'
 import { deleteClinicalPatientSample, loadClinicalPatientSamples, saveClinicalPatientSample } from '../../services/backend/clinicalDirectoryService'
 
-import { Button, PageHeader, StatCard } from '../../components/core'
+import { Button, FormActions, PageHeader, StatCard } from '../../components/core'
 
 const emptySample = {
   patientName: '',
@@ -767,31 +766,12 @@ export default function PatientSamplesPage() {
               </div>
 
               <footer className="patient-sample-drawer-footer">
-                {selectedRecord && (
-                  <button
-                    className="patient-sample-delete-button"
-                    type="button"
-                    onClick={() =>
-                      deleteRecord(selectedRecord.id)
-                    }
-                  >
-                    <Trash2 size={17} />
-                    Διαγραφή
-                  </button>
-                )}
-
-                <div>
-                  <button type="button" onClick={closeDrawer}>
-                    Ακύρωση
-                  </button>
-
-                  <Button
-                    icon={<CheckCircle2 size={18} />}
-                    type="submit"
-                  >
-                    Αποθήκευση
-                  </Button>
-                </div>
+                <FormActions
+                  onCancel={closeDrawer}
+                  destructive={selectedRecord ? (
+                    <Button variant="danger" type="button" icon={<Trash2 size={16} />} onClick={() => deleteRecord(selectedRecord.id)}>Διαγραφή</Button>
+                  ) : null}
+                />
               </footer>
             </form>
           </aside>

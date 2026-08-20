@@ -18,3 +18,74 @@
 .core-radio-group__options label { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); cursor: pointer; }
 .core-radio-group__options label:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-dark); }
 .core-radio-group__options input { accent-color: var(--primary); }
+
+/* rc.145 — unified manual + picker date/time controls */
+.core-date-time-control {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+.core-date-time-control__text {
+  width: 100%;
+  padding-right: 44px !important;
+  font-variant-numeric: tabular-nums;
+}
+.core-date-time-control__picker {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  transform: translateY(-50%);
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+.core-date-time-control__picker:hover:not(:disabled) {
+  background: var(--primary-softer);
+  color: var(--primary);
+}
+.core-date-time-control__picker:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.core-date-time-control__picker:disabled { opacity: .45; cursor: default; }
+.core-date-time-control__native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  inset: auto 8px 2px auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+.core-date-time-control.is-disabled .core-date-time-control__text,
+.core-date-time-control.is-readonly .core-date-time-control__text {
+  padding-right: var(--control-padding-x) !important;
+}
+
+/* rc.146 — keep date/time picker icons vertically stable on hover/active.
+   The shared Button hover transform must not override the absolute centering transform. */
+.core-date-time-control__picker.lds-button,
+.core-date-time-control__picker.lds-button:hover:not(:disabled),
+.core-date-time-control__picker.lds-button:active:not(:disabled) {
+  transform: translateY(-50%);
+  box-shadow: none;
+}
+
+.core-date-time-control__picker.lds-button:hover:not(:disabled) {
+  background: var(--primary-softer);
+  color: var(--primary);
+}
+
+.core-date-time-control__picker.lds-button:active:not(:disabled) {
+  background: var(--primary-soft);
+}
+

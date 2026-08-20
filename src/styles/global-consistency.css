@@ -222,3 +222,185 @@ body, button, input, select, textarea { font-family: var(--font-family-ui); }
 .language-switcher button{min-height:32px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:var(--text-muted);font:inherit;font-size:.78rem;font-weight:700;cursor:pointer}
 .language-switcher button.active{background:var(--primary);color:var(--surface)}
 .language-switcher.compact button{min-width:34px;padding:0 7px}
+
+/* rc.140 — one field language across Core and legacy pages. */
+:where(.content-area) :where(
+  form input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]),
+  form select,
+  form textarea,
+  .patients-toolbar input,.patients-toolbar select,
+  .employees-toolbar input,.employees-toolbar select,
+  .laboratory-toolbar input,.laboratory-toolbar select,
+  .source-samples-toolbar input,.source-samples-toolbar select,
+  .water-toolbar input,.water-toolbar select,
+  .infections-toolbar input,.infections-toolbar select,
+  .isolations-toolbar input,.isolations-toolbar select,
+  .patient-samples-toolbar input,.patient-samples-toolbar select,
+  .organization-toolbar input,.organization-toolbar select,
+  .quality-toolbar input,.quality-toolbar select,
+  .hh-filter-toolbar input,.hh-filter-toolbar select,
+  .settings-toolbar input,.settings-toolbar select,
+  .fd-toolbar input,.fd-toolbar select,
+  .prevention-toolbar input,.prevention-toolbar select,
+  .records-toolbar input,.records-toolbar select
+) {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: var(--control-height);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--control-radius);
+  background: var(--surface);
+  color: var(--text);
+  padding-left: var(--control-padding-x);
+  padding-right: var(--control-padding-x);
+  font-family: var(--font-family-ui);
+  font-size: var(--control-font-size);
+  line-height: 1.35;
+  outline: 0;
+  box-shadow: none;
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+:where(.content-area) form :where(select) { padding-right: 34px; }
+:where(.content-area) form :where(textarea) { min-height: 104px; padding-top: 10px; padding-bottom: 10px; line-height: 1.5; }
+:where(.content-area) :where(input,textarea)::placeholder { color: var(--placeholder); opacity: 1; }
+:where(.content-area) :where(form input,form select,form textarea):hover:not(:disabled):not([readonly]) { border-color: var(--control-border-hover); }
+:where(.content-area) :where(form input,form select,form textarea):focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--focus-ring); }
+:where(.content-area) :where(form input,form select,form textarea):disabled,
+:where(.content-area) :where(form input,form select,form textarea)[readonly] { background: var(--surface-muted); color: var(--text-soft); cursor: not-allowed; }
+
+/* Native date/time fields keep their browser function but share the same geometry. */
+:where(.content-area) input[type="date"],
+:where(.content-area) input[type="time"],
+:where(.content-area) input[type="datetime-local"] { color-scheme: light; font-variant-numeric: tabular-nums; }
+:where(.content-area) input[type="date"]::-webkit-calendar-picker-indicator,
+:where(.content-area) input[type="time"]::-webkit-calendar-picker-indicator,
+:where(.content-area) input[type="datetime-local"]::-webkit-calendar-picker-indicator { opacity: .62; cursor: pointer; }
+
+/* Labels follow the same scale even in legacy forms. */
+:where(.content-area form) label:not(.core-check-field>label):not(.core-switch-field>label) { color: var(--text-soft); font-size: var(--field-label-size); }
+
+/* Search stays visually identical to the controls around it. */
+:where(.content-area) input[type="search"] { min-height: var(--control-height); }
+.core-search-input input[type="search"] { min-height: 0 !important; }
+
+/* Common action surfaces stay visible while the record content scrolls. */
+:where(.core-drawer__footer,.pw-form-actions,.quality-form-actions,.organization-form-actions,.prevention-form-actions) {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-sticky);
+}
+
+/* rc.164 — Workspace-first record editors.
+   Large legacy record editors now behave like application workspaces rather than popups.
+   Small Core drawers still use presentation="modal" and are intentionally excluded. */
+:where(
+  .patient-sample-drawer-backdrop,
+  .water-drawer-backdrop,
+  .laboratory-drawer-backdrop,
+  .antiseptic-drawer-backdrop,
+  .hh-drawer-backdrop,
+  .waste-drawer-backdrop,
+  .bundle-drawer-backdrop,
+  .infection-drawer-backdrop,
+  .isolation-drawer-backdrop,
+  .source-drawer-backdrop,
+  .settings-drawer-backdrop
+) {
+  position: fixed !important;
+  top: var(--topbar-height) !important;
+  right: 0 !important;
+  bottom: var(--footer-height) !important;
+  left: var(--sidebar-width) !important;
+  z-index: var(--z-modal) !important;
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  padding: 0 !important;
+  background: var(--background) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.sidebar-collapsed :where(
+  .patient-sample-drawer-backdrop,
+  .water-drawer-backdrop,
+  .laboratory-drawer-backdrop,
+  .antiseptic-drawer-backdrop,
+  .hh-drawer-backdrop,
+  .waste-drawer-backdrop,
+  .bundle-drawer-backdrop,
+  .infection-drawer-backdrop,
+  .isolation-drawer-backdrop,
+  .source-drawer-backdrop,
+  .settings-drawer-backdrop
+) { left: var(--sidebar-collapsed) !important; }
+
+:where(
+  .patient-sample-drawer,
+  .water-drawer,
+  .laboratory-drawer,
+  .antiseptic-drawer,
+  .hh-drawer,
+  .waste-drawer,
+  .bundle-drawer,
+  .infection-drawer,
+  .isolation-drawer,
+  .source-drawer,
+  .settings-drawer
+) {
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--surface) !important;
+}
+
+/* Canonical record headings and tab scale for both legacy and Core workspaces. */
+:where(
+  .patient-sample-drawer-header,.water-drawer-header,.laboratory-drawer-header,
+  .antiseptic-drawer > header,.hh-drawer > header,.waste-drawer > header,
+  .bundle-drawer > header,.infection-drawer-header,.isolation-drawer-header,
+  .source-drawer > header,.settings-drawer > header
+) {
+  min-height: 64px !important;
+  padding: 13px var(--space-5) !important;
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+:where(.organization-tabs,.quality-tabs,.prevention-tabs,.drawer-tabs,.patient-drawer-tabs,.core-drawer__tabs) {
+  min-height: 40px !important;
+  padding-inline: var(--space-5) !important;
+}
+:where(.organization-tabs,.quality-tabs,.prevention-tabs,.drawer-tabs,.patient-drawer-tabs,.core-drawer__tabs) button {
+  min-height: 40px !important;
+  padding-inline: 11px !important;
+  font-size: .8rem !important;
+  font-weight: var(--font-weight-semibold) !important;
+}
+
+/* One action footer geometry across old and new editors. */
+:where(
+  .patient-sample-drawer-footer,.water-drawer-footer,.laboratory-drawer-footer,
+  .antiseptic-drawer footer,.hh-drawer footer,.waste-drawer footer,
+  .bundle-drawer footer,.infection-drawer-footer,.isolation-drawer-footer,
+  .source-drawer footer,.settings-drawer footer,.core-drawer__footer
+) {
+  min-height: 58px !important;
+  padding: 8px var(--space-5) !important;
+  border-top: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  box-shadow: 0 -4px 14px rgba(15,62,72,.025) !important;
+}
+
+@media (max-width: 900px) {
+  :where(
+    .patient-sample-drawer-backdrop,.water-drawer-backdrop,.laboratory-drawer-backdrop,
+    .antiseptic-drawer-backdrop,.hh-drawer-backdrop,.waste-drawer-backdrop,
+    .bundle-drawer-backdrop,.infection-drawer-backdrop,.isolation-drawer-backdrop,
+    .source-drawer-backdrop,.settings-drawer-backdrop
+  ) { left: 0 !important; }
+}

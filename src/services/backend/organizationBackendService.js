@@ -62,11 +62,11 @@ export async function saveOperationalCommittee(input={}){
   const memberKeys=new Set()
   for(const member of members){const key=String(member.employeeId||member.fullName||'').trim().toLocaleLowerCase('el-GR');if(key&&memberKeys.has(key))throw new Error('Committee contains the same member more than once.');if(key)memberKeys.add(key)}
   const meetings=Array.isArray(row.meetings)?row.meetings:[]
-  const allowedMemberIds=new Set(members.map(member=>String(member.id)))
   for(const mt of meetings){
-    if((mt.presentIds||[]).some(id=>!allowedMemberIds.has(String(id))))throw new Error('Meeting attendance contains a person who is not a committee member.')
     if(new Set(mt.presentIds||[]).size!==(mt.presentIds||[]).length)throw new Error('Meeting attendance contains duplicate presence.')
     const attendance=Array.isArray(mt.attendance)?mt.attendance:[]
+    const attendanceKeys=attendance.map(item=>String(item.memberId||item.employeeId||item.fullName||'').trim().toLocaleLowerCase('el-GR')).filter(Boolean)
+    if(new Set(attendanceKeys).size!==attendanceKeys.length)throw new Error('Meeting attendance snapshot contains duplicate members.')
     const present=attendance.filter(item=>item.present).length
     const required=Math.max(1,Math.ceil(attendance.length/2))
     if(mt.status==='Οριστικοποιημένη'){

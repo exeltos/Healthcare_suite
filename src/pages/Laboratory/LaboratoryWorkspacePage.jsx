@@ -1,5 +1,6 @@
 import { APP_ROUTES, routeFor } from '../../config/routes'
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
+import { feedbackSaved } from '../../core/feedback'
 import { APP_EVENTS } from '../../core/events'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppEvents } from '../../core/events'
@@ -7,7 +8,7 @@ import { required, useCoreForm } from '../../core/forms'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { FileText, FlaskConical, Pencil, Printer, Save, ShieldCheck, Trash2, X } from 'lucide-react'
 
-import { Badge, Button, IconButton, WorkspaceBody, WorkspaceHeader, WorkspaceShell, WorkspaceTabs } from '../../components/core'
+import { Badge, Button, FormActions, IconButton, WorkspaceBody, WorkspaceHeader, WorkspaceShell, WorkspaceTabs } from '../../components/core'
 import {
   deleteLaboratoryRecordAsync,
   LABORATORY_SOURCE_EVENTS,
@@ -31,6 +32,7 @@ import { LaboratoryAntibiogramSection, LaboratoryResultSection, LaboratorySample
 import { withCanonicalLaboratoryStatus } from '../../core/constants/laboratory'
 import { useI18n } from '../../i18n'
 import { laboratoryDisplayValue } from './laboratoryPresentation'
+import { activeMasterItems } from '../../services/masterDataService'
 import { loadCurrentProfile } from '../../services/profile/profileService'
 import './LaboratoryWorkspacePage.css'
 
@@ -220,6 +222,9 @@ export default function LaboratoryWorkspacePage() {
 
     const source = decodeURIComponent(params.sourceType || '')
     const id = decodeURIComponent(params.recordId || '')
+    // Once an editable laboratory record is open, background source refreshes
+    // must not overwrite unsaved Result / microorganism / antibiogram edits.
+    if (record?.id && String(record.id) === String(id) && (!source || record.sourceType === source)) return
     const found = laboratoryRecords.find((item) => item.id === id && (!source || item.sourceType === source))
     if (!found) return
     setRecord(found)
@@ -258,13 +263,15 @@ export default function LaboratoryWorkspacePage() {
       setEmployeeMode('existing')
     }
     setForm(normalized)
-  }, [isNew, params.sourceType, params.recordId, location.state, laboratoryRecords, patients, employees])
+  }, [isNew, params.sourceType, params.recordId, location.state, laboratoryRecords, patients, employees, record?.id, record?.sourceType])
 
   useEffect(()=>{
-    if(isNew||!record||isEditing)return
+    // Patient/staff laboratory records are directly editable. Do not replace
+    // their in-progress form state when caches/events refresh in the background.
+    if(isNew||!record||!collectionEnvironmentalWorkspace||isEditing)return
     const found=laboratoryRecords.find((item)=>item.id===record.id&&item.sourceType===record.sourceType)
     if(found){setRecord(found);setForm(normalizeForForm(found))}
-  },[laboratoryRecords,isNew,record?.id,record?.sourceType,isEditing])
+  },[laboratoryRecords,isNew,record?.id,record?.sourceType,isEditing,collectionEnvironmentalWorkspace])
 
   const selectedPatient = useMemo(
     () => patients.find((item) => String(item.id) === String(selectedPatientId)),
@@ -522,6 +529,16 @@ export default function LaboratoryWorkspacePage() {
     }
     }
 
+    const canonicalMicroorganisms = normalizeMicroorganismRows(payload)
+    const canonicalAntibiogram = normalizeAntibiogramRows(payload.antibiogram)
+    payload = {
+      ...payload,
+      microorganismResults: canonicalMicroorganisms,
+      microorganism: canonicalMicroorganisms[0]?.name || resolveLibraryName('microorganisms', payload.microorganism),
+      resistance: canonicalMicroorganisms[0]?.resistance || payload.resistance || '',
+      antibiogram: canonicalAntibiogram,
+    }
+
     let createdPatient = null
     if (shouldCreatePatientWithSample) {
       createdPatient = await persistNewPatient()
@@ -561,6 +578,7 @@ export default function LaboratoryWorkspacePage() {
     }
     setForm(normalizeForForm(saved))
     setRecord({ ...saved, sourceType: payload.sourceType })
+    feedbackSaved()
     if (collectionEnvironmentalWorkspace) setIsEditing(false)
     const savedPath = routeFor.laboratoryRecordWorkspace(encodeURIComponent(payload.sourceType), encodeURIComponent(saved.id))
     navigate(collectionMode ? `${savedPath}?mode=collection` : savedPath, { replace: true, state: location.state })
@@ -575,7 +593,7 @@ export default function LaboratoryWorkspacePage() {
 
   async function removeCollectionRecord() {
     if (!record?.id) return
-    if (!confirmAction(L('Να διαγραφεί οριστικά η καταχώρηση δείγματος; Η διαγραφή θα γίνει και από τη βάση δεδομένων.', 'Permanently delete this sample record? It will also be deleted from the database.'))) return
+    if (!confirmAction(L('Να διαγραφεί η καταχώρηση δείγματος;', 'Delete this sample record?'))) return
     try {
       await deleteLaboratoryRecordAsync(record)
       notifyAction(L('Η καταχώρηση διαγράφηκε.', 'The record was deleted.'))
@@ -601,13 +619,10 @@ export default function LaboratoryWorkspacePage() {
         meta={[laboratoryDisplayValue(form.sourceType, language), form.subjectName, laboratoryDisplayValue(form.sampleType, language)].filter(Boolean).join(' · ') || L('Νέα καταχώρηση', 'New record')}
         actions={<>
           <IconButton label={L("Εκτύπωση εργαστηριακής εγγραφής", "Print laboratory record")} onClick={() => window.print()}><Printer size={17} /></IconButton>
-          {collectionEnvironmentalWorkspace && !isNew ? (isEditing ? <>
-            <Button variant="secondary" icon={<X size={16} />} onClick={cancelCollectionEdit}>{L('Ακύρωση', 'Cancel')}</Button>
-            <Button icon={<Save size={16} />} onClick={save}>{L('Αποθήκευση', 'Save')}</Button>
-          </> : <>
+          {collectionEnvironmentalWorkspace && !isNew && !isEditing ? (
             <Button variant="secondary" icon={<Pencil size={16} />} onClick={() => setIsEditing(true)}>{L('Επεξεργασία', 'Edit')}</Button>
-            <IconButton variant="danger" label={L('Διαγραφή καταχώρησης', 'Delete record')} onClick={removeCollectionRecord}><Trash2 size={17} /></IconButton>
-          </>) : <Button icon={<Save size={16} />} onClick={save}>{L('Αποθήκευση', 'Save')}</Button>}
+          ) : null}
+          {!isNew ? <IconButton variant="danger" label={L('Διαγραφή καταχώρησης', 'Delete record')} onClick={removeCollectionRecord}><Trash2 size={17} /></IconButton> : null}
         </>}
       />
       <WorkspaceTabs items={tabItems.map((item) => ({ ...item, label: language === 'en' ? item.labelEn : item.labelEl }))} value={tab} onChange={setTab} ariaLabel={L("Εργαστηριακή εγγραφή", "Laboratory record")} />
@@ -625,6 +640,9 @@ export default function LaboratoryWorkspacePage() {
         </div>}
         {tab === 'result' && <LaboratoryResultSection form={form} setForm={setForm} normalizeMicroorganismRows={normalizeMicroorganismRows} updateMicroorganism={updateMicroorganism} readOnly={laboratoryFieldsLocked} />}
         {tab === 'antibiogram' && <LaboratoryAntibiogramSection form={form} setForm={setForm} updateAntibiogram={updateAntibiogram} readOnly={laboratoryFieldsLocked} />}
+        {(!collectionEnvironmentalWorkspace || isNew || isEditing) ? (
+          <FormActions primaryType="button" onPrimary={save} onCancel={collectionEnvironmentalWorkspace && !isNew && isEditing ? cancelCollectionEdit : returnToOrigin} />
+        ) : null}
       </WorkspaceBody>
     </WorkspaceShell>
   )
@@ -668,6 +686,29 @@ function preserveLaboratoryOwnedFields(payload = {}, original = null) {
   }
 }
 
+function resolveLibraryName(libraryKey, value = '') {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  const items = activeMasterItems(libraryKey)
+  const exactName = items.find((item) => String(item?.name || '').trim() === raw)
+  if (exactName) return exactName.name
+  const byId = items.find((item) => String(item?.id || '').trim() === raw)
+  if (byId) return byId.name
+  const folded = raw.toLocaleLowerCase('el-GR')
+  const insensitive = items.find((item) => String(item?.name || '').trim().toLocaleLowerCase('el-GR') === folded)
+  return insensitive?.name || raw
+}
+
+function normalizeAntibiogramRows(rows = []) {
+  return (Array.isArray(rows) ? rows : []).map((item, index) => {
+    if (typeof item === 'string') {
+      return { id: `legacy-abg-${index}`, antibiotic: resolveLibraryName('antibiotics', item), sensitivity: '', mic: '' }
+    }
+    const rawAntibiotic = item?.antibiotic || item?.antimicrobial || item?.name || item?.antibioticId || ''
+    return { ...item, antibiotic: resolveLibraryName('antibiotics', rawAntibiotic) }
+  })
+}
+
 function normalizeForForm(record = {}) {
   return {
     ...emptyRecord,
@@ -686,7 +727,7 @@ function normalizeForForm(record = {}) {
     receivedDate: toIso(record.receivedDate),
     resultDate: toIso(record.resultDate),
     admissionDate: toIso(record.admissionDate),
-    antibiogram: Array.isArray(record.antibiogram) ? record.antibiogram : [],
+    antibiogram: normalizeAntibiogramRows(record.antibiogram),
   }
 }
 
@@ -699,9 +740,15 @@ function toIso(value) {
 }
 
 function normalizeMicroorganismRows(record = {}) {
-  if (Array.isArray(record.microorganismResults) && record.microorganismResults.length) return record.microorganismResults.map((item, index) => typeof item === 'string' ? { id: `legacy-${index}`, name: item, resistance: '' } : { ...item, name: item.name || item.microorganism || '' })
-  if (Array.isArray(record.microorganisms) && record.microorganisms.length) return record.microorganisms.map((item, index) => typeof item === 'string' ? { id: `legacy-${index}`, name: item, resistance: '' } : { ...item, name: item.name || item.microorganism || '' })
-  if (record.microorganism) return [{ id: 'legacy-0', name: record.microorganism, resistance: record.resistance || '' }]
+  const normalizeRow = (item, index) => {
+    if (typeof item === 'string') return { id: `legacy-${index}`, name: resolveLibraryName('microorganisms', item), resistance: '' }
+    const rawName = item?.name || item?.microorganism || item?.microorganismName || item?.microorganismId || ''
+    const resolvedName = resolveLibraryName('microorganisms', rawName)
+    return { ...item, name: resolvedName || String(rawName || '').trim() }
+  }
+  if (Array.isArray(record.microorganismResults) && record.microorganismResults.length) return record.microorganismResults.map(normalizeRow)
+  if (Array.isArray(record.microorganisms) && record.microorganisms.length) return record.microorganisms.map(normalizeRow)
+  if (record.microorganism) return [{ id: 'legacy-0', name: resolveLibraryName('microorganisms', record.microorganism), resistance: record.resistance || '' }]
   return []
 }
 
