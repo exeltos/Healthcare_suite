@@ -110,10 +110,12 @@ export async function saveDirectoryEmployee(input={}){
     ? query.update(payload).eq('id',input.id)
     : query.insert(payload)
   const { data,error }=await query
-    .select('id,employee_code,first_name,last_name,father_name,professional_category,gender,email,phone,hire_date,notes,status,department:departments(id,name,code)')
+    .select('id,employee_code,first_name,last_name,father_name,professional_category,gender,email,phone,hire_date,notes,status,department_id,department:departments(id,name,code)')
     .single()
   if(error) throw error
+  if(departmentId && String(data?.department_id||'')!==String(departmentId)) throw new Error('Employee department was not persisted correctly in Supabase.')
   const row=mapEmployeeFromDb(data)
+  if(String(input.department||'').trim() && String(row.department||'').trim()!==String(input.department||'').trim()) throw new Error('Employee department verification failed after save.')
   await loadDirectoryEmployees()
   return row
 }

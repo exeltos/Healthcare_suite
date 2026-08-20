@@ -28,7 +28,7 @@ export function EmployeeHealthTab({ language, view, setView, vaccinations, selec
         />
         <form className="ew-vaccine-form" onSubmit={onSaveVaccination}>
           <div className="ew-grid ew-grid--three">
-            <Field label={L('Εμβόλιο *','Vaccine *')}><LibraryField hideLabel allowManual libraryKey="vaccines" value={selectedVaccination.vaccine || ''} onValueChange={(value) => setSelectedVaccination({ ...selectedVaccination, vaccine: value })} placeholder={L('Επιλέξτε ή γράψτε εμβόλιο','Select or enter vaccine')} /></Field>
+            <Field label={L('Εμβόλιο *','Vaccine *')}><LibraryField hideLabel allowManual libraryKey="vaccines" value={selectedVaccination.vaccine || ''} onChange={(value) => setSelectedVaccination({ ...selectedVaccination, vaccine: value })} placeholder={L('Επιλέξτε ή γράψτε εμβόλιο','Select or enter vaccine')} /></Field>
             <Field label={L('Ημερομηνία *','Date *')}><SmartDateInput value={selectedVaccination.date || ''} onValueChange={(value) => setSelectedVaccination({ ...selectedVaccination, date: value })} /></Field>
             <Field label={L('Δόση','Dose')}><input value={selectedVaccination.dose || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, dose: e.target.value })} /></Field>
             <Field label={L('Παρτίδα','Lot')}><input value={selectedVaccination.lot || ''} onChange={(e) => setSelectedVaccination({ ...selectedVaccination, lot: e.target.value })} /></Field>
@@ -72,8 +72,8 @@ export function ProfileTab({ language, form, setForm, editing, saving=false, onE
       <WorkspaceSectionHeader icon={<ShieldCheck size={18} />} title={L('Γενικά & υπηρεσιακά στοιχεία', 'Employment details')} text={L('Κωδικός, ιδιότητα, τμήμα και κατάσταση απασχόλησης.', 'Code, professional category, department and employment status.')} />
       <div className="ew-grid ew-grid--three">
         <Field label={L('Κωδικός εργαζομένου', 'Employee code')}><input disabled={!editing} value={form.employeeCode || ''} onChange={(e) => setForm({ ...form, employeeCode: e.target.value })} /></Field>
-        <LibraryField disabled={!editing} label={L('Ιδιότητα', 'Professional category')} libraryKey="professional-categories" value={form.professionalCategory || ''} onValueChange={(value) => setForm({ ...form, professionalCategory: value })} />
-        <LibraryField disabled={!editing} label={L('Τμήμα', 'Department')} libraryKey="departments" value={form.department || ''} onValueChange={(value) => setForm({ ...form, department: value })} />
+        <LibraryField disabled={!editing} label={L('Ιδιότητα', 'Professional category')} libraryKey="professional-categories" value={form.professionalCategory || ''} onChange={(value) => setForm({ ...form, professionalCategory: value })} />
+        <LibraryField disabled={!editing} label={L('Τμήμα', 'Department')} libraryKey="departments" value={form.department || ''} onChange={(value) => setForm({ ...form, department: value })} />
         <Field label={L('Ημερομηνία πρόσληψης', 'Hire date')}><SmartDateInput disabled={!editing} value={form.hireDate || ''} onValueChange={(value) => setForm({ ...form, hireDate: value })} /></Field>
         <Field label={L('Κατάσταση', 'Status')}><select disabled={!editing} value={form.status || 'Ενεργό'} onChange={(e) => setForm({ ...form, status: e.target.value })}><option value="Ενεργό">{employeeDisplayValue('Ενεργό', language)}</option><option value="Ανενεργό">{employeeDisplayValue('Ανενεργό', language)}</option></select></Field>
       </div>
