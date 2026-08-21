@@ -78,7 +78,7 @@ export async function saveClinicalIsolation(input={}){
   const c=requireSupabase(),org=await orgId(c),pid=await patientIdFor(c,input)
   const today=new Date().toISOString().slice(0,10)
   const row={...input,id:input.id||`ISO-${Date.now()}`}
-  row.status=row.status==='Ακυρωμένη'?'Ακυρωμένη':(row.endDate&&row.endDate<today?'Ολοκληρωμένη':'Ενεργή')
+  row.status=row.status==='Ακυρωμένη'?'Ακυρωμένη':(row.endDate&&row.endDate<=today?'Ολοκληρωμένη':'Ενεργή')
 
   const caseId=row.clinicalCaseId?String(row.clinicalCaseId):null
   let caseRow=null

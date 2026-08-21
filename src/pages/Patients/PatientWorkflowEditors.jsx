@@ -72,8 +72,8 @@ export function IsolationEditor({ form, setForm, save, cancel, files = [], uploa
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
   const todayIso = new Date().toISOString().slice(0, 10)
-  const computedStatus = form.status === 'Ακυρωμένη' ? 'Ακυρωμένη' : (form.endDate && form.endDate < todayIso ? 'Ολοκληρωμένη' : 'Ενεργή')
-  const patchDate = (key, value) => setForm((x) => ({ ...x, [key]: value, status: x.status === 'Ακυρωμένη' ? 'Ακυρωμένη' : ((key === 'endDate' ? value : x.endDate) && (key === 'endDate' ? value : x.endDate) < todayIso ? 'Ολοκληρωμένη' : 'Ενεργή') }))
+  const computedStatus = form.status === 'Ακυρωμένη' ? 'Ακυρωμένη' : (form.endDate && form.endDate <= todayIso ? 'Ολοκληρωμένη' : 'Ενεργή')
+  const patchDate = (key, value) => setForm((x) => ({ ...x, [key]: value, status: x.status === 'Ακυρωμένη' ? 'Ακυρωμένη' : ((key === 'endDate' ? value : x.endDate) && (key === 'endDate' ? value : x.endDate) <= todayIso ? 'Ολοκληρωμένη' : 'Ενεργή') }))
   return <form className="pw-editor compact pw-isolation-editor" onSubmit={save}>
     <div className="pw-form-grid compact">
       <Field label={L("Τύπος", "Type")}><LibraryField hideLabel libraryKey="isolation-types" value={form.isolationType} allowManual placeholder={L("Επιλογή", "Select")} getOptionLabel={(item) => patientDisplayValue(item.name, language)} onChange={(v) => setForm((x) => ({ ...x, isolationType: v }))} /></Field>

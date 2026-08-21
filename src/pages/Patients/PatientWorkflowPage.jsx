@@ -364,7 +364,7 @@ export default function PatientWorkflowPage() {
       return
     }
     const todayIso = new Date().toISOString().slice(0, 10)
-    const derivedStatus = isolationForm.status === 'Ακυρωμένη' ? 'Ακυρωμένη' : (isolationForm.endDate && isolationForm.endDate < todayIso ? 'Ολοκληρωμένη' : 'Ενεργή')
+    const derivedStatus = isolationForm.status === 'Ακυρωμένη' ? 'Ακυρωμένη' : (isolationForm.endDate && isolationForm.endDate <= todayIso ? 'Ολοκληρωμένη' : 'Ενεργή')
     try {
       const savedIsolation = await saveClinicalIsolation({ ...isolationForm, status: derivedStatus, id: isolationForm.id || `ISO-${Date.now()}`, patientId: patient.id, patientName: patient.fullName, patientCode: patient.patientCode, department: patient.department, clinicalCaseId: activeCase.id })
       if(!savedIsolation?.id)throw new Error(L('Η Supabase δεν επιβεβαίωσε την απομόνωση.','Supabase did not confirm the isolation record.'))
