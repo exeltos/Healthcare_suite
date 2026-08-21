@@ -228,7 +228,7 @@ export async function saveClinicalPatientSample(input={}){
     critical_result:Boolean(row.criticalResult),
     critical_communicated_to:String(row.criticalCommunicatedTo||''),
     department_id:departmentId,
-    data:cleanData(row,['id','patientId','patientName','patientCode','department','clinicalCaseId','surveillanceCaseId','parentSampleId','rootSampleId','sampleType','category','sampleReason','collectionDate','collectionTime','receivedDate','resultDate','status','microorganism','resistance','sampleAcceptance','rejectionReason','validatedAt','criticalResult','criticalCommunicatedTo','criticalCommunicatedAt']),
+    data:cleanData(row,['id','patientId','patientName','patientCode','department','clinicalCaseId','surveillanceCaseId','parentSampleId','rootSampleId','sampleType','category','sampleReason','collectionDate','collectionTime','receivedDate','resultDate','status','microorganism','resistance','sampleAcceptance','rejectionReason','validatedAt','criticalResult','criticalCommunicatedTo','criticalCommunicatedAt','createdAt','updatedAt']),
   }
   const {data:existingSample,error:existingSampleError}=await client.from('patient_samples')
     .select('id').eq('organization_id',organizationId).eq('id',String(row.id)).maybeSingle()
@@ -308,7 +308,7 @@ export async function saveClinicalInfection(input={}){
     department_id:departmentId,status:String(row.status||'Υπό διερεύνηση'),
     infection_type:String(row.infectionType||''),infection_date:dateOrNull(row.infectionDate||row.onsetDate),
     microorganism:String(row.microorganism||''),resistance:String(row.resistance||''),
-    data:cleanData(row,['id','patientId','patientName','patientCode','department','clinicalCaseId','relatedSample','initialSampleId','status','infectionType','infectionDate','onsetDate','microorganism','resistance']),
+    data:cleanData(row,['id','patientId','patientName','patientCode','department','clinicalCaseId','relatedSample','initialSampleId','status','infectionType','infectionDate','onsetDate','microorganism','resistance','createdAt','updatedAt']),
   }
   const { data,error }=await client.from('infections').upsert(payload,{onConflict:'id'})
     .select('*,department:departments(id,name,code),patient:patients(id,patient_code,first_name,last_name,admission_date)').single()

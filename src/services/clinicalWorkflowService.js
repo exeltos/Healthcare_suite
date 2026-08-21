@@ -347,20 +347,38 @@ export async function savePatientSampleWithClinicalWorkflowAsync(input = {}) {
     persistedSample=verified
   }
 
+  let persistedCase=null
   if(result?.surveillanceCase) {
-    // Reload after the sample write so the case carries the authoritative
-    // initial_sample_id that saveClinicalPatientSample may have just linked.
-    const patientId=result?.sample?.patientId||result?.surveillanceCase?.patientId||result?.surveillanceCase?.patientKey
-    const persistedCases=patientId?await loadClinicalSurveillanceCases(patientId):[]
-    const persistedCase=persistedCases.find((item)=>String(item.id)===String(result.surveillanceCase.id))
-    await saveClinicalSurveillanceCase(persistedCase||{
+    // The sample now exists in Supabase, so persist the workflow-mutated case
+    // (confirmed-positive / negative / recheck state) instead of re-saving the
+    // stale pre-result case loaded from the database.
+    const caseToPersist={
       ...result.surveillanceCase,
-      initialSampleId:'',
-    })
-  }
-  if(result?.infection) await saveClinicalInfection(result.infection)
+      initialSampleId:result.surveillanceCase.initialSampleId||persistedSample?.id||'',
+    }
+    persistedCase=await saveClinicalSurveillanceCase(caseToPersist)
 
-  return {...result,persistedSample}
+    const patientId=persistedSample?.patientId||caseToPersist.patientId||caseToPersist.patientKey
+    const verifiedCases=patientId?await loadClinicalSurveillanceCases(patientId):[]
+    const verifiedCase=verifiedCases.find((item)=>String(item.id)===String(caseToPersist.id))
+    if(!verifiedCase)throw new Error('Supabase surveillance-case verification failed after laboratory result.')
+    if(String(verifiedCase.status||'')!==String(caseToPersist.status||''))
+      throw new Error('Surveillance case status verification failed after laboratory result.')
+    if(String(verifiedCase.workflowPhase||'')!==String(caseToPersist.workflowPhase||''))
+      throw new Error('Surveillance case workflow verification failed after laboratory result.')
+    if(String(verifiedCase.laboratoryOutcome||'')!==String(caseToPersist.laboratoryOutcome||''))
+      throw new Error('Surveillance case laboratory outcome verification failed after laboratory result.')
+    persistedCase=verifiedCase
+  }
+
+  let persistedInfection=null
+  if(result?.infection) {
+    persistedInfection=await saveClinicalInfection(result.infection)
+    if(String(persistedInfection?.relatedSample||'')!==String(persistedSample?.id||result.sample?.id||''))
+      throw new Error('Infection/sample link verification failed after laboratory result.')
+  }
+
+  return {...result,persistedSample,persistedCase,persistedInfection}
 }
 
 
