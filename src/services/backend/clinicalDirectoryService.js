@@ -106,20 +106,40 @@ export async function saveClinicalSurveillanceCase(input={}){
   const client=requireSupabase()
   const organizationId=await currentOrganizationId(client)
   const patientId=await resolvePatientId(client,input.patientId||input.patientKey,input.patientCode)
-  const departmentId=await resolveDepartmentId(client,organizationId,input.department)
+  const {data:patientRow,error:patientError}=await client.from('patients')
+    .select('id,department_id').eq('organization_id',organizationId).eq('id',String(patientId)).maybeSingle()
+  if(patientError)throw patientError
+  if(!patientRow)throw new Error('Patient not found in the current organization.')
   const row={...input,id:input.id||`CASE-${Date.now()}`,patientKey:patientId}
+  validateClinicalAssessment(row.assessment)
+
+  let initialSampleId=emptyToNull(row.initialSampleId)
+  if(initialSampleId){
+    const {data:sample,error:sampleError}=await client.from('patient_samples')
+      .select('id,patient_id,surveillance_case_id,parent_sample_id,root_sample_id')
+      .eq('organization_id',organizationId).eq('id',initialSampleId).maybeSingle()
+    if(sampleError)throw sampleError
+    if(!sample || String(sample.patient_id)!==String(patientId) || String(sample.surveillance_case_id||'')!==String(row.id))
+      throw new Error('Initial sample must belong to the same patient and surveillance case.')
+    if(sample.parent_sample_id || sample.root_sample_id)
+      throw new Error('Initial sample cannot be a follow-up/recheck sample.')
+  }
+
   const payload={
-    id:String(row.id),organization_id:organizationId,patient_id:patientId,department_id:departmentId,
+    id:String(row.id),organization_id:organizationId,patient_id:patientId,department_id:patientRow.department_id||null,
     status:String(row.status||'Αναμονή εργαστηρίου'),
     workflow_phase:String(row.workflowPhase||'awaiting-laboratory'),
     laboratory_outcome:String(row.laboratoryOutcome||'pending'),
     start_date:dateOrNull(row.startDate),closed_date:dateOrNull(row.closedDate),
-    reason:String(row.reason||''),initial_sample_id:emptyToNull(row.initialSampleId),
+    reason:String(row.reason||''),initial_sample_id:initialSampleId,
     data:cleanData(row,['id','patientKey','patientId','patientCode','department','status','workflowPhase','laboratoryOutcome','startDate','closedDate','reason','initialSampleId','createdAt','updatedAt']),
   }
   const { data,error }=await client.from('surveillance_cases').upsert(payload,{onConflict:'id'})
     .select('*,department:departments(id,name,code)').single()
   if(error)throw error
+  if(String(data?.patient_id||'')!==String(patientId))throw new Error('Surveillance case patient verification failed.')
+  if(String(data?.department_id||'')!==String(payload.department_id||''))throw new Error('Surveillance case department verification failed.')
+  if(String(data?.initial_sample_id||'')!==String(initialSampleId||''))throw new Error('Surveillance case initial sample verification failed.')
   const mapped=mapCaseFromDb(data)
   await loadClinicalSurveillanceCases(patientId)
   return mapped
@@ -154,11 +174,28 @@ export async function saveClinicalPatientSample(input={}){
   const client=requireSupabase()
   const organizationId=await currentOrganizationId(client)
   const patientId=await resolvePatientId(client,input.patientId,input.patientCode)
-  const departmentId=await resolveDepartmentId(client,organizationId,input.department)
   const row={...input,id:input.id||`PS-${Date.now()}`,patientId}
+  const caseId=emptyToNull(row.clinicalCaseId||row.surveillanceCaseId)
+  let caseRow=null
+  if(caseId){
+    const {data,error}=await client.from('surveillance_cases')
+      .select('id,patient_id,department_id,initial_sample_id')
+      .eq('organization_id',organizationId).eq('id',caseId).maybeSingle()
+    if(error)throw error
+    if(!data)throw new Error('Surveillance case was not found in the current organization.')
+    if(String(data.patient_id)!==String(patientId))throw new Error('Sample patient does not match the surveillance case.')
+    caseRow=data
+  }
+  let departmentId=caseRow?.department_id||null
+  if(!departmentId){
+    const {data:patient,error:patientError}=await client.from('patients')
+      .select('department_id').eq('organization_id',organizationId).eq('id',String(patientId)).maybeSingle()
+    if(patientError)throw patientError
+    departmentId=patient?.department_id||null
+  }
   const payload={
     id:String(row.id),organization_id:organizationId,patient_id:patientId,
-    surveillance_case_id:emptyToNull(row.clinicalCaseId||row.surveillanceCaseId),
+    surveillance_case_id:caseId,
     parent_sample_id:emptyToNull(row.parentSampleId),root_sample_id:emptyToNull(row.rootSampleId),
     sample_type:String(row.sampleType||''),category:String(row.category||''),
     sample_reason:String(row.sampleReason||''),collection_date:dateOrNull(row.collectionDate),
@@ -177,8 +214,31 @@ export async function saveClinicalPatientSample(input={}){
   const { data,error }=await client.from('patient_samples').upsert(payload,{onConflict:'id'})
     .select('*,department:departments(id,name,code),patient:patients(id,patient_code,first_name,last_name,admission_date)').single()
   if(error)throw error
+  if(String(data?.patient_id||'')!==String(patientId))throw new Error('Patient sample patient verification failed.')
+  if(String(data?.department_id||'')!==String(departmentId||''))throw new Error('Patient sample department verification failed.')
+  if(String(data?.surveillance_case_id||'')!==String(caseId||''))throw new Error('Patient sample surveillance-case verification failed.')
+
+  const isIndependentInitial=Boolean(caseRow)
+    && !payload.parent_sample_id
+    && !payload.root_sample_id
+    && String(payload.category||'').trim()==='Αρχικό / νέο ανεξάρτητο δείγμα'
+
+  if(isIndependentInitial && !caseRow.initial_sample_id){
+    const {data:updatedCase,error:caseUpdateError}=await client.from('surveillance_cases')
+      .update({initial_sample_id:String(data.id)})
+      .eq('organization_id',organizationId).eq('id',caseId).eq('patient_id',patientId)
+      .is('initial_sample_id',null)
+      .select('id,initial_sample_id').maybeSingle()
+    if(caseUpdateError)throw caseUpdateError
+    if(updatedCase && String(updatedCase.initial_sample_id)!==String(data.id))
+      throw new Error('Surveillance case initial sample link verification failed.')
+  }
+
   const mapped=mapSampleFromDb(data)
-  await loadClinicalPatientSamples(patientId)
+  await Promise.all([
+    loadClinicalPatientSamples(patientId),
+    caseId?loadClinicalSurveillanceCases(patientId):Promise.resolve(),
+  ])
   return mapped
 }
 
@@ -328,6 +388,14 @@ async function resolvePatientId(client,id,code){
     if(error)throw error;if(data?.id)return data.id
   }
   throw new Error('The patient must exist in the production patient registry before saving clinical data.')
+}
+function validateClinicalAssessment(assessment={}){
+  const raw=String(assessment?.temperature??'').trim()
+  if(raw){
+    const temperature=Number(raw)
+    if(!Number.isFinite(temperature) || temperature<30 || temperature>45)
+      throw new Error('Temperature must be between 30 and 45 °C.')
+  }
 }
 function cleanData(row,keys){const copy={...row};keys.forEach(k=>delete copy[k]);return copy}
 function emptyToNull(v){const s=String(v??'').trim();return s||null}
