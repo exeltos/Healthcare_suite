@@ -44,6 +44,10 @@ export function AssessmentPanel({ readOnly = false, data, patch, patchNested, fo
   const L = (el, en) => language === 'en' ? en : el
   const devices = getDeviceRecords(data)
   const [deviceForm, setDeviceForm] = useState(null)
+  const [temperatureDraft, setTemperatureDraft] = useState(String(data.assessment?.temperature ?? ''))
+  useEffect(() => {
+    setTemperatureDraft(String(data.assessment?.temperature ?? ''))
+  }, [data.assessment?.temperature])
   useEffect(() => {
     if (focusedRecord?.type !== 'device' || !focusedRecord.id) return
     const target = devices.find((item) => String(item.id) === String(focusedRecord.id))
@@ -83,7 +87,29 @@ export function AssessmentPanel({ readOnly = false, data, patch, patchNested, fo
       <Field label={L("Έναρξη συμπτωμάτων", "Symptom onset")}><Input disabled={readOnly} type="date" value={data.assessment?.symptomOnsetDate} onChange={(v) => patchNested('assessment', { symptomOnsetDate: v })} /></Field>
       <Field label={L("Κλινική ταξινόμηση", "Clinical classification")}><Select disabled={readOnly} value={data.assessment?.classification} onChange={(v) => patchNested('assessment', { classification: v })}><option value="">{L("Επιλογή", "Select")}</option>{CLINICAL_ASSESSMENT_OPTIONS.map((x) => <option key={x} value={x}>{patientDisplayValue(x, language)}</option>)}</Select></Field>
       <Field label={L("Εστία / τύπος λοίμωξης", "Infection site / type")}><Select disabled={readOnly} value={data.assessment?.infectionSite} onChange={(v) => patchNested('assessment', { infectionSite: v })}><option value="">{L("Επιλογή", "Select")}</option>{masterNames('infection-sites').map((x) => <option key={x} value={x}>{patientDisplayValue(x, language)}</option>)}</Select></Field>
-      <Field label={L("Θερμοκρασία (°C)", "Temperature (°C)")}><Input disabled={readOnly} type="number" min="30" max="45" step="0.1" value={data.assessment?.temperature} onChange={(v) => patchNested('assessment', { temperature: v })} /></Field>
+      <Field label={L("Θερμοκρασία (°C)", "Temperature (°C)")}><Input
+        disabled={readOnly}
+        type="number"
+        min="30"
+        max="45"
+        step="0.1"
+        value={temperatureDraft}
+        onChange={setTemperatureDraft}
+        onBlur={async () => {
+          const raw=String(temperatureDraft||'').trim()
+          if(!raw){
+            await patchNested('assessment',{temperature:''})
+            return
+          }
+          const value=Number(raw)
+          if(!Number.isFinite(value) || value<30 || value>45){
+            notifyAction(L('Η θερμοκρασία πρέπει να είναι μεταξύ 30 και 45 °C.','Temperature must be between 30 and 45 °C.'))
+            setTemperatureDraft(String(data.assessment?.temperature ?? ''))
+            return
+          }
+          await patchNested('assessment',{temperature:raw})
+        }}
+      /></Field>
       <Field label="CRP"><Input disabled={readOnly} value={data.assessment?.crp} onChange={(v) => patchNested('assessment', { crp: v })} placeholder={L("π.χ. mg/L", "e.g. mg/L")} /></Field>
       <Field label="PCT"><Input disabled={readOnly} value={data.assessment?.pct} onChange={(v) => patchNested('assessment', { pct: v })} placeholder={L("π.χ. ng/mL", "e.g. ng/mL")} /></Field>
       <Field label={L("Συμπτώματα", "Symptoms")} wide><MultiSelect disabled={readOnly} value={data.questionnaire?.symptoms} options={masterNames('symptoms')} getOptionLabel={(value) => patientDisplayValue(value, language)} onChange={(v) => patchNested('questionnaire', { symptoms: v })} emptyLabel={L("Χωρίς καταχωρημένα συμπτώματα", "No symptoms recorded")} allowCustom customLabel={L("Προσθήκη συμπτώματος", "Add symptom")} onAddCustom={(name) => upsertMasterItemAsync('symptoms', { name })} /></Field>
