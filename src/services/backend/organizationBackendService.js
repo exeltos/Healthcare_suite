@@ -5,20 +5,24 @@ import { loadTraining,upsertTraining,deleteTraining,loadCommittees,upsertCommitt
 export async function loadOperationalTraining(){
   if(!IS_PRODUCTION)return loadTraining()
   const c=requireSupabase();const {data,error}=await c.from('training_records').select('*,department:departments(id,name)').order('training_date',{ascending:false});if(error)throw error
-  const rows=(data||[]).map(mapTraining);if(JSON.stringify(loadTraining())!==JSON.stringify(rows))replaceTrainingCollection(rows);return rows
+  const base=(data||[]).map(mapTraining)
+  const rows=await hydrateRelationalTraining(c,base)
+  if(JSON.stringify(loadTraining())!==JSON.stringify(rows))replaceTrainingCollection(rows)
+  return rows
 }
 export async function saveOperationalTraining(input={}){
   if(!IS_PRODUCTION)return upsertTraining(input)
-  const c=requireSupabase(),org=await orgId(c),dep=await departmentId(c,org,input.department),row={...input,id:input.id||`TR-${Date.now()}`}
+  const c=requireSupabase(),org=await orgId(c),actor=await actorId(c),dep=await departmentId(c,org,input.department),row={...input,id:input.id||`TR-${Date.now()}`}
   const trainingDate=date(row.date),validUntil=date(row.validUntil)
   if(!String(row.title||'').trim()||!trainingDate)throw new Error('Training title and date are required.')
   if(validUntil&&validUntil<trainingDate)throw new Error('Training validity date cannot precede the training date.')
   const attendance=Array.isArray(row.attendance)?row.attendance:[]
   const employeeIds=[...new Set(attendance.map(item=>String(item.employeeId||'').trim()).filter(Boolean))]
+  let staffMap=new Map()
   if(employeeIds.length){
-    const {data:staff,error:staffError}=await c.from('employees').select('id,department_id,status').eq('organization_id',org).in('id',employeeIds)
+    const {data:staff,error:staffError}=await c.from('employees').select('id,department_id,status,professional_category,department:departments(id,name)').eq('organization_id',org).in('id',employeeIds)
     if(staffError)throw staffError
-    const staffMap=new Map((staff||[]).map(item=>[String(item.id),item]))
+    staffMap=new Map((staff||[]).map(item=>[String(item.id),item]))
     for(const item of attendance){
       if(!item.employeeId)continue
       const employee=staffMap.get(String(item.employeeId))
@@ -37,8 +41,117 @@ export async function saveOperationalTraining(input={}){
     if(missing.length)throw new Error('Completed competency training requires an assessment result for each completed attendee.')
   }
   const payload={id:String(row.id),organization_id:org,department_id:dep,title:String(row.title||''),category:String(row.category||''),trainer:String(row.trainer||''),training_date:trainingDate,status:String(row.status||'Προγραμματισμένη'),duration_hours:Number(row.durationHours||0),valid_until:validUntil,attendance,attachments:Array.isArray(row.attachments)?row.attachments:[],notes:String(row.notes||''),data:rest(row,['id','department','title','category','trainer','date','status','durationHours','validUntil','attendance','attachments','notes','createdAt','updatedAt'])}
-  const {data,error}=await c.from('training_records').upsert(payload,{onConflict:'id'}).select('*,department:departments(id,name)').single();if(error)throw error;return mapTraining(data)
+  const {data:saved,error}=await c.from('training_records').upsert(payload,{onConflict:'id'}).select('*,department:departments(id,name)').single();if(error)throw error
+  await syncTrainingAttendees(c,{org,actor,row,staffMap})
+  const hydrated=await hydrateRelationalTraining(c,[mapTraining(saved)])
+  const verified=hydrated[0]
+  if((verified?.attendance||[]).length!==attendance.length)throw new Error('Training attendee relational verification failed.')
+  return verified
 }
+
+async function hydrateRelationalTraining(c,rows){
+  if(!rows.length)return rows
+  const ids=rows.map(row=>String(row.id))
+  const {data,error}=await c.from('training_attendees').select('*').in('training_id',ids).order('created_at')
+  if(error)throw error
+  const groups=(data||[]).reduce((map,item)=>{
+    const key=String(item.training_id||'')
+    if(!map.has(key))map.set(key,[])
+    map.get(key).push(item)
+    return map
+  },new Map())
+  return rows.map(row=>{
+    const relational=groups.get(String(row.id))||[]
+    if(!relational.length)return row
+    const attendance=relational.map(item=>({
+      attendeeId:item.id,
+      relationalId:item.id,
+      employeeId:item.employee_id||'',
+      employeeName:item.employee_name||'',
+      department:item.department_name||'',
+      departmentId:item.department_id||'',
+      professionalCategory:item.professional_category||'',
+      status:item.attendance_status||'Προγραμματισμένος',
+      score:item.score==null?'':String(item.score),
+      competencyResult:item.competency_result||'',
+      competencyNotes:item.competency_notes||'',
+      competencyValidUntil:item.competency_valid_until||'',
+      assessedBy:item.assessed_by_name||'',
+      assessedByUserId:item.assessed_by_user_id||'',
+      assessedAt:item.assessed_at?String(item.assessed_at).slice(0,10):'',
+      certificate:item.certificate_data??null,
+      manual:!!item.is_manual,
+    }))
+    return {...row,attendance}
+  })
+}
+
+async function syncTrainingAttendees(c,{org,actor,row,staffMap}){
+  const attendance=Array.isArray(row.attendance)?row.attendance:[]
+  const {data:existing,error:readError}=await c.from('training_attendees').select('*').eq('organization_id',org).eq('training_id',String(row.id))
+  if(readError)throw readError
+  const keep=new Set()
+  for(const item of attendance){
+    const employeeId=String(item.employeeId||'').trim()||null
+    const current=(existing||[]).find(entry=>
+      employeeId
+        ? String(entry.employee_id||'')===employeeId
+        : (!entry.employee_id && (
+            String(entry.id||'')===String(item.relationalId||item.attendeeId||'')
+            || String(entry.employee_name||'').trim().toLocaleLowerCase('el-GR')===String(item.employeeName||'').trim().toLocaleLowerCase('el-GR')
+          ))
+    )
+    const staff=employeeId?staffMap.get(employeeId):null
+    const department=one(staff?.department)
+    const hasAssessment=Boolean(
+      String(item.competencyResult||'').trim()
+      || String(item.score||'').trim()
+      || String(item.competencyNotes||'').trim()
+      || item.assessedAt
+    )
+    const numericScore=String(item.score||'').trim()===''?null:Number(String(item.score).replace(',','.'))
+    if(numericScore!==null&&!Number.isFinite(numericScore))throw new Error('Training attendee score must be numeric.')
+    const payload={
+      organization_id:org,
+      training_id:String(row.id),
+      employee_id:employeeId,
+      employee_name:String(item.employeeName||''),
+      department_id:staff?.department_id||item.departmentId||null,
+      department_name:String(department?.name||item.department||''),
+      professional_category:String(staff?.professional_category||item.professionalCategory||''),
+      attendance_status:String(item.status||'Προγραμματισμένος'),
+      score:numericScore,
+      competency_result:String(item.competencyResult||''),
+      competency_notes:String(item.competencyNotes||''),
+      competency_valid_until:date(item.competencyValidUntil),
+      assessed_by_user_id:hasAssessment?(item.assessedByUserId||actor):null,
+      assessed_by_name:String(item.assessedBy||''),
+      assessed_at:item.assessedAt?`${date(item.assessedAt)}T00:00:00Z`:null,
+      certificate_data:item.certificate??null,
+      is_manual:!!item.manual,
+      created_by:current?.created_by||actor,
+    }
+    let saved
+    if(current){
+      const {data,error}=await c.from('training_attendees').update(payload).eq('id',current.id).select().single()
+      if(error)throw error
+      saved=data
+    }else{
+      const {data,error}=await c.from('training_attendees').insert(payload).select().single()
+      if(error)throw error
+      saved=data
+    }
+    keep.add(String(saved.id))
+    item.relationalId=saved.id
+    item.attendeeId=saved.id
+  }
+  const stale=(existing||[]).filter(item=>!keep.has(String(item.id)))
+  for(const item of stale){
+    const {error}=await c.from('training_attendees').delete().eq('id',item.id)
+    if(error)throw error
+  }
+}
+
 export async function deleteOperationalTraining(id){
   if(!IS_PRODUCTION)return deleteTraining(id)
   const c=requireSupabase();const {error}=await c.from('training_records').delete().eq('id',String(id));if(error)throw error;return true
