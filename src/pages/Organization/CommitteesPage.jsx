@@ -294,7 +294,7 @@ export default function CommitteesPage(){
   }
 
   function addAction(){
-    setMeeting(c=>({...c,actions:[...(c.actions||[]),{id:`action-${Date.now()}`,title:'',owner:'',dueDate:'',status:'Ανοικτή'}]}))
+    setMeeting(c=>({...c,actions:[...(c.actions||[]),{id:`action-${Date.now()}`,title:'',owner:'',dueDate:'',status:'Ανοικτή',agendaItemId:''}]}))
   }
 
   function updateAction(id,patch){
@@ -559,6 +559,10 @@ export default function CommitteesPage(){
           >
             {(meeting.actions||[]).map(action=><div className="org-stack-row" key={action.id}>
               <input aria-label={L('Ενέργεια','Action')} placeholder={L('Ενέργεια','Action')} value={action.title||''} onChange={e=>updateAction(action.id,{title:e.target.value})}/>
+              <select aria-label={L('Σχετικό θέμα','Related topic')} value={action.agendaItemId||''} onChange={e=>updateAction(action.id,{agendaItemId:e.target.value})}>
+                <option value="">{L('Γενική / ανεξάρτητη απόφαση','General / independent decision')}</option>
+                {(meeting.agendaItems||[]).filter(item=>String(item.title||'').trim()).map((item,index)=><option key={item.id} value={item.id}>{index+1}. {item.title}</option>)}
+              </select>
               <select aria-label={L('Υπεύθυνος','Owner')} value={action.owner||''} onChange={e=>updateAction(action.id,{owner:e.target.value})}><option value="">{L('Επιλέξτε υπεύθυνο','Select owner')}</option>{form.members.map(m=><option key={m.id} value={m.fullName}>{m.fullName}</option>)}</select>
               <input aria-label={L('Προθεσμία','Due date')} type="date" value={action.dueDate||''} onChange={e=>updateAction(action.id,{dueDate:e.target.value})}/>
               <select aria-label={L('Κατάσταση ενέργειας','Action status')} value={action.status||'Ανοικτή'} onChange={e=>updateAction(action.id,{status:e.target.value})}>
