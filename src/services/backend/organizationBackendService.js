@@ -199,8 +199,16 @@ async function syncCommitteeRelations(c,{org,actor,row,staffMap}){
     const attendance=(mt.attendance||[]).map(a=>{const key=String(a.employeeId||a.fullName||'').toLocaleLowerCase('el-GR'),cm=memberLookup.get(key);return {organization_id:org,meeting_id:meetingId,committee_member_id:cm?.id||null,employee_id:a.employeeId||cm?.employee_id||null,full_name:String(a.fullName||cm?.full_name||''),role:String(a.role||cm?.role||''),attendance_status:a.present?'Παρόν':'Απών',attendance_notes:String(a.attendanceNotes||'')}})
     if(attendance.length){const {error}=await c.from('committee_meeting_attendees').insert(attendance);if(error)throw error}
     const agendaIds=new Set()
+    const agendaRelationMap=new Map()
     for(let i=0;i<(mt.agendaItems||[]).length;i++){
-      const item=mt.agendaItems[i],agendaId=uuidOrNew(item.relationalId||item.id);item.relationalId=agendaId;item.id=agendaId;agendaIds.add(agendaId)
+      const item=mt.agendaItems[i]
+      const sourceAgendaId=String(item.id||item.relationalId||'')
+      const agendaId=uuidOrNew(item.relationalId||item.id)
+      item.relationalId=agendaId
+      item.id=agendaId
+      agendaIds.add(agendaId)
+      if(sourceAgendaId)agendaRelationMap.set(sourceAgendaId,agendaId)
+      agendaRelationMap.set(String(agendaId),agendaId)
       const {error}=await c.from('committee_agenda_items').upsert({id:agendaId,organization_id:org,meeting_id:meetingId,position:i+1,title:String(item.title||''),description:String(item.discussion||''),presenter:String(item.presenter||''),status:item.decision?'Αποφασίστηκε':'Συζητήθηκε'},{onConflict:'id'});if(error)throw error
       if(String(item.decision||'').trim()){
         const decisionId=uuidOrNew(item.decisionRelationalId);item.decisionRelationalId=decisionId
@@ -210,7 +218,7 @@ async function syncCommitteeRelations(c,{org,actor,row,staffMap}){
     for(const action of mt.actions||[]){
       const decisionId=uuidOrNew(action.relationalId||action.id);action.relationalId=decisionId;action.id=decisionId
       const ownerMember=members.find(m=>String(m.fullName||'')===String(action.owner||''))
-      const {error}=await c.from('committee_decisions').upsert({id:decisionId,organization_id:org,committee_id:String(row.id),meeting_id:meetingId,agenda_item_id:(mt.agendaItems||[]).find(item=>String(item.id||item.relationalId||'')===String(action.agendaItemId||''))?.relationalId||null,decision_date:date(mt.date)||new Date().toISOString().slice(0,10),title:String(action.title||''),decision_text:String(action.title||''),responsible_employee_id:ownerMember?.employeeId||null,responsible_name:String(action.owner||''),due_date:date(action.dueDate),status:String(action.status||'Ανοιχτή'),completed_at:action.status==='Ολοκληρωμένη'?(action.completedAt||new Date().toISOString()):null,created_by:decisionCreator.get(decisionId)||actor},{onConflict:'id'});if(error)throw error
+      const {error}=await c.from('committee_decisions').upsert({id:decisionId,organization_id:org,committee_id:String(row.id),meeting_id:meetingId,agenda_item_id:agendaRelationMap.get(String(action.agendaItemId||''))||null,decision_date:date(mt.date)||new Date().toISOString().slice(0,10),title:String(action.title||''),decision_text:String(action.title||''),responsible_employee_id:ownerMember?.employeeId||null,responsible_name:String(action.owner||''),due_date:date(action.dueDate),status:String(action.status||'Ανοιχτή'),completed_at:action.status==='Ολοκληρωμένη'?(action.completedAt||new Date().toISOString()):null,created_by:decisionCreator.get(decisionId)||actor},{onConflict:'id'});if(error)throw error
     }
   }
 }
