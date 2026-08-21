@@ -318,14 +318,36 @@ export async function saveClinicalInfection(input={}){
     department_id:departmentId,status:String(row.status||'Υπό διερεύνηση'),
     infection_type:String(row.infectionType||''),infection_date:dateOrNull(row.infectionDate||row.onsetDate),
     microorganism:String(row.microorganism||''),resistance:String(row.resistance||''),
-    data:cleanData(row,['id','patientId','patientName','patientCode','department','clinicalCaseId','relatedSample','initialSampleId','status','infectionType','infectionDate','onsetDate','microorganism','resistance','createdAt','updatedAt']),
+    origin:String(row.origin||''),
+    outcome:String(row.outcome||''),
+    closure_reason:String(row.closureReason||''),
+    completed_date:dateOrNull(row.completedDate),
+    cancellation_date:dateOrNull(row.cancellationDate),
+    cancellation_reason:String(row.cancellationReason||''),
+    verification_status:String(row.verificationStatus||''),
+    auto_created_from_laboratory:Boolean(row.autoCreatedFromLaboratory),
+    data:cleanData(row,['id','patientId','patientName','patientCode','department','clinicalCaseId','relatedSample','initialSampleId','status','infectionType','infectionDate','onsetDate','microorganism','resistance','origin','outcome','closureReason','completedDate','cancellationDate','cancellationReason','verificationStatus','autoCreatedFromLaboratory','createdAt','updatedAt']),
   }
   const { data,error }=await client.from('infections').upsert(payload,{onConflict:'id'})
     .select('*,department:departments(id,name,code),patient:patients(id,patient_code,first_name,last_name,admission_date)').single()
   if(error)throw error
-  const mapped=mapInfectionFromDb(data)
+  const {data:verified,error:verifyError}=await client.from('infections')
+    .select('*,department:departments(id,name,code),patient:patients(id,patient_code,first_name,last_name,admission_date)')
+    .eq('organization_id',organizationId).eq('id',String(row.id)).maybeSingle()
+  if(verifyError)throw verifyError
+  if(!verified?.id)throw new Error('Supabase infection write could not be verified.')
+  const expected={
+    origin:String(row.origin||''),outcome:String(row.outcome||''),closure_reason:String(row.closureReason||''),
+    completed_date:dateOrNull(row.completedDate),cancellation_date:dateOrNull(row.cancellationDate),
+    cancellation_reason:String(row.cancellationReason||''),verification_status:String(row.verificationStatus||''),
+    auto_created_from_laboratory:Boolean(row.autoCreatedFromLaboratory),
+  }
+  for(const [key,value] of Object.entries(expected)){
+    if(String(verified[key]??'')!==String(value??''))throw new Error(`Supabase infection lifecycle verification failed: ${key}.`)
+  }
+  const mapped=mapInfectionFromDb(verified)
   await loadClinicalInfections(patientId)
-  return mapped
+  return {...mapped,_persisted:true}
 }
 
 export async function deleteClinicalInfection(id){
@@ -546,7 +568,16 @@ function mapInfectionFromDb(row={}){
     admissionDate:patient?.admission_date||row.data?.admissionDate||'',department:department?.name||'',
     clinicalCaseId:row.surveillance_case_id||'',relatedSample:row.related_sample_id||'',
     status:row.status||'',infectionType:row.infection_type||'',infectionDate:row.infection_date||'',
-    microorganism:row.microorganism||'',resistance:row.resistance||'',createdAt:row.created_at||null,updatedAt:row.updated_at||null}
+    microorganism:row.microorganism||'',resistance:row.resistance||'',
+    origin:row.origin??row.data?.origin??'',
+    outcome:row.outcome??row.data?.outcome??'',
+    closureReason:row.closure_reason??row.data?.closureReason??'',
+    completedDate:row.completed_date??row.data?.completedDate??'',
+    cancellationDate:row.cancellation_date??row.data?.cancellationDate??'',
+    cancellationReason:row.cancellation_reason??row.data?.cancellationReason??'',
+    verificationStatus:row.verification_status??row.data?.verificationStatus??'',
+    autoCreatedFromLaboratory:row.auto_created_from_laboratory??row.data?.autoCreatedFromLaboratory??false,
+    createdAt:row.created_at||null,updatedAt:row.updated_at||null}
 }
 
 function mergeCasesIntoCache(rows,patientId){
