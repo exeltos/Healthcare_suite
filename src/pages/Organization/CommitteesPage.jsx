@@ -46,6 +46,7 @@ export default function CommitteesPage(){
   const [form,setForm]=useState(EMPTY)
   const [meeting,setMeeting]=useState(EMPTY_MEETING)
   const [activeTab,setActiveTab]=useState('details')
+  const memberEditsRef=useRef(new Map())
 
   useAppEvents([ORGANIZATION_EVENT, EMPLOYEES_EVENT], () => {
     loadOperationalCommittees().then(setRows).catch(()=>{})
@@ -98,6 +99,7 @@ export default function CommitteesPage(){
   const setField=(name,value)=>setForm(c=>({...c,[name]:value}))
 
   function openNew(){
+    memberEditsRef.current.clear()
     setEditing(null)
     setForm({...EMPTY,members:[],memberHistory:[],meetings:[],attachments:[]})
     setMeeting({...EMPTY_MEETING,agendaItems:[],actions:[],attachments:[]})
@@ -106,6 +108,7 @@ export default function CommitteesPage(){
   }
 
   function openRecord(row){
+    memberEditsRef.current.clear()
     setEditing(row)
     setForm({
       ...EMPTY,
@@ -121,6 +124,7 @@ export default function CommitteesPage(){
   }
 
   function close(){
+    memberEditsRef.current.clear()
     setOpen(false)
     setEditing(null)
     setForm(EMPTY)
@@ -139,16 +143,23 @@ export default function CommitteesPage(){
       notifyAction(L('Υπάρχει ήδη επιτροπή με την ίδια ονομασία.','A committee with the same name already exists.'))
       return
     }
+    const mergePendingMemberEdits=(members=[])=>members.map(member=>{
+      const keys=[member.employeeId,member.relationalId,member.id,member.employeeId?`employee-${member.employeeId}`:''].filter(Boolean).map(String)
+      const patch=keys.map(key=>memberEditsRef.current.get(key)).find(Boolean)
+      return patch?{...member,...patch}:member
+    })
+    const membersForSave=mergePendingMemberEdits(form.members||[])
     const memberSignature=value=>JSON.stringify((value||[]).map(item=>({id:item.id,employeeId:item.employeeId||'',fullName:item.fullName||'',role:item.role||'',duties:item.duties||''})))
-    const membershipChanged=Boolean(editing)&&memberSignature(editing.members)!==memberSignature(form.members)
+    const membershipChanged=Boolean(editing)&&memberSignature(editing.members)!==memberSignature(membersForSave)
     const saved={
       ...form,
+      members:membersForSave,
       id:editing?.id||form.id,
       memberHistory:membershipChanged?[...(form.memberHistory||[]),{
         id:`membership-${Date.now()}`,
         changedAt:new Date().toISOString(),
         before:(editing.members||[]).map(item=>({...item})),
-        after:(form.members||[]).map(item=>({...item})),
+        after:membersForSave.map(item=>({...item})),
       }]:(form.memberHistory||[]),
       nextMeeting:form.nextMeeting||addInterval(form.lastMeeting,form.frequency),
     }
@@ -239,8 +250,10 @@ export default function CommitteesPage(){
   }
 
   function updateMember(memberKey,patch){
+    const key=String(memberKey||'')
+    const previous=memberEditsRef.current.get(key)||{}
+    memberEditsRef.current.set(key,{...previous,...patch})
     setForm(c=>{
-      const key=String(memberKey||'')
       let members=c.members.map(x=>{
         const matches=[
           x.id,
@@ -250,8 +263,14 @@ export default function CommitteesPage(){
         ].filter(Boolean).some(value=>String(value)===key)
         return matches?{...x,...patch}:x
       })
-      if(patch.role==='Πρόεδρος') members=members.map(x=>x.id!==id&&x.role==='Πρόεδρος'?{...x,role:'Μέλος'}:x)
-      if(patch.role==='Γραμματέας') members=members.map(x=>x.id!==id&&x.role==='Γραμματέας'?{...x,role:'Μέλος'}:x)
+      if(patch.role==='Πρόεδρος') members=members.map(x=>{
+        const isEdited=[x.id,x.employeeId,x.relationalId,x.employeeId?`employee-${x.employeeId}`:''].filter(Boolean).some(value=>String(value)===key)
+        return !isEdited&&x.role==='Πρόεδρος'?{...x,role:'Μέλος'}:x
+      })
+      if(patch.role==='Γραμματέας') members=members.map(x=>{
+        const isEdited=[x.id,x.employeeId,x.relationalId,x.employeeId?`employee-${x.employeeId}`:''].filter(Boolean).some(value=>String(value)===key)
+        return !isEdited&&x.role==='Γραμματέας'?{...x,role:'Μέλος'}:x
+      })
       const chair=members.find(x=>x.role==='Πρόεδρος')?.fullName||''
       const secretary=members.find(x=>x.role==='Γραμματέας')?.fullName||''
       return {...c,members,chair,secretary}
