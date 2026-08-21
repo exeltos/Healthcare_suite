@@ -1,6 +1,6 @@
 import { loadInfections, upsertInfection } from './infectionsService'
 import { IS_PRODUCTION } from '../core/runtime'
-import { deleteClinicalInfection, deleteClinicalPatientSample, deleteClinicalSurveillanceCase, hydrateClinicalPatient, loadClinicalInfections, saveClinicalInfection, saveClinicalPatientSample, saveClinicalSurveillanceCase } from './backend/clinicalDirectoryService'
+import { deleteClinicalInfection, deleteClinicalPatientSample, deleteClinicalSurveillanceCase, hydrateClinicalPatient, loadClinicalInfections, loadClinicalSurveillanceCases, saveClinicalInfection, saveClinicalPatientSample, saveClinicalSurveillanceCase } from './backend/clinicalDirectoryService'
 import { loadClinicalIsolations, saveClinicalIsolation } from './backend/clinicalSupportBackendService'
 import { loadPatientSamples, upsertPatientSample } from './patientSamplesService'
 import {
@@ -334,9 +334,24 @@ export async function savePatientSampleWithClinicalWorkflowAsync(input = {}) {
 
   const result=savePatientSampleWithClinicalWorkflow(input)
 
-  if(result?.surveillanceCase) await saveClinicalSurveillanceCase(result.surveillanceCase)
-  if(result?.infection) await saveClinicalInfection(result.infection)
+  // Persist the sample first. For a brand-new initial sample the case may already
+  // contain its generated id in local state, but the FK target does not exist yet.
+  // saveClinicalPatientSample also performs the authoritative case->initial_sample_id
+  // link after the sample has been written and verified.
   if(result?.sample) await saveClinicalPatientSample(result.sample)
+
+  if(result?.surveillanceCase) {
+    // Reload after the sample write so the case carries the authoritative
+    // initial_sample_id that saveClinicalPatientSample may have just linked.
+    const patientId=result?.sample?.patientId||result?.surveillanceCase?.patientId||result?.surveillanceCase?.patientKey
+    const persistedCases=patientId?await loadClinicalSurveillanceCases(patientId):[]
+    const persistedCase=persistedCases.find((item)=>String(item.id)===String(result.surveillanceCase.id))
+    await saveClinicalSurveillanceCase(persistedCase||{
+      ...result.surveillanceCase,
+      initialSampleId:'',
+    })
+  }
+  if(result?.infection) await saveClinicalInfection(result.infection)
 
   return result
 }
