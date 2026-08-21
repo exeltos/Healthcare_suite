@@ -1,0 +1,5 @@
+-- WHO Hand Hygiene relational schema was applied and backfilled before rc.202.
+-- Canonical tables:
+--   public.hand_hygiene_sessions
+--   public.hand_hygiene_observations
+-- RLS uses module key 'Υγιεινή Χεριών'.

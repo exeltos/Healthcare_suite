@@ -43,6 +43,33 @@ export async function loadPreventionRecords(type){
    if(JSON.stringify(d.load())!==JSON.stringify(rows))d.save(rows)
    return rows
  }
+ if(type==='hand_hygiene'){
+   const org=await orgId(c)
+   const {data:sessions,error:sessionError}=await c.from('hand_hygiene_sessions')
+     .select('*,department:departments(id,name)')
+     .eq('organization_id',org)
+     .order('observation_date',{ascending:false})
+     .order('created_at',{ascending:false})
+   if(sessionError)throw sessionError
+   const ids=(sessions||[]).map(x=>String(x.id))
+   let observations=[]
+   if(ids.length){
+     const {data,error}=await c.from('hand_hygiene_observations')
+       .select('*').eq('organization_id',org).in('session_id',ids)
+       .order('created_at',{ascending:true})
+     if(error)throw error
+     observations=data||[]
+   }
+   const grouped=observations.reduce((map,item)=>{
+     const key=String(item.session_id||'')
+     if(!map.has(key))map.set(key,[])
+     map.get(key).push(item)
+     return map
+   },new Map())
+   const rows=(sessions||[]).map(row=>mapHandHygieneSession(row,grouped.get(String(row.id))||[]))
+   if(JSON.stringify(d.load())!==JSON.stringify(rows))d.save(rows)
+   return rows
+ }
  const {data,error}=await c.from('prevention_records').select('*,department:departments(id,name)').eq('record_type',type).order('record_date',{ascending:false});if(error)throw error
  const rows=(data||[]).map(r=>({...r.data,id:r.id,department:one(r.department)?.name||r.data?.department||'',employeeId:r.employee_id||r.data?.employeeId||'',patientId:r.patient_id||r.data?.patientId||'',date:r.record_date||r.data?.date||'',status:r.status||r.data?.status||''}))
  if(JSON.stringify(d.load())!==JSON.stringify(rows))d.save(rows)
@@ -164,6 +191,87 @@ export async function savePreventionRecord(type,input={}){
    return {...mapped,_persisted:true}
  }
 
+ if(type==='hand_hygiene'){
+   const row={...input,id:input.id||`WHO-${Date.now()}`}
+   const observationDate=date(row.date||row.observationDate)
+   if(!observationDate)throw new Error('WHO observation date is required.')
+   const resolvedDepartment=await departmentId(c,org,row.department)
+   const payload={
+     id:String(row.id),
+     organization_id:org,
+     department_id:resolvedDepartment,
+     observation_date:observationDate,
+     facility:String(row.facility||''),
+     ward:String(row.ward||''),
+     observer:String(row.observer||''),
+     start_time:time(row.startTime),
+     end_time:time(row.endTime),
+     notes:String(row.notes||''),
+     legacy_prevention_record_id:String(row.legacyPreventionRecordId||row.legacyId||'').trim()||null,
+   }
+   const {data:existing,error:existingError}=await c.from('hand_hygiene_sessions')
+     .select('id').eq('organization_id',org).eq('id',String(row.id)).maybeSingle()
+   if(existingError)throw existingError
+
+   let write=c.from('hand_hygiene_sessions')
+   write=existing
+     ? write.update(payload).eq('organization_id',org).eq('id',String(row.id))
+     : write.insert(payload)
+   const {data:saved,error}=await write
+     .select('*,department:departments(id,name)').single()
+   if(error)throw error
+
+   const nextObservations=(Array.isArray(row.observations)?row.observations:[]).map((item,index)=>({
+     id:String(item.id||`WHO-OBS-${Date.now()}-${index}`),
+     session_id:String(saved.id),
+     organization_id:org,
+     professional_code:String(item.professionalCode||''),
+     professional_category:String(item.professionalCategory||''),
+     moment:String(item.moment||''),
+     action:String(item.action||''),
+     gloves:Boolean(item.gloves),
+     notes:String(item.notes||''),
+   }))
+
+   const {data:existingObs,error:obsReadError}=await c.from('hand_hygiene_observations')
+     .select('id').eq('organization_id',org).eq('session_id',String(saved.id))
+   if(obsReadError)throw obsReadError
+   const keep=new Set(nextObservations.map(x=>x.id))
+   if(nextObservations.length){
+     const {error:upsertObsError}=await c.from('hand_hygiene_observations')
+       .upsert(nextObservations,{onConflict:'id'})
+     if(upsertObsError)throw upsertObsError
+   }
+   const stale=(existingObs||[]).map(x=>String(x.id)).filter(id=>!keep.has(id))
+   if(stale.length){
+     const {error:deleteObsError}=await c.from('hand_hygiene_observations')
+       .delete().eq('organization_id',org).eq('session_id',String(saved.id)).in('id',stale)
+     if(deleteObsError)throw deleteObsError
+   }
+
+   const {data:verifiedSession,error:verifySessionError}=await c.from('hand_hygiene_sessions')
+     .select('*,department:departments(id,name)')
+     .eq('organization_id',org).eq('id',String(saved.id)).maybeSingle()
+   if(verifySessionError)throw verifySessionError
+   if(!verifiedSession?.id)throw new Error('WHO session write could not be verified.')
+
+   const {data:verifiedObs,error:verifyObsError}=await c.from('hand_hygiene_observations')
+     .select('*').eq('organization_id',org).eq('session_id',String(saved.id))
+     .order('created_at',{ascending:true})
+   if(verifyObsError)throw verifyObsError
+   if((verifiedObs||[]).length!==nextObservations.length)
+     throw new Error('WHO observations write could not be verified.')
+
+   const expectedIds=[...keep].sort()
+   const actualIds=(verifiedObs||[]).map(x=>String(x.id)).sort()
+   if(JSON.stringify(expectedIds)!==JSON.stringify(actualIds))
+     throw new Error('WHO observation identifiers verification failed.')
+
+   const mapped=mapHandHygieneSession(verifiedSession,verifiedObs||[])
+   await loadPreventionRecords(type)
+   return {...mapped,_persisted:true}
+ }
+
  const row={...input,id:input.id||`${type}-${Date.now()}`}
  const resolvedDepartment=await departmentId(c,org,row.department)
  const payload={id:String(row.id),organization_id:org,record_type:type,department_id:resolvedDepartment,employee_id:row.employeeId?String(row.employeeId):null,patient_id:row.patientId?String(row.patientId):null,record_date:date(row.date||row.observationDate||row.startDate),status:String(row.status||row.approval||''),data:row}
@@ -199,6 +307,19 @@ export async function deletePreventionRecord(type,id){
      .select('id').eq('organization_id',org).eq('id',String(id)).maybeSingle()
    if(verifyError)throw verifyError
    if(verified)throw new Error('Supabase vaccination delete could not be verified.')
+   await loadPreventionRecords(type)
+   return true
+ }
+
+ if(type==='hand_hygiene'){
+   const {data:deleted,error}=await c.from('hand_hygiene_sessions')
+     .delete().eq('organization_id',org).eq('id',String(id)).select('id').maybeSingle()
+   if(error)throw error
+   if(!deleted?.id)throw new Error('Supabase delete did not remove the WHO session.')
+   const {data:verified,error:verifyError}=await c.from('hand_hygiene_sessions')
+     .select('id').eq('organization_id',org).eq('id',String(id)).maybeSingle()
+   if(verifyError)throw verifyError
+   if(verified)throw new Error('Supabase WHO session delete could not be verified.')
    await loadPreventionRecords(type)
    return true
  }
@@ -246,7 +367,53 @@ function mapEmployeeVaccination(r={}){
    updatedAt:r.updated_at||null,
  }
 }
+
+function mapHandHygieneSession(r={},observations=[]){
+ const department=one(r.department)||{}
+ const mappedObservations=(observations||[]).map(item=>({
+   id:item.id,
+   relationalId:item.id,
+   professionalCode:item.professional_code||'',
+   professionalCategory:item.professional_category||'',
+   moment:item.moment||'',
+   action:item.action||'',
+   gloves:Boolean(item.gloves),
+   notes:item.notes||'',
+ }))
+ const calculations=calculateHandHygiene(mappedObservations)
+ return {
+   id:r.id,
+   legacyPreventionRecordId:r.legacy_prevention_record_id||'',
+   date:r.observation_date||'',
+   department:department.name||'',
+   facility:r.facility||'',
+   ward:r.ward||'',
+   observer:r.observer||'',
+   startTime:trimTime(r.start_time),
+   endTime:trimTime(r.end_time),
+   notes:r.notes||'',
+   observations:mappedObservations,
+   calculations,
+   createdAt:r.created_at||null,
+   updatedAt:r.updated_at||null,
+ }
+}
+function calculateHandHygiene(observations=[]){
+ const opportunities=observations.length
+ const handRub=observations.filter(x=>x.action==='HR').length
+ const handWash=observations.filter(x=>x.action==='HW').length
+ const missed=observations.filter(x=>x.action==='MISSED').length
+ const correctActions=handRub+handWash
+ const professionals=new Set(observations.map(x=>x.professionalCode||x.professionalCategory).filter(Boolean)).size
+ return {
+   missed,handRub,handWash,
+   compliance:opportunities?Math.round((correctActions/opportunities)*10000)/100:0,
+   opportunities,professionals,correctActions,
+ }
+}
 async function orgId(c){const {data,error}=await c.rpc('current_organization_id');if(error)throw error;if(!data)throw new Error('Organization context not found.');return data}
 async function departmentId(c,org,name){if(!name)return null;const {data,error}=await c.from('departments').select('id').eq('organization_id',org).eq('name',String(name)).limit(1);if(error)throw error;return data?.[0]?.id||null}
 function date(v){const s=String(v||'').trim();return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:null}
+function time(v){const s=String(v||'').trim();const m=s.match(/^(\d{1,2}):(\d{2})/);return m?`${m[1].padStart(2,'0')}:${m[2]}:00`:null}
+function trimTime(v){return v?String(v).slice(0,5):''}
 function one(v){return Array.isArray(v)?v[0]:v}
