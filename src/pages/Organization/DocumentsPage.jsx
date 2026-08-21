@@ -85,7 +85,7 @@ export default function DocumentsPage(){
      setRows(await loadOperationalDocuments())
      notifyAction(editing?L('Το έγγραφο ενημερώθηκε.','Document updated.'):L('Το έγγραφο δημιουργήθηκε.','Document created.'))
      close()
-   }catch(error){console.error('Document save failed',error);notifyAction(L('Η αποθήκευση του εγγράφου απέτυχε.','Document could not be saved.'))}
+   }catch(error){console.error('Document save failed',error);notifyAction(error?.message||L('Η αποθήκευση του εγγράφου απέτυχε.','Document could not be saved.'))}
  }
 
  async function transition(next){
@@ -113,9 +113,8 @@ export default function DocumentsPage(){
  }
  async function createRevision(){
    if(!editing)return
-   const snapshot={id:`ver-${Date.now()}`,version:editing.version,date:editing.effectiveDate||editing.updatedAt||today,status:editing.status,note:'Εγκεκριμένη έκδοση',attachments:editing.attachments||[],approvedBy:editing.approvedBy||'',approvedAt:editing.approvedAt||'',effectiveDate:editing.effectiveDate||'',reviewDate:editing.reviewDate||''}
    const current=String(editing.version||'1.0').split('.').map(Number); const next=`${Number.isFinite(current[0])?current[0]:1}.${(Number.isFinite(current[1])?current[1]:0)+1}`
-   const draft={...editing,version:next,status:'Πρόχειρο',versions:[snapshot,...(editing.versions||[])],submittedBy:'',submittedAt:'',reviewedBy:'',reviewedAt:'',approvedBy:'',approvedAt:'',effectiveDate:'',retiredAt:'',preparedBy:actor}
+   const draft={...editing,version:next,status:'Πρόχειρο',versions:editing.versions||[],submittedBy:'',submittedAt:'',reviewedBy:'',reviewedAt:'',approvedBy:'',approvedAt:'',effectiveDate:'',retiredAt:'',preparedBy:actor}
    try{await saveOperationalDocument(draft);setRows(await loadOperationalDocuments());setEditing(draft);setForm(draft);notifyAction(L(`Δημιουργήθηκε η έκδοση ${next} ως πρόχειρο.`,`Version ${next} created as draft.`))}catch(error){console.error(error);notifyAction(L('Δεν δημιουργήθηκε νέα έκδοση.','New version could not be created.'))}
  }
 

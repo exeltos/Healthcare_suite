@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Eye, FileText, LoaderCircle, Paperclip, Trash2 } from 'lucide-react'
+import { Eye, FileText, LoaderCircle, Paperclip, Trash2, X } from 'lucide-react'
 import { feedbackError, feedbackSuccess } from '../../../core/feedback'
 import { confirmAction } from '../feedback/index'
 import { useI18n } from '../../../i18n'
@@ -43,6 +43,7 @@ export default function AttachmentManager({ value = [], onChange, hint, readOnly
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [previewFile, setPreviewFile] = useState(null)
   const inputRef = useRef(null)
 
   const addFiles = async (fileList) => {
@@ -73,16 +74,12 @@ export default function AttachmentManager({ value = [], onChange, hint, readOnly
   }
 
   const viewFile = (file) => {
-    if (!file?.data) {
+    const source = file?.url || file?.data || ''
+    if (!source) {
       feedbackError(L('Δεν υπάρχει διαθέσιμο περιεχόμενο για προβολή του αρχείου.','No file content is available for viewing.'))
       return
     }
-    const preview = window.open('', '_blank', 'noopener,noreferrer')
-    if (!preview) {
-      feedbackError(L('Η προβολή αποκλείστηκε από τον browser. Επιτρέψτε τα αναδυόμενα παράθυρα για το Healthcare Suite.','Viewing was blocked by the browser. Allow pop-ups for Healthcare Suite.'))
-      return
-    }
-    preview.location.href = file.data
+    setPreviewFile({...file, previewSource: source})
   }
 
   return <div className={`attachment-manager ${uploading ? 'is-uploading' : ''}`}>
@@ -108,10 +105,23 @@ export default function AttachmentManager({ value = [], onChange, hint, readOnly
         <FileText size={17} />
         <div><strong>{file.name}</strong><small>{formatBytes(file.size)}</small></div>
         <div className="attachment-manager__actions">
-          <button type="button" title={L('Προβολή','View')} disabled={!file.data || uploading} onClick={() => viewFile(file)}><Eye size={14} /></button>
+          <button type="button" title={L('Προβολή','View')} disabled={!(file.url || file.data) || uploading} onClick={() => viewFile(file)}><Eye size={14} /></button>
           {!readOnly && <Button size="sm" variant="danger" type="button" title={L('Διαγραφή','Delete')} data-feedback-action="delete" disabled={uploading} onClick={() => { if (!confirmAction(`${L('Να διαγραφεί το αρχείο','Delete file')} «${file.name}»;`)) return; onChange?.(value.filter((_, itemIndex) => itemIndex !== index)) }}>{L('Διαγραφή','Delete')}</Button>}
         </div>
       </article>)}
     </div>
+    {previewFile && <div className="attachment-preview" role="dialog" aria-modal="true" aria-label={L('Προβολή αρχείου','File preview')} onMouseDown={(event)=>{if(event.target===event.currentTarget)setPreviewFile(null)}}>
+      <div className="attachment-preview__panel">
+        <div className="attachment-preview__header">
+          <div><strong>{previewFile.name||L('Αρχείο','File')}</strong><small>{formatBytes(previewFile.size||previewFile.size_bytes||0)}</small></div>
+          <button type="button" className="attachment-preview__close" onClick={()=>setPreviewFile(null)} title={L('Κλείσιμο','Close')}><X size={18}/></button>
+        </div>
+        <div className="attachment-preview__body">
+          {String(previewFile.type||previewFile.mimeType||'').startsWith('image/')
+            ? <img src={previewFile.previewSource} alt={previewFile.name||''}/>
+            : <iframe src={previewFile.previewSource} title={previewFile.name||L('Προβολή αρχείου','File preview')}/>}
+        </div>
+      </div>
+    </div>}
   </div>
 }
