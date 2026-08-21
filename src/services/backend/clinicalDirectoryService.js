@@ -132,17 +132,62 @@ export async function saveClinicalSurveillanceCase(input={}){
     laboratory_outcome:String(row.laboratoryOutcome||'pending'),
     start_date:dateOrNull(row.startDate),closed_date:dateOrNull(row.closedDate),
     reason:String(row.reason||''),initial_sample_id:initialSampleId,
-    data:cleanData(row,['id','patientKey','patientId','patientCode','department','status','workflowPhase','laboratoryOutcome','startDate','closedDate','reason','initialSampleId','createdAt','updatedAt']),
+    assessment_classification:String(row.assessment?.classification||''),
+    infection_site:String(row.assessment?.infectionSite||''),
+    symptom_onset_date:dateOrNull(row.assessment?.symptomOnsetDate),
+    review_date:dateOrNull(row.review?.date),
+    review_outcome:String(row.review?.outcome||''),
+    close_result:String(row.close?.result||''),
+    confirmation_date:dateOrNull(row.confirmationDate),
+    confirming_sample_id:emptyToNull(row.confirmingSampleId),
+    last_recheck_date:dateOrNull(row.lastRecheckDate),
+    last_recheck_sample_id:emptyToNull(row.lastRecheckSampleId),
+    reopened_at:timestampOrNull(row.reopenedAt),
+    data:cleanData(row,['id','patientKey','patientId','patientCode','department','status','workflowPhase','laboratoryOutcome','startDate','closedDate','reason','initialSampleId','confirmationDate','confirmingSampleId','lastRecheckDate','lastRecheckSampleId','reopenedAt','createdAt','updatedAt']),
+  }
+  if(payload.data?.assessment){
+    payload.data.assessment={...payload.data.assessment}
+    delete payload.data.assessment.classification
+    delete payload.data.assessment.infectionSite
+    delete payload.data.assessment.symptomOnsetDate
+  }
+  if(payload.data?.review){
+    payload.data.review={...payload.data.review}
+    delete payload.data.review.date
+    delete payload.data.review.outcome
+  }
+  if(payload.data?.close){
+    payload.data.close={...payload.data.close}
+    delete payload.data.close.result
   }
   const { data,error }=await client.from('surveillance_cases').upsert(payload,{onConflict:'id'})
     .select('*,department:departments(id,name,code)').single()
   if(error)throw error
-  if(String(data?.patient_id||'')!==String(patientId))throw new Error('Surveillance case patient verification failed.')
-  if(String(data?.department_id||'')!==String(payload.department_id||''))throw new Error('Surveillance case department verification failed.')
-  if(String(data?.initial_sample_id||'')!==String(initialSampleId||''))throw new Error('Surveillance case initial sample verification failed.')
-  const mapped=mapCaseFromDb(data)
+  const {data:verified,error:verifyError}=await client.from('surveillance_cases')
+    .select('*,department:departments(id,name,code)')
+    .eq('organization_id',organizationId).eq('id',String(row.id)).eq('patient_id',String(patientId)).maybeSingle()
+  if(verifyError)throw verifyError
+  if(!verified?.id)throw new Error('Surveillance case write could not be verified.')
+  if(String(verified.department_id||'')!==String(payload.department_id||''))throw new Error('Surveillance case department verification failed.')
+  if(String(verified.initial_sample_id||'')!==String(initialSampleId||''))throw new Error('Surveillance case initial sample verification failed.')
+  const lifecycleChecks={
+    assessment_classification:payload.assessment_classification,
+    infection_site:payload.infection_site,
+    symptom_onset_date:payload.symptom_onset_date,
+    review_date:payload.review_date,
+    review_outcome:payload.review_outcome,
+    close_result:payload.close_result,
+    confirmation_date:payload.confirmation_date,
+    confirming_sample_id:payload.confirming_sample_id,
+    last_recheck_date:payload.last_recheck_date,
+    last_recheck_sample_id:payload.last_recheck_sample_id,
+  }
+  for(const [key,value] of Object.entries(lifecycleChecks)){
+    if(String(verified[key]??'')!==String(value??''))throw new Error(`Surveillance lifecycle verification failed: ${key}.`)
+  }
+  const mapped=mapCaseFromDb(verified)
   await loadClinicalSurveillanceCases(patientId)
-  return mapped
+  return {...mapped,_persisted:true}
 }
 
 export async function deleteClinicalSurveillanceCase(id){
@@ -539,10 +584,27 @@ function mapPatientFromDb(row={}){
 }
 function mapCaseFromDb(row={}){
   const department=one(row.department)
-  return {...(row.data||{}),id:row.id,patientId:row.patient_id,patientKey:row.patient_id,
+  const legacy=row.data||{}
+  const assessment={...(legacy.assessment||{})}
+  if(row.assessment_classification!==undefined)assessment.classification=row.assessment_classification||''
+  if(row.infection_site!==undefined)assessment.infectionSite=row.infection_site||''
+  if(row.symptom_onset_date!==undefined)assessment.symptomOnsetDate=row.symptom_onset_date||''
+  const review={...(legacy.review||{})}
+  if(row.review_date!==undefined)review.date=row.review_date||''
+  if(row.review_outcome!==undefined)review.outcome=row.review_outcome||''
+  const close={...(legacy.close||{})}
+  if(row.close_result!==undefined)close.result=row.close_result||''
+  return {...legacy,id:row.id,patientId:row.patient_id,patientKey:row.patient_id,
     department:department?.name||'',status:row.status||'',workflowPhase:row.workflow_phase||'',
     laboratoryOutcome:row.laboratory_outcome||'',startDate:row.start_date||'',closedDate:row.closed_date||'',
-    reason:row.reason||'',initialSampleId:row.initial_sample_id||'',createdAt:row.created_at||null,updatedAt:row.updated_at||null}
+    reason:row.reason||'',initialSampleId:row.initial_sample_id||'',
+    assessment,review,close,
+    confirmationDate:row.confirmation_date??legacy.confirmationDate??'',
+    confirmingSampleId:row.confirming_sample_id??legacy.confirmingSampleId??'',
+    lastRecheckDate:row.last_recheck_date??legacy.lastRecheckDate??'',
+    lastRecheckSampleId:row.last_recheck_sample_id??legacy.lastRecheckSampleId??'',
+    reopenedAt:row.reopened_at??legacy.reopenedAt??'',
+    createdAt:row.created_at||null,updatedAt:row.updated_at||null}
 }
 function mapSampleFromDb(row={}){
   const department=one(row.department),patient=one(row.patient)
@@ -620,6 +682,7 @@ function validateClinicalAssessment(assessment={}){
 function cleanData(row,keys){const copy={...row};keys.forEach(k=>delete copy[k]);return copy}
 function emptyToNull(v){const s=String(v??'').trim();return s||null}
 function dateOrNull(v){const s=String(v||'').trim();if(!s)return null;if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:null}
+function timestampOrNull(v){const s=String(v||'').trim();if(!s)return null;const d=new Date(s);return Number.isNaN(d.getTime())?null:d.toISOString()}
 function timeOrNull(v){const s=String(v||'').trim();if(!s)return null;const m=s.match(/(\d{1,2}):(\d{2})/);return m?`${m[1].padStart(2,'0')}:${m[2]}:00`:null}
 function trimTime(v){return v?String(v).slice(0,5):''}
 function one(v){return Array.isArray(v)?v[0]:v}
