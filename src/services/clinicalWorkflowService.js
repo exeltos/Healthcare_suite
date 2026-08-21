@@ -1,6 +1,6 @@
 import { loadInfections, upsertInfection } from './infectionsService'
 import { IS_PRODUCTION } from '../core/runtime'
-import { deleteClinicalInfection, deleteClinicalPatientSample, deleteClinicalSurveillanceCase, hydrateClinicalPatient, loadClinicalInfections, loadClinicalSurveillanceCases, saveClinicalInfection, saveClinicalPatientSample, saveClinicalSurveillanceCase } from './backend/clinicalDirectoryService'
+import { deleteClinicalInfection, deleteClinicalPatientSample, deleteClinicalSurveillanceCase, hydrateClinicalPatient, loadClinicalInfections, loadClinicalPatientSamples, loadClinicalSurveillanceCases, saveClinicalInfection, saveClinicalPatientSample, saveClinicalSurveillanceCase } from './backend/clinicalDirectoryService'
 import { loadClinicalIsolations, saveClinicalIsolation } from './backend/clinicalSupportBackendService'
 import { loadPatientSamples, upsertPatientSample } from './patientSamplesService'
 import {
@@ -338,7 +338,14 @@ export async function savePatientSampleWithClinicalWorkflowAsync(input = {}) {
   // contain its generated id in local state, but the FK target does not exist yet.
   // saveClinicalPatientSample also performs the authoritative case->initial_sample_id
   // link after the sample has been written and verified.
-  if(result?.sample) await saveClinicalPatientSample(result.sample)
+  let persistedSample=null
+  if(result?.sample) {
+    persistedSample=await saveClinicalPatientSample(result.sample)
+    const verifiedRows=await loadClinicalPatientSamples(result.sample.patientId||input.patientId||'')
+    const verified=verifiedRows.find((item)=>String(item.id)===String(persistedSample?.id||result.sample.id))
+    if(!verified)throw new Error('Supabase sample verification failed after save.')
+    persistedSample=verified
+  }
 
   if(result?.surveillanceCase) {
     // Reload after the sample write so the case carries the authoritative
@@ -353,7 +360,7 @@ export async function savePatientSampleWithClinicalWorkflowAsync(input = {}) {
   }
   if(result?.infection) await saveClinicalInfection(result.infection)
 
-  return result
+  return {...result,persistedSample}
 }
 
 

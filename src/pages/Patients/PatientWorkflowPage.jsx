@@ -312,9 +312,10 @@ export default function PatientWorkflowPage() {
     }
     const organismResults = normalizeOrganismResults(sampleForm)
     try {
-      await savePatientSampleWithClinicalWorkflowAsync({
+      const requestedSampleId=sampleForm.id || `PS-${Date.now()}`
+      const result=await savePatientSampleWithClinicalWorkflowAsync({
         ...sampleForm,
-        id: sampleForm.id || `PS-${Date.now()}`,
+        id: requestedSampleId,
         patientId: patient.id,
         patientName: patient.fullName,
         patientCode: patient.patientCode,
@@ -325,6 +326,10 @@ export default function PatientWorkflowPage() {
         microorganism: organismResults.map((item) => item.name).join(', '),
         resistance: deriveOverallResistance(organismResults),
       })
+      if(!result?.persistedSample || String(result.persistedSample.id)!==String(requestedSampleId)){
+        throw new Error('Η Supabase δεν επιβεβαίωσε την αποθήκευση του δείγματος.')
+      }
+      feedbackSaved({title:L('Αποθηκεύτηκε','Saved'),message:L('Το δείγμα αποθηκεύτηκε στη Supabase.','The sample was saved to Supabase.')})
     } catch (error) {
       notifyAction(error?.message || 'Δεν ήταν δυνατή η αποθήκευση του δείγματος.')
       return

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 const w=fs.readFileSync('src/services/clinicalWorkflowService.js','utf8')
 const b=fs.readFileSync('src/services/backend/clinicalDirectoryService.js','utf8')
-const samplePos=w.indexOf("if(result?.sample) await saveClinicalPatientSample(result.sample)")
+const samplePos=w.indexOf("persistedSample=await saveClinicalPatientSample(result.sample)")
 const casePos=w.indexOf("if(result?.surveillanceCase)", samplePos)
 const checks=[
  ['sample persists before case update',samplePos>=0&&casePos>samplePos],

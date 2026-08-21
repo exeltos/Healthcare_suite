@@ -56,6 +56,7 @@ export default function AppFeedbackBridge() {
     const onSubmit = (event) => {
       const submitter=event.submitter
       if(!submitter) return
+      if(submitter.getAttribute?.('data-feedback-silent')==='true') return
       const explicitAction=submitter.getAttribute?.('data-feedback-action')
       const label=[submitter.getAttribute?.('aria-label'),submitter.getAttribute?.('title'),submitter.textContent].filter(Boolean).join(' ').trim().toLocaleLowerCase('el-GR')
       if(explicitAction==='save'||saveLabelPattern.test(label)) markSaveIntent()
@@ -63,6 +64,7 @@ export default function AppFeedbackBridge() {
     const onClick = (event) => {
       const actionTarget = event.target?.closest?.('[data-feedback-action], button, [role="button"]')
       if (!actionTarget) return
+      if(actionTarget.getAttribute?.('data-feedback-silent')==='true') return
       const explicitAction = actionTarget.getAttribute?.('data-feedback-action')
       const label = [
         actionTarget.getAttribute?.('aria-label'),

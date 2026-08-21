@@ -64,7 +64,7 @@ export function SampleEditor({ form, setForm, samples, save, cancel, files, uplo
     {!organisms.length ? <div className={`pw-mini-empty ${form.status === 'Θετικό' ? 'is-warning' : ''}`.trim()}>{form.status === 'Θετικό' ? L('Θετικό αποτέλεσμα χωρίς καταχωρημένο μικροοργανισμό. Συμπληρώστε το αποτέλεσμα από το Εργαστήριο.', 'Positive result without a recorded microorganism. Complete the result in Laboratory.') : L('Δεν έχει καταχωρηθεί μικροοργανισμός.', 'No microorganism has been recorded.')}</div> : <div className="pw-organism-list">{organisms.map((item, index) => <div className="pw-organism-row" key={item.id || index}><LibraryField disabled={laboratoryReadOnly} hideLabel libraryKey="microorganisms" value={item.name} allowManual placeholder={L("Μικροοργανισμός", "Microorganism")} onChange={(v) => patchOrganism(index, { name: v })} /><Select disabled={laboratoryReadOnly} value={item.resistance || 'Χωρίς χαρακτηρισμό'} onChange={(v) => patchOrganism(index, { resistance: v })}>{RESISTANCE_OPTIONS.map((x) => <option key={x} value={x}>{patientDisplayValue(x, language)}</option>)}</Select>{!laboratoryReadOnly && <IconButton danger label={L("Αφαίρεση", "Remove")} icon={<Trash2 size={14} />} onClick={() => removeOrganism(index)} />}</div>)}</div>}
   </section>
   {form.id && <AttachmentTools files={files} upload={upload} deleteAttachment={deleteAttachment} />}
-  {saved ? <FormActions primaryType="button" primaryLabel={L('Κλείσιμο','Close')} onPrimary={cancel} /> : <FormActions onCancel={cancel} />}
+  {saved ? <FormActions primaryType="button" primaryLabel={L('Κλείσιμο','Close')} onPrimary={cancel} feedback={false} /> : <FormActions onCancel={cancel} feedback={false} />}
   </form>
 }
 

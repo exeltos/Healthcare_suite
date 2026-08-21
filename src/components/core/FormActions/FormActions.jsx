@@ -26,6 +26,7 @@ export default function FormActions({
   showPrimary = true,
   primaryIcon,
   cancelIcon,
+  feedback = true,
 }) {
   const { language } = useI18n()
   const L = (el, en) => language === 'en' ? en : el
@@ -67,7 +68,8 @@ export default function FormActions({
             disabled={resolvedDisabled}
             loading={saving}
             loadingLabel={L('Αποθήκευση…', 'Saving…')}
-            data-feedback-action="save"
+            data-feedback-action={feedback ? 'save' : undefined}
+            data-feedback-silent={feedback ? undefined : 'true'}
           >
             {resolvedPrimaryLabel}
           </Button>
