@@ -10,7 +10,8 @@ export async function loadClinicalSourceSamples(){
   const c=requireSupabase()
   const {data,error}=await c.from('laboratory_source_samples').select('*,department:departments(id,name),employee:employees(id,first_name,last_name,employee_code)').order('created_at',{ascending:false})
   if(error)throw error
-  const rows=(data||[]).map(mapSource)
+  const base=(data||[]).map(mapSource)
+  const rows=await hydrateSourceSampleLaboratoryResults(c,base)
   const staff=rows.filter(row=>row.sourceType==='Προσωπικό')
   const environment=rows.filter(row=>row.sourceType==='Περιβάλλον')
   const water=rows.filter(row=>row.sourceType==='Νερό')
@@ -28,6 +29,22 @@ export async function saveClinicalSourceSample(input={}){
   const dep=await departmentId(c,org,input.department)
   const employeeId=input.sourceType==='Προσωπικό'?await employeeIdFor(c,input):null
   const row={...input,id:input.id||`${sourcePrefix(input.sourceType)}-${Date.now()}`}
+  const canonicalMicroorganismResults=Array.isArray(row.microorganismResults)
+    ? row.microorganismResults.map(item=>({
+        ...item,
+        name:String(item?.name||item?.microorganism||'').trim(),
+        resistance:String(item?.resistance||'').trim(),
+      })).filter(item=>item.name)
+    : []
+  if(canonicalMicroorganismResults.length){
+    row.microorganismResults=canonicalMicroorganismResults
+    row.microorganism=canonicalMicroorganismResults.map(item=>item.name).join(', ')
+    row.resistance=canonicalMicroorganismResults[0]?.resistance||row.resistance||''
+  }else if(String(row.status||row.resultStatus||'')==='Αρνητικό'){
+    row.microorganismResults=[]
+    row.microorganism=''
+    row.resistance=''
+  }
   const payload={id:String(row.id),organization_id:org,source_type:row.sourceType,employee_id:employeeId,department_id:dep,
     subject_name:String(row.subjectName||row.staffName||row.employeeName||row.environmentPoint||row.waterPoint||''),
     subject_code:String(row.subjectCode||row.staffCode||row.employeeCode||''),
@@ -40,13 +57,21 @@ export async function saveClinicalSourceSample(input={}){
     data:rest(row,['id','sourceType','department','subjectName','subjectCode','sampleType','sampleReason','collectionDate','collectionTime','receivedDate','resultDate','status','resultStatus','microorganism','resistance','sampleAcceptance','rejectionReason','validatedAt','criticalResult','criticalCommunicatedTo','criticalCommunicatedAt'])}
   const {data,error}=await c.from('laboratory_source_samples').upsert(payload,{onConflict:'id'}).select('*,department:departments(id,name),employee:employees(id,first_name,last_name,employee_code)').single()
   if(error)throw error
+  await syncSourceSampleLaboratoryResults(c,{
+    organizationId:org,
+    sampleId:String(data.id),
+    microorganismResults:Array.isArray(row.microorganismResults)?row.microorganismResults:[],
+    antibiogram:Array.isArray(row.antibiogram)?row.antibiogram:[],
+    fallbackMicroorganism:String(row.microorganism||''),
+    fallbackResistance:String(row.resistance||''),
+  })
   // Production verification: do not report success until the row can be read back from Supabase.
   const {data:verified,error:verifyError}=await c.from('laboratory_source_samples')
     .select('*,department:departments(id,name),employee:employees(id,first_name,last_name,employee_code)')
     .eq('organization_id',org).eq('id',String(data.id)).eq('source_type',String(row.sourceType)).maybeSingle()
   if(verifyError)throw verifyError
   if(!verified?.id)throw new Error('Η εργαστηριακή εγγραφή δεν επιβεβαιώθηκε στο Supabase.')
-  const mapped=mapSource(verified)
+  const [mapped]=await hydrateSourceSampleLaboratoryResults(c,[mapSource(verified)])
   localSaveSource(mapped)
   return mapped
 }
@@ -192,6 +217,121 @@ export async function deleteClinicalNotifiableDisease(id){
   const c=requireSupabase();const {error}=await c.from('notifiable_diseases').delete().eq('id',String(id));if(error)throw error;saveNotifiableDiseases(loadNotifiableDiseases().filter(x=>String(x.id)!==String(id)));return true
 }
 
+
+async function hydrateSourceSampleLaboratoryResults(c,rows){
+  if(!rows.length)return rows
+  const ids=rows.map(row=>String(row.id))
+  const {data:organisms,error:orgError}=await c.from('laboratory_sample_organisms')
+    .select('*').in('source_sample_id',ids).order('created_at')
+  if(orgError)throw orgError
+  const organismIds=(organisms||[]).map(item=>item.id)
+  let antibiograms=[]
+  if(organismIds.length){
+    const {data,error}=await c.from('laboratory_antibiogram_results')
+      .select('*').in('organism_result_id',organismIds).order('created_at')
+    if(error)throw error
+    antibiograms=data||[]
+  }
+  const orgBySample=(organisms||[]).reduce((map,item)=>{
+    const key=String(item.source_sample_id||'')
+    if(!map.has(key))map.set(key,[])
+    map.get(key).push(item)
+    return map
+  },new Map())
+  const abByOrg=(antibiograms||[]).reduce((map,item)=>{
+    const key=String(item.organism_result_id||'')
+    if(!map.has(key))map.set(key,[])
+    map.get(key).push(item)
+    return map
+  },new Map())
+  return rows.map(row=>{
+    const rel=orgBySample.get(String(row.id))||[]
+    if(!rel.length)return row
+    const microorganismResults=rel.map(item=>({
+      id:item.id,relationalId:item.id,name:item.microorganism||'',resistance:item.resistance||'',isPrimary:!!item.is_primary,
+    }))
+    const primary=rel.find(item=>item.is_primary)||rel[0]
+    const antibiogram=(abByOrg.get(String(primary?.id||''))||[]).map(item=>({
+      id:item.id,relationalId:item.id,antibiotic:item.antibiotic||'',sensitivity:item.sensitivity||'',mic:item.mic||'',
+    }))
+    return {...row,microorganismResults,microorganism:microorganismResults.map(item=>item.name).join(', '),resistance:primary?.resistance||row.resistance||'',antibiogram}
+  })
+}
+
+async function syncSourceSampleLaboratoryResults(c,{organizationId,sampleId,microorganismResults,antibiogram,fallbackMicroorganism,fallbackResistance}){
+  const canonical=(microorganismResults||[]).map(item=>({
+    id:item.relationalId||item.id||'',
+    name:String(item.name||item.microorganism||'').trim(),
+    resistance:String(item.resistance||'').trim(),
+    isPrimary:Boolean(item.isPrimary),
+  })).filter(item=>item.name)
+  if(!canonical.length&&fallbackMicroorganism)canonical.push({id:'',name:fallbackMicroorganism,resistance:fallbackResistance||'',isPrimary:true})
+  if(canonical.length&&!canonical.some(item=>item.isPrimary))canonical[0].isPrimary=true
+
+  const {data:existing,error:readError}=await c.from('laboratory_sample_organisms')
+    .select('*').eq('organization_id',organizationId).eq('source_sample_id',sampleId)
+  if(readError)throw readError
+  const keep=new Set()
+  let primarySaved=null
+  for(const item of canonical){
+    const current=(existing||[]).find(row=>
+      (item.id&&String(row.id)===String(item.id))
+      || String(row.microorganism||'').trim().toLocaleLowerCase('el-GR')===item.name.toLocaleLowerCase('el-GR')
+    )
+    const payload={organization_id:organizationId,patient_sample_id:null,source_sample_id:sampleId,microorganism:item.name,resistance:item.resistance,is_primary:!!item.isPrimary}
+    let saved
+    if(current){
+      const {data,error}=await c.from('laboratory_sample_organisms').update(payload).eq('id',current.id).select().single()
+      if(error)throw error
+      saved=data
+    }else{
+      const {data,error}=await c.from('laboratory_sample_organisms').insert(payload).select().single()
+      if(error)throw error
+      saved=data
+    }
+    keep.add(String(saved.id))
+    if(saved.is_primary)primarySaved=saved
+  }
+  for(const stale of (existing||[]).filter(row=>!keep.has(String(row.id)))){
+    const {error}=await c.from('laboratory_sample_organisms').delete().eq('id',stale.id)
+    if(error)throw error
+  }
+  if(!primarySaved&&canonical.length){
+    const {data,error}=await c.from('laboratory_sample_organisms')
+      .select('*').eq('organization_id',organizationId).eq('source_sample_id',sampleId).eq('is_primary',true).maybeSingle()
+    if(error)throw error
+    primarySaved=data
+  }
+  if(!primarySaved)return
+
+  const {data:existingAb,error:abReadError}=await c.from('laboratory_antibiogram_results')
+    .select('*').eq('organization_id',organizationId).eq('organism_result_id',primarySaved.id)
+  if(abReadError)throw abReadError
+  const keepAb=new Set()
+  for(const item of (antibiogram||[]).filter(item=>String(item.antibiotic||'').trim())){
+    const antibiotic=String(item.antibiotic||'').trim()
+    const current=(existingAb||[]).find(row=>
+      (item.relationalId&&String(row.id)===String(item.relationalId))
+      || String(row.antibiotic||'').trim().toLocaleLowerCase('el-GR')===antibiotic.toLocaleLowerCase('el-GR')
+    )
+    const payload={organization_id:organizationId,organism_result_id:primarySaved.id,antibiotic,sensitivity:String(item.sensitivity||''),mic:String(item.mic||'')}
+    let saved
+    if(current){
+      const {data,error}=await c.from('laboratory_antibiogram_results').update(payload).eq('id',current.id).select().single()
+      if(error)throw error
+      saved=data
+    }else{
+      const {data,error}=await c.from('laboratory_antibiogram_results').insert(payload).select().single()
+      if(error)throw error
+      saved=data
+    }
+    keepAb.add(String(saved.id))
+  }
+  for(const stale of (existingAb||[]).filter(row=>!keepAb.has(String(row.id)))){
+    const {error}=await c.from('laboratory_antibiogram_results').delete().eq('id',stale.id)
+    if(error)throw error
+  }
+}
 function mapSource(r){const e=one(r.employee),d=one(r.department);return {...r.data,id:r.id,sourceType:r.source_type,employeeId:r.employee_id||'',employeeName:e?[e.first_name,e.last_name].filter(Boolean).join(' '):'',employeeCode:e?.employee_code||'',department:d?.name||'',subjectName:r.subject_name||'',subjectCode:r.subject_code||'',sampleType:r.sample_type||'',sampleReason:r.sample_reason||'',collectionDate:r.collection_date||'',collectionTime:String(r.collection_time||'').slice(0,5),receivedDate:r.received_date||'',resultDate:r.result_date||'',status:r.status||'',resultStatus:r.status||'',microorganism:r.microorganism||'',resistance:r.resistance||'',sampleAcceptance:r.sample_acceptance||'Αποδεκτό',rejectionReason:r.rejection_reason||'',validatedAt:r.validated_at||'',validatedBy:r.data?.validatedBy||'',criticalResult:Boolean(r.critical_result),criticalCommunicatedTo:r.critical_communicated_to||'',criticalCommunicatedAt:r.critical_communicated_at||'',criticalCommunicatedBy:r.data?.criticalCommunicatedBy||''}}
 function mapDisease(r){const p=one(r.patient),d=one(r.department);return {...r.data,id:r.id,patientId:r.patient_id||'',patientCode:p?.patient_code||'',patientName:[p?.first_name,p?.last_name].filter(Boolean).join(' '),department:d?.name||'',disease:r.disease,deadline:r.deadline,diagnosisDate:r.diagnosis_date||'',declarationDate:r.declaration_date||'',status:r.status,caseClassification:r.case_classification,physician:r.physician,notes:r.notes}}
 function localSaveSource(r){return r.sourceType==='Προσωπικό'?upsertStaffSample(r):r.sourceType==='Περιβάλλον'?upsertEnvironmentalSample(r):upsertWaterRecord(r)}
