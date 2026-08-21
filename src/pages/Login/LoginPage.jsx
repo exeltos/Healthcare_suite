@@ -67,7 +67,12 @@ export default function LoginPage() {
       writeSessionValue('healthcare-suite.session',authenticated.session)
       writeSessionValue('healthcare-suite.user', JSON.stringify(authenticated.user))
       feedbackSuccess(language==='en'?'Connected successfully.':'Η σύνδεση ολοκληρώθηκε.', { title: language==='en'?'Connected':'Συνδέθηκε' })
-      navigate(authenticated.user?.platformOwner?APP_ROUTES.PLATFORM:APP_ROUTES.DASHBOARD, { replace: true })
+      const target=authenticated.user?.platformOwner?APP_ROUTES.PLATFORM:APP_ROUTES.DASHBOARD
+      // Production auth crosses a provider/session boundary. A controlled replace
+      // makes the freshly persisted Supabase session authoritative immediately,
+      // avoiding the previous manual-refresh requirement after successful login.
+      if(IS_PRODUCTION){window.location.replace(target);return}
+      navigate(target, { replace: true })
     } catch (error) {
       if(error?.code==='AUTH_NOT_CONFIGURED') {
         setEntryLoading(false)
