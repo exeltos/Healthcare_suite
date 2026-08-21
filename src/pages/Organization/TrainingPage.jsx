@@ -1,5 +1,5 @@
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppEvents } from '../../core/events'
 import { Archive, Trash2, BookOpenCheck, Check, Download, GraduationCap, Plus, Printer, UserCheck } from 'lucide-react'
 import {
@@ -51,6 +51,7 @@ export default function TrainingPage(){
   const [editing,setEditing]=useState(null)
   const [form,setForm]=useState(EMPTY)
   const [activeTab,setActiveTab]=useState('details')
+  const attendanceEditsRef=useRef(new Map())
   const notificationLink=useRecordDeepLink(rows)
 
   useAppEvents([ORGANIZATION_EVENT, EMPLOYEES_EVENT], () => {
@@ -113,6 +114,7 @@ export default function TrainingPage(){
   const setField=(name,value)=>setForm(c=>({...c,[name]:value}))
 
   function openNew(){
+    attendanceEditsRef.current.clear()
     setEditing(null)
     setForm({...EMPTY,date:new Date().toISOString().slice(0,10)})
     setActiveTab('details')
@@ -120,6 +122,7 @@ export default function TrainingPage(){
   }
 
   function openRecord(row){
+    attendanceEditsRef.current.clear()
     notificationLink.markOpened(row.id)
     setEditing(row)
     setForm({...EMPTY,...row,attendance:row.attendance||[],attachments:row.attachments||[]})
@@ -128,6 +131,7 @@ export default function TrainingPage(){
   }
 
   function close(){
+    attendanceEditsRef.current.clear()
     notificationLink.completeReview()
     setOpen(false)
     setEditing(null)
@@ -150,12 +154,18 @@ export default function TrainingPage(){
       notifyAction(L('Υπάρχει ήδη εκπαίδευση με τον ίδιο τίτλο και ημερομηνία.','Training with the same title and date already exists.'))
       return
     }
-    if(form.status==='Ολοκληρωμένη' && !(form.attendance||[]).length){
+    const mergePendingAttendance=(items=[])=>items.map(item=>{
+      const keys=[item.employeeId,item.relationalId,item.attendeeId,item.id].filter(Boolean).map(String)
+      const patch=keys.map(key=>attendanceEditsRef.current.get(key)).find(Boolean)
+      return patch?{...item,...patch}:item
+    })
+    const attendanceForSave=mergePendingAttendance(form.attendance||[])
+    if(form.status==='Ολοκληρωμένη' && !attendanceForSave.length){
       notifyAction(L('Για ολοκληρωμένη εκπαίδευση καταχωρήστε τουλάχιστον έναν συμμετέχοντα ή αλλάξτε την κατάσταση.','For completed training, add at least one participant or change the status.'))
       return
     }
     if(form.status==='Ολοκληρωμένη' && form.competencyRequired){
-      const assessed=(form.attendance||[]).filter(x=>['Παρών','Online'].includes(x.status))
+      const assessed=attendanceForSave.filter(x=>['Παρών','Online'].includes(x.status))
       const pending=assessed.filter(x=>!x.competencyResult)
       if(pending.length){notifyAction(L('Για εκπαίδευση με αξιολόγηση επάρκειας, καταγράψτε αποτέλεσμα για όλους όσοι ολοκλήρωσαν.','For competency-assessed training, record a result for everyone who completed it.'));return}
       const missingEvidence=assessed.filter(x=>!String(x.assessedBy||'').trim()||!x.assessedAt)
@@ -166,12 +176,12 @@ export default function TrainingPage(){
       if(retrainingWithoutPlan.length){notifyAction(L('Για όσους χρειάζονται επανεκπαίδευση καταγράψτε σημείωση/σχέδιο επανεκπαίδευσης.','For staff requiring retraining, record a retraining note/plan.'));return}
     }
     try {
-      await saveOperationalTraining({...form,id:editing?.id||form.id,durationHours:String(form.durationHours||'')})
+      await saveOperationalTraining({...form,attendance:attendanceForSave,id:editing?.id||form.id,durationHours:String(form.durationHours||'')})
       setRows(await loadOperationalTraining())
       close()
     } catch (error) {
       console.error('Training save failed', error)
-      notifyAction(L('Η αποθήκευση της εκπαίδευσης απέτυχε.','Training could not be saved.'))
+      notifyAction(error?.message||L('Η αποθήκευση της εκπαίδευσης απέτυχε.','Training could not be saved.'))
     }
   }
 
@@ -236,7 +246,17 @@ export default function TrainingPage(){
   }
 
   function updateAttendance(id,patch){
-    setForm(c=>({...c,attendance:c.attendance.map(x=>attendeeKey(x)===String(id)?{...x,...patch,...(patch.competencyResult?{competencyStatus:patch.competencyResult==='Επαρκής'?'closed':'retraining_required',competencyUpdatedAt:new Date().toISOString()}: {})}:x)}))
+    const key=String(id||'')
+    const previous=attendanceEditsRef.current.get(key)||{}
+    const normalizedPatch={
+      ...patch,
+      ...(patch.competencyResult?{
+        competencyStatus:patch.competencyResult==='Επαρκής'?'closed':'retraining_required',
+        competencyUpdatedAt:new Date().toISOString(),
+      }:{}),
+    }
+    attendanceEditsRef.current.set(key,{...previous,...normalizedPatch})
+    setForm(c=>({...c,attendance:c.attendance.map(x=>attendeeKey(x)===key?{...x,...normalizedPatch}:x)}))
   }
 
   return <PageChrome className="organization-unified-page" header={<PageHeader
@@ -370,7 +390,7 @@ export default function TrainingPage(){
                 <div className="org-competency-followup__person"><strong>{att.employeeName}</strong><small>{[att.department,att.professionalCategory].filter(Boolean).join(' · ')}</small></div>
                 <FormGrid columns={form.competencyRequired?3:1}>
                   <FormField label={L('Βαθμός / αποτέλεσμα','Score / result')}><input inputMode="decimal" value={att.score||''} onChange={e=>updateAttendance(attendeeKey(att),{score:e.target.value})} placeholder={L('π.χ. 85% ή Επιτυχής','e.g. 85% or Passed')}/></FormField>
-                  {form.competencyRequired&&<FormField label={L('Αποτέλεσμα επάρκειας','Competency result')}><select value={att.competencyResult||''} onChange={e=>updateAttendance(attendeeKey(att),{competencyResult:e.target.value,assessedAt:e.target.value?(att.assessedAt||new Date().toISOString()):att.assessedAt})}><option value="">{L('Επιλέξτε…','Select…')}</option><option value="Επαρκής">{L('Επαρκής','Competent')}</option><option value="Χρειάζεται επανεκπαίδευση">{L('Χρειάζεται επανεκπαίδευση','Retraining required')}</option></select></FormField>}
+                  {form.competencyRequired&&<FormField label={L('Αποτέλεσμα επάρκειας','Competency result')}><select value={att.competencyResult||''} onChange={e=>updateAttendance(attendeeKey(att),{competencyResult:e.target.value,assessedAt:e.target.value?(att.assessedAt||new Date().toISOString().slice(0,10)):att.assessedAt})}><option value="">{L('Επιλέξτε…','Select…')}</option><option value="Επαρκής">{L('Επαρκής','Competent')}</option><option value="Χρειάζεται επανεκπαίδευση">{L('Χρειάζεται επανεκπαίδευση','Retraining required')}</option></select></FormField>}
                   {form.competencyRequired&&<FormField label={L('Αξιολογητής','Assessed by')}><input value={att.assessedBy||''} onChange={e=>updateAttendance(attendeeKey(att),{assessedBy:e.target.value})}/></FormField>}
                   {form.competencyRequired&&<FormField label={L('Ημερομηνία αξιολόγησης','Assessment date')}><input type="date" value={(att.assessedAt||'').slice(0,10)} onChange={e=>updateAttendance(attendeeKey(att),{assessedAt:e.target.value})}/></FormField>}
                   {form.competencyRequired&&<FormField label={L('Επάρκεια έως','Competency valid until')}><input type="date" value={att.competencyValidUntil||''} onChange={e=>updateAttendance(attendeeKey(att),{competencyValidUntil:e.target.value})}/></FormField>}

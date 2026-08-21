@@ -46,6 +46,20 @@ export async function saveOperationalTraining(input={}){
   const hydrated=await hydrateRelationalTraining(c,[mapTraining(saved)])
   const verified=hydrated[0]
   if((verified?.attendance||[]).length!==attendance.length)throw new Error('Training attendee relational verification failed.')
+  for(const expected of attendance){
+    const match=(verified?.attendance||[]).find(item=>
+      (expected.employeeId&&String(item.employeeId||'')===String(expected.employeeId))
+      ||(expected.relationalId&&String(item.relationalId||'')===String(expected.relationalId))
+      ||(!expected.employeeId&&String(item.employeeName||'').trim()===String(expected.employeeName||'').trim())
+    )
+    if(!match)throw new Error('Training attendee relational read-back failed.')
+    if(String(match.score||'')!==String(expected.score||'') || String(match.competencyResult||'')!==String(expected.competencyResult||'')){
+      throw new Error('Training attendee assessment fields were not persisted.')
+    }
+    if(String(expected.competencyResult||'').trim() && !String(match.assessedByUserId||'').trim()){
+      throw new Error('Training assessor user id was not persisted.')
+    }
+  }
   return verified
 }
 
@@ -126,7 +140,7 @@ async function syncTrainingAttendees(c,{org,actor,row,staffMap}){
       competency_valid_until:date(item.competencyValidUntil),
       assessed_by_user_id:hasAssessment?(item.assessedByUserId||actor):null,
       assessed_by_name:String(item.assessedBy||''),
-      assessed_at:item.assessedAt?`${date(item.assessedAt)}T00:00:00Z`:null,
+      assessed_at:date(item.assessedAt)?`${date(item.assessedAt)}T00:00:00Z`:null,
       certificate_data:item.certificate??null,
       is_manual:!!item.manual,
       created_by:current?.created_by||actor,
