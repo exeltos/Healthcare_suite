@@ -153,13 +153,14 @@ export async function loadEmployeeOccupationalVisits(employeeId){
   const client=requireSupabase()
   const { data,error }=await client
     .from('employee_occupational_visits')
-    .select('id,employee_id,visit_date,fitness,next_review_date,notes,created_at,updated_at')
+    .select('id,employee_id,department_id,visit_date,fitness,next_review_date,notes,created_at,updated_at')
     .eq('employee_id',employeeId)
     .order('visit_date',{ascending:false})
   if(error) throw error
   return (data||[]).map(row=>({
     id:row.id,
     employeeId:row.employee_id,
+    departmentId:row.department_id||'',
     date:row.visit_date||'',
     fitness:row.fitness||'',
     nextReviewDate:row.next_review_date||'',
@@ -183,9 +184,18 @@ export async function saveEmployeeOccupationalVisit(employeeId,input={}){
   }
   const client=requireSupabase()
   const organizationId=await currentOrganizationId(client)
+  const {data:employeeRow,error:employeeError}=await client.from('employees')
+    .select('id,department_id')
+    .eq('organization_id',organizationId)
+    .eq('id',String(employeeId))
+    .maybeSingle()
+  if(employeeError)throw employeeError
+  if(!employeeRow)throw new Error('Employee not found in the current organization.')
+
   const payload={
     organization_id:organizationId,
     employee_id:employeeId,
+    department_id:employeeRow.department_id||null,
     visit_date:input.date,
     fitness:String(input.fitness||''),
     next_review_date:emptyToNull(input.nextReviewDate),
@@ -194,11 +204,18 @@ export async function saveEmployeeOccupationalVisit(employeeId,input={}){
   if(!payload.visit_date) throw new Error('Visit date is required.')
   if(payload.next_review_date && payload.next_review_date < payload.visit_date) throw new Error('Next review date cannot precede the occupational-health visit date.')
   let query=client.from('employee_occupational_visits')
-  query=input.id?query.update(payload).eq('id',input.id):query.insert(payload)
-  const { data,error }=await query.select('id,employee_id,visit_date,fitness,next_review_date,notes,created_at,updated_at').single()
+  query=input.id
+    ? query.update(payload).eq('organization_id',organizationId).eq('employee_id',employeeId).eq('id',input.id)
+    : query.insert(payload)
+  const { data,error }=await query
+    .select('id,organization_id,employee_id,department_id,visit_date,fitness,next_review_date,notes,created_at,updated_at')
+    .single()
   if(error) throw error
+  if(String(data?.organization_id||'')!==String(organizationId))throw new Error('Occupational-health organization verification failed.')
+  if(String(data?.employee_id||'')!==String(employeeId))throw new Error('Occupational-health employee verification failed.')
+  if(String(data?.department_id||'')!==String(payload.department_id||''))throw new Error('Occupational-health department verification failed.')
   return {
-    id:data.id,employeeId:data.employee_id,date:data.visit_date||'',fitness:data.fitness||'',
+    id:data.id,employeeId:data.employee_id,departmentId:data.department_id||'',date:data.visit_date||'',fitness:data.fitness||'',
     nextReviewDate:data.next_review_date||'',notes:data.notes||'',createdAt:data.created_at||null,updatedAt:data.updated_at||null,
   }
 }
@@ -211,8 +228,12 @@ export async function deleteEmployeeOccupationalVisit(employeeId,visitId){
     return true
   }
   const client=requireSupabase()
-  const { error }=await client.from('employee_occupational_visits').delete().eq('id',visitId).eq('employee_id',employeeId)
+  const organizationId=await currentOrganizationId(client)
+  const { data,error }=await client.from('employee_occupational_visits').delete()
+    .eq('organization_id',organizationId).eq('id',visitId).eq('employee_id',employeeId)
+    .select('id').maybeSingle()
   if(error) throw error
+  if(!data?.id)throw new Error('Occupational-health delete did not match a visit in the current organization.')
   return true
 }
 
