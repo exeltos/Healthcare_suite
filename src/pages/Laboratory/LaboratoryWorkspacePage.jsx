@@ -507,7 +507,7 @@ export default function LaboratoryWorkspacePage() {
       const profile = loadCurrentProfile(language)
       payload = {
         ...payload,
-        validatedAt: payload.validatedAt || new Date().toISOString(),
+        // Display snapshot only. Supabase owns validated_at / validated_by.
         validatedBy: payload.validatedBy || profile?.displayName || profile?.username || L('Εργαστήριο', 'Laboratory'),
       }
     } else {
@@ -522,6 +522,7 @@ export default function LaboratoryWorkspacePage() {
       const profile = loadCurrentProfile(language)
       payload = {
         ...payload,
+        // Display snapshot only. Supabase owns critical_communicated_at/by.
         criticalCommunicatedBy: payload.criticalCommunicatedBy || profile?.displayName || profile?.username || L('Εργαστήριο', 'Laboratory'),
       }
     } else {
@@ -534,7 +535,8 @@ export default function LaboratoryWorkspacePage() {
     payload = {
       ...payload,
       microorganismResults: canonicalMicroorganisms,
-      microorganism: canonicalMicroorganisms[0]?.name || resolveLibraryName('microorganisms', payload.microorganism),
+      microorganisms: canonicalMicroorganisms.map((row) => row.name).filter(Boolean),
+      microorganism: canonicalMicroorganisms.map((row) => row.name).filter(Boolean).join(', '),
       resistance: canonicalMicroorganisms[0]?.resistance || payload.resistance || '',
       antibiogram: canonicalAntibiogram,
     }

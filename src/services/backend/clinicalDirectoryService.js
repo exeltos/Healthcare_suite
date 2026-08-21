@@ -186,6 +186,27 @@ export async function saveClinicalPatientSample(input={}){
     if(String(data.patient_id)!==String(patientId))throw new Error('Sample patient does not match the surveillance case.')
     caseRow=data
   }
+  const canonicalMicroorganismResults=Array.isArray(row.microorganismResults)
+    ? row.microorganismResults
+        .map((item)=>({
+          ...item,
+          name:String(item?.name||item?.microorganism||'').trim(),
+          resistance:String(item?.resistance||'').trim(),
+        }))
+        .filter((item)=>item.name)
+    : []
+  if(canonicalMicroorganismResults.length){
+    row.microorganismResults=canonicalMicroorganismResults
+    row.microorganisms=canonicalMicroorganismResults.map((item)=>item.name)
+    row.microorganism=canonicalMicroorganismResults.map((item)=>item.name).join(', ')
+    row.resistance=canonicalMicroorganismResults[0]?.resistance||row.resistance||''
+  } else if(String(row.status||'')==='Αρνητικό'){
+    row.microorganismResults=[]
+    row.microorganisms=[]
+    row.microorganism=''
+    row.resistance=''
+  }
+
   let departmentId=caseRow?.department_id||null
   if(!departmentId){
     const {data:patient,error:patientError}=await client.from('patients')
@@ -204,10 +225,8 @@ export async function saveClinicalPatientSample(input={}){
     microorganism:String(row.microorganism||''),resistance:String(row.resistance||''),
     sample_acceptance:String(row.sampleAcceptance||'Αποδεκτό'),
     rejection_reason:String(row.rejectionReason||''),
-    validated_at:row.validatedAt||null,
     critical_result:Boolean(row.criticalResult),
     critical_communicated_to:String(row.criticalCommunicatedTo||''),
-    critical_communicated_at:row.criticalCommunicatedAt||null,
     department_id:departmentId,
     data:cleanData(row,['id','patientId','patientName','patientCode','department','clinicalCaseId','surveillanceCaseId','parentSampleId','rootSampleId','sampleType','category','sampleReason','collectionDate','collectionTime','receivedDate','resultDate','status','microorganism','resistance','sampleAcceptance','rejectionReason','validatedAt','criticalResult','criticalCommunicatedTo','criticalCommunicatedAt']),
   }
