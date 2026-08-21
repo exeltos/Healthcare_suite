@@ -89,20 +89,39 @@ export default function PromotedAntibioticsPage(){
       return
     }
     const normalizedForm = form.approval === 'Εκκρεμεί' ? {...form, doctor:'', approvalDate:''} : form
-    if(editing){
-      const updated=await savePreventionRecord('promoted_antibiotic',{...editing,...normalizedForm})
-      if(updated.sourceType==='patient-therapy'&&updated.caseId&&updated.sourceId){
-        updateTherapyApproval(updated.caseId,updated.sourceId,{approval:updated.approval,approvalDoctor:updated.doctor,approvalDate:updated.approvalDate,approvalNotes:updated.notes})
-        const linkedCase=getSurveillanceCase(updated.caseId)
-        if(linkedCase) await saveClinicalSurveillanceCase(linkedCase)
+    try {
+      if(editing){
+        const updated=await savePreventionRecord('promoted_antibiotic',{...editing,...normalizedForm})
+        if(updated.sourceType==='patient-therapy'&&updated.caseId&&updated.sourceId){
+          updateTherapyApproval(updated.caseId,updated.sourceId,{approval:updated.approval,approvalDoctor:updated.doctor,approvalDate:updated.approvalDate,approvalNotes:updated.notes})
+          const linkedCase=getSurveillanceCase(updated.caseId)
+          if(linkedCase) await saveClinicalSurveillanceCase(linkedCase)
+        }
+      } else {
+        if(!subjects.length||!form.date||!form.antibiotic)return
+        for(const subject of subjects){
+          if(subject.manual){ throw new Error(L('Για προωθημένο αντιβιοτικό απαιτείται καταχωρημένος ασθενής από το μητρώο.','Restricted antibiotics require a registered patient from the registry.')) }
+          const source=subject.source||{};const values=subject.values||{}
+          await savePreventionRecord('promoted_antibiotic',{...normalizedForm,patientId:subject.id,patientName:subject.name,patientCode:source.patientCode||values.code||'',department:form.department||source.department||values.department||subject.meta||''})
+        }
       }
-      refreshRecords();close();return
+      const refreshed=await loadPreventionRecords('promoted_antibiotic')
+      setRecords(refreshed)
+      notifyAction(L('Το αίτημα αποθηκεύτηκε.','Request saved.'))
+      close()
+    } catch(error) {
+      notifyAction(error?.message||L('Η αποθήκευση του αιτήματος απέτυχε.','Request save failed.'))
     }
-    if(!subjects.length||!form.date||!form.antibiotic)return
-    for(const subject of subjects){const source=subject.source||{};const values=subject.values||{};await savePreventionRecord('promoted_antibiotic',{...normalizedForm,patientId:subject.manual?'':subject.id,patientName:subject.name,patientCode:source.patientCode||values.code||'',department:form.department||source.department||values.department||subject.meta||''})}
-    refreshRecords();close()
   }
-  async function remove(){ if(!editing||!confirmAction(L('Να διαγραφεί η καταχώρηση;','Delete this record?')))return; await deletePreventionRecord('promoted_antibiotic',editing.id); setRecords(await loadPreventionRecords('promoted_antibiotic')); close() }
+  async function remove(){
+    if(!editing||!confirmAction(L('Να διαγραφεί η καταχώρηση;','Delete this record?')))return
+    try {
+      await deletePreventionRecord('promoted_antibiotic',editing.id)
+      setRecords(await loadPreventionRecords('promoted_antibiotic'))
+      notifyAction(L('Η καταχώρηση διαγράφηκε.','Record deleted.'))
+      close()
+    } catch(error) { notifyAction(error?.message||L('Η διαγραφή απέτυχε.','Delete failed.')) }
+  }
   function printSelected(){printRows({title:L('Προωθημένα Αντιβιοτικά','Restricted Antibiotics'),columns:exportColumns,rows:selectedRecords})}
   function exportSelected(){downloadCsv({filename:`proothimena-antiviotika-${new Date().toISOString().slice(0,10)}.csv`,columns:exportColumns,rows:selectedRecords})}
 

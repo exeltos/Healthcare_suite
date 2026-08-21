@@ -19,6 +19,18 @@ export async function loadPreventionRecords(type){
  const d=defs[type];if(!d)throw new Error('Unknown prevention record type.')
  if(!IS_PRODUCTION)return d.load()
  const c=requireSupabase()
+ if(type==='promoted_antibiotic'){
+   const org=await orgId(c)
+   const {data,error}=await c.from('promoted_antibiotic_requests')
+     .select('*,patient:patients(id,patient_code,first_name,last_name,department_id),department:departments(id,name)')
+     .eq('organization_id',org)
+     .order('request_date',{ascending:false})
+     .order('created_at',{ascending:false})
+   if(error)throw error
+   const rows=(data||[]).map(mapPromotedAntibiotic)
+   if(JSON.stringify(d.load())!==JSON.stringify(rows))d.save(rows)
+   return rows
+ }
  if(type==='staff_vaccination'){
    const org=await orgId(c)
    const {data,error}=await c.from('employee_vaccinations')
@@ -40,6 +52,52 @@ export async function savePreventionRecord(type,input={}){
  const d=defs[type];if(!d)throw new Error('Unknown prevention record type.')
  if(!IS_PRODUCTION){const row={...input,id:input.id||`${type}-${Date.now()}`};d.save([row,...d.load().filter(x=>x.id!==row.id)]);return row}
  const c=requireSupabase(),org=await orgId(c)
+
+ if(type==='promoted_antibiotic'){
+   const row={...input}
+   if(!row.patientId)throw new Error('Patient is required for a restricted-antibiotic request.')
+   if(!row.antibiotic?.trim())throw new Error('Antibiotic is required.')
+   const requestDate=date(row.date)
+   if(!requestDate)throw new Error('Request date is required.')
+   const {data:patient,error:patientError}=await c.from('patients')
+     .select('id,patient_code,first_name,last_name,department_id')
+     .eq('organization_id',org).eq('id',String(row.patientId)).maybeSingle()
+   if(patientError)throw patientError
+   if(!patient)throw new Error('Patient not found in the current organization.')
+   const resolvedDepartment=await departmentId(c,org,row.department)
+   const status=String(row.approval||row.status||'Εκκρεμεί')
+   const isFinal=status==='Εγκρίθηκε'||status==='Απορρίφθηκε'||status==='Ακυρώθηκε'
+   const payload={
+     organization_id:org, patient_id:String(patient.id), department_id:resolvedDepartment||patient.department_id||null,
+     antibiotic:String(row.antibiotic||'').trim(), indication:String(row.indication||''), request_date:requestDate,
+     status, reviewed_by_name:isFinal?String(row.doctor||''):'', reviewed_at:isFinal?new Date().toISOString():null,
+     approval_date:status==='Εγκρίθηκε'?date(row.approvalDate):null, decision_notes:String(row.notes||''),
+   }
+   const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(row.id||''))
+   let saved,error
+   if(uuid){
+     ;({data:saved,error}=await c.from('promoted_antibiotic_requests').update(payload)
+       .eq('organization_id',org).eq('id',String(row.id))
+       .select('*,patient:patients(id,patient_code,first_name,last_name,department_id),department:departments(id,name)').single())
+   }else{
+     const legacyKey=String(row.id||'').trim()||null
+     const insertPayload={...payload,legacy_prevention_record_id:legacyKey}
+     ;({data:saved,error}=await c.from('promoted_antibiotic_requests').insert(insertPayload)
+       .select('*,patient:patients(id,patient_code,first_name,last_name,department_id),department:departments(id,name)').single())
+   }
+   if(error)throw error
+   const {data:verified,error:verifyError}=await c.from('promoted_antibiotic_requests')
+     .select('*,patient:patients(id,patient_code,first_name,last_name,department_id),department:departments(id,name)')
+     .eq('organization_id',org).eq('id',String(saved.id)).maybeSingle()
+   if(verifyError)throw verifyError
+   if(!verified?.id)throw new Error('Supabase restricted-antibiotic write could not be verified.')
+   if(String(verified.patient_id)!==String(patient.id))throw new Error('Restricted-antibiotic patient verification failed.')
+   if(String(verified.antibiotic)!==String(row.antibiotic||'').trim())throw new Error('Restricted-antibiotic verification failed.')
+   if(String(verified.status)!==status)throw new Error('Restricted-antibiotic status verification failed.')
+   const mapped=mapPromotedAntibiotic(verified)
+   await loadPreventionRecords(type)
+   return {...mapped,_persisted:true}
+ }
 
  if(type==='staff_vaccination'){
    const row={...input}
@@ -119,6 +177,19 @@ export async function deletePreventionRecord(type,id){
  if(!IS_PRODUCTION){d.save(d.load().filter(x=>String(x.id)!==String(id)));return true}
  const c=requireSupabase(),org=await orgId(c)
 
+ if(type==='promoted_antibiotic'){
+   const {data:deleted,error}=await c.from('promoted_antibiotic_requests')
+     .delete().eq('organization_id',org).eq('id',String(id)).select('id').maybeSingle()
+   if(error)throw error
+   if(!deleted?.id)throw new Error('Supabase delete did not remove the restricted-antibiotic request.')
+   const {data:verified,error:verifyError}=await c.from('promoted_antibiotic_requests')
+     .select('id').eq('organization_id',org).eq('id',String(id)).maybeSingle()
+   if(verifyError)throw verifyError
+   if(verified)throw new Error('Supabase restricted-antibiotic delete could not be verified.')
+   await loadPreventionRecords(type)
+   return true
+ }
+
  if(type==='staff_vaccination'){
    const {data:deleted,error}=await c.from('employee_vaccinations')
      .delete().eq('organization_id',org).eq('id',String(id)).select('id').maybeSingle()
@@ -139,6 +210,20 @@ export async function deletePreventionRecord(type,id){
  await loadPreventionRecords(type);return true
 }
 export async function hydratePreventionBackend(){return Object.fromEntries(await Promise.all(Object.keys(defs).map(async type=>[type,await loadPreventionRecords(type)])))}
+function mapPromotedAntibiotic(r={}){
+ const patient=one(r.patient)||{}
+ const department=one(r.department)||{}
+ const legacy=String(r.legacy_prevention_record_id||'')
+ return {
+   id:r.id, legacyId:legacy, patientId:r.patient_id||'',
+   patientName:[patient.first_name,patient.last_name].filter(Boolean).join(' '), patientCode:patient.patient_code||'',
+   department:department.name||'', antibiotic:r.antibiotic||'', indication:r.indication||'', date:r.request_date||'',
+   approval:r.status||'Εκκρεμεί', status:r.status||'Εκκρεμεί', doctor:r.reviewed_by_name||'',
+   approvalDate:r.approval_date||'', notes:r.decision_notes||'', reviewedAt:r.reviewed_at||null,
+   sourceType:legacy.startsWith('PTX-')?'patient-therapy':'', sourceId:legacy.startsWith('PTX-')?legacy.slice(4):'',
+   createdAt:r.created_at||null, updatedAt:r.updated_at||null,
+ }
+}
 function mapEmployeeVaccination(r={}){
  const employee=one(r.employee)
  const department=one(employee?.department)

@@ -105,36 +105,34 @@ export default function VaccinationsPage() {
     event.preventDefault()
     const nextErrors = validateForm()
     if (Object.keys(nextErrors).length) return
-    if (editing) {
-      await savePreventionRecord('staff_vaccination',{ ...editing, ...form })
-    } else {
-      if (!subjects.length) return
-      let created = 0
-      for (const subject of subjects) {
-        const values = subject.values || {}
-        const source = subject.source || {}
-        const employeeId = subject.manual ? '' : subject.id
-        const duplicate = records.some((item) =>
-          String(item.employeeId || item.employeeName || '') === String(employeeId || subject.name || '') &&
-          String(item.vaccine || '') === String(form.vaccine || '') &&
-          String(item.date || '') === String(form.date || '')
-        )
-        if (duplicate) continue
-        await savePreventionRecord('staff_vaccination',{
-          ...form,
-          employeeId,
-          employeeName: subject.name,
-          department: values.department || source.department || subject.meta || '',
-          professionalCategory: values.role || source.professionalCategory || '',
-        })
-        created += 1
-      }
-      if (!created) {
-        notifyAction(L('Οι επιλεγμένοι εμβολιασμοί υπάρχουν ήδη για την ίδια ημερομηνία.', 'The selected vaccination records already exist for the same date.'))
-        return
-      }
-    }
     try {
+      if (editing) {
+        await savePreventionRecord('staff_vaccination',{ ...editing, ...form })
+      } else {
+        if (!subjects.length) return
+        let created = 0
+        for (const subject of subjects) {
+          const values = subject.values || {}
+          const source = subject.source || {}
+          const employeeId = subject.manual ? '' : subject.id
+          const duplicate = records.some((item) =>
+            String(item.employeeId || item.employeeName || '') === String(employeeId || subject.name || '') &&
+            String(item.vaccine || '') === String(form.vaccine || '') &&
+            String(item.date || '') === String(form.date || '')
+          )
+          if (duplicate) continue
+          await savePreventionRecord('staff_vaccination',{
+            ...form, employeeId, employeeName: subject.name,
+            department: values.department || source.department || subject.meta || '',
+            professionalCategory: values.role || source.professionalCategory || '',
+          })
+          created += 1
+        }
+        if (!created) {
+          notifyAction(L('Οι επιλεγμένοι εμβολιασμοί υπάρχουν ήδη για την ίδια ημερομηνία.', 'The selected vaccination records already exist for the same date.'))
+          return
+        }
+      }
       const refreshed = await loadPreventionRecords('staff_vaccination')
       setRecords(refreshed)
       if (editing) {
