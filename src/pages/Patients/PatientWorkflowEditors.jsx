@@ -90,7 +90,7 @@ export function IsolationEditor({ form, setForm, save, cancel, files = [], uploa
       <span>{L('Επισύναψη', 'Attachment')}</span>
       <div className="pw-inline-attachment-field">{form.id ? <AttachmentTools files={files} upload={upload} deleteAttachment={deleteAttachment} /> : <small>{L('Μετά την πρώτη αποθήκευση μπορείτε να προσθέσετε αρχείο.', 'After the first save you can add a file.')}</small>}</div>
     </div>
-    <FormActions onCancel={cancel} />
+    <FormActions onCancel={cancel} feedback={false} />
   </form>
 }
 

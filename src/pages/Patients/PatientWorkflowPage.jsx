@@ -365,8 +365,15 @@ export default function PatientWorkflowPage() {
     }
     const todayIso = new Date().toISOString().slice(0, 10)
     const derivedStatus = isolationForm.status === 'Ακυρωμένη' ? 'Ακυρωμένη' : (isolationForm.endDate && isolationForm.endDate < todayIso ? 'Ολοκληρωμένη' : 'Ενεργή')
-    const savedIsolation = await saveClinicalIsolation({ ...isolationForm, status: derivedStatus, id: isolationForm.id || `ISO-${Date.now()}`, patientId: patient.id, patientName: patient.fullName, patientCode: patient.patientCode, department: patient.department, clinicalCaseId: activeCase.id })
-    setIsolationForm(savedIsolation); await refreshAll(activeCase.id)
+    try {
+      const savedIsolation = await saveClinicalIsolation({ ...isolationForm, status: derivedStatus, id: isolationForm.id || `ISO-${Date.now()}`, patientId: patient.id, patientName: patient.fullName, patientCode: patient.patientCode, department: patient.department, clinicalCaseId: activeCase.id })
+      if(!savedIsolation?.id)throw new Error(L('Η Supabase δεν επιβεβαίωσε την απομόνωση.','Supabase did not confirm the isolation record.'))
+      setIsolationForm(savedIsolation)
+      await refreshAll(activeCase.id)
+      feedbackSaved({title:L('Αποθηκεύτηκε','Saved'),message:L('Η απομόνωση αποθηκεύτηκε στη Supabase.','The isolation was saved to Supabase.')})
+    } catch(error) {
+      notifyAction(error?.message||L('Δεν ήταν δυνατή η αποθήκευση της απομόνωσης.','The isolation could not be saved.'))
+    }
   }
   async function removeCase(id) {
     if (activeCase && isClosedSurveillanceCase(activeCase)) return

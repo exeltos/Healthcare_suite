@@ -65,7 +65,7 @@ export async function loadClinicalIsolations(patientId=''){
   const c=requireSupabase();let q=c.from('patient_isolations').select('*,department:departments(id,name),patient:patients(id,patient_code,first_name,last_name)').order('created_at',{ascending:false})
   if(patientId)q=q.eq('patient_id',String(patientId))
   const {data,error}=await q;if(error)throw error
-  const rows=(data||[]).map(r=>({...r.data,id:r.id,patientId:r.patient_id,clinicalCaseId:r.surveillance_case_id||r.data?.clinicalCaseId||'',patientCode:one(r.patient)?.patient_code||'',patientName:[one(r.patient)?.first_name,one(r.patient)?.last_name].filter(Boolean).join(' '),department:one(r.department)?.name||'',isolationType:r.isolation_type,status:r.status,startDate:r.start_date||'',endDate:r.end_date||'',reason:r.reason||''}))
+  const rows=(data||[]).map(r=>({...r.data,id:r.id,patientId:r.patient_id,clinicalCaseId:r.surveillance_case_id||r.data?.clinicalCaseId||'',patientCode:one(r.patient)?.patient_code||'',patientName:[one(r.patient)?.first_name,one(r.patient)?.last_name].filter(Boolean).join(' '),department:one(r.department)?.name||'',isolationType:r.isolation_type,pathogen:r.pathogen||r.data?.pathogen||'',status:r.status,startDate:r.start_date||'',endDate:r.end_date||'',reason:r.reason||''}))
   if(!patientId){
     const current=loadIsolations()
     for(const item of current)deleteIsolation(item.id)
@@ -75,12 +75,67 @@ export async function loadClinicalIsolations(patientId=''){
 }
 export async function saveClinicalIsolation(input={}){
   if(!IS_PRODUCTION)return upsertIsolation(input)
-  const c=requireSupabase(),org=await orgId(c),pid=await patientIdFor(c,input),dep=await departmentId(c,org,input.department)
+  const c=requireSupabase(),org=await orgId(c),pid=await patientIdFor(c,input)
   const today=new Date().toISOString().slice(0,10)
   const row={...input,id:input.id||`ISO-${Date.now()}`}
   row.status=row.status==='Ακυρωμένη'?'Ακυρωμένη':(row.endDate&&row.endDate<today?'Ολοκληρωμένη':'Ενεργή')
-  const payload={id:String(row.id),organization_id:org,patient_id:pid,surveillance_case_id:row.clinicalCaseId?String(row.clinicalCaseId):null,department_id:dep,isolation_type:String(row.isolationType||''),status:String(row.status||'Ενεργή'),start_date:date(row.startDate),end_date:date(row.endDate),reason:String(row.reason||''),data:rest(row,['id','patientId','patientCode','patientName','department','isolationType','status','startDate','endDate','reason'])}
-  const {data,error}=await c.from('patient_isolations').upsert(payload,{onConflict:'id'}).select().single();if(error)throw error;const mapped={...row,id:data.id};upsertIsolation(mapped);return mapped
+
+  const caseId=row.clinicalCaseId?String(row.clinicalCaseId):null
+  let caseRow=null
+  if(caseId){
+    const {data,error}=await c.from('surveillance_cases')
+      .select('id,patient_id,department_id').eq('organization_id',org).eq('id',caseId).maybeSingle()
+    if(error)throw error
+    if(!data)throw new Error('Η επιτήρηση της απομόνωσης δεν βρέθηκε στο Supabase.')
+    if(String(data.patient_id)!==String(pid))throw new Error('Η απομόνωση πρέπει να ανήκει στον ίδιο ασθενή με την επιτήρηση.')
+    caseRow=data
+  }
+
+  let dep=caseRow?.department_id||null
+  if(!dep){
+    const {data:patient,error:patientError}=await c.from('patients')
+      .select('department_id').eq('organization_id',org).eq('id',String(pid)).maybeSingle()
+    if(patientError)throw patientError
+    dep=patient?.department_id||null
+  }
+
+  const payload={
+    id:String(row.id),organization_id:org,patient_id:pid,surveillance_case_id:caseId,
+    department_id:dep,isolation_type:String(row.isolationType||''),
+    pathogen:String(row.pathogen||''),status:String(row.status||'Ενεργή'),
+    start_date:date(row.startDate),end_date:date(row.endDate),reason:String(row.reason||''),
+    data:rest(row,['id','patientId','patientCode','patientName','department','clinicalCaseId','isolationType','pathogen','status','startDate','endDate','reason','createdAt','updatedAt'])
+  }
+
+  const {data:existing,error:existingError}=await c.from('patient_isolations')
+    .select('id').eq('organization_id',org).eq('id',String(row.id)).maybeSingle()
+  if(existingError)throw existingError
+
+  let write=c.from('patient_isolations')
+  write=existing
+    ? write.update(payload).eq('organization_id',org).eq('id',String(row.id))
+    : write.insert(payload)
+
+  const {data,error}=await write.select('*').single()
+  if(error)throw error
+
+  const {data:verified,error:verifyError}=await c.from('patient_isolations')
+    .select('*').eq('organization_id',org).eq('id',String(data.id)).eq('patient_id',String(pid)).maybeSingle()
+  if(verifyError)throw verifyError
+  if(!verified?.id)throw new Error('Η απομόνωση δεν επιβεβαιώθηκε στο Supabase.')
+  if(String(verified.surveillance_case_id||'')!==String(caseId||''))throw new Error('Η σύνδεση απομόνωσης με την επιτήρηση δεν επιβεβαιώθηκε.')
+  if(String(verified.department_id||'')!==String(dep||''))throw new Error('Το τμήμα της απομόνωσης δεν επιβεβαιώθηκε.')
+  if(String(verified.pathogen||'')!==String(row.pathogen||''))throw new Error('Το παθογόνο της απομόνωσης δεν επιβεβαιώθηκε.')
+
+  const mapped={
+    ...row,id:verified.id,patientId:verified.patient_id,
+    clinicalCaseId:verified.surveillance_case_id||'',departmentId:verified.department_id||'',
+    isolationType:verified.isolation_type||'',pathogen:verified.pathogen||'',
+    status:verified.status||'',startDate:verified.start_date||'',endDate:verified.end_date||'',
+    reason:verified.reason||'',createdAt:verified.created_at||null,updatedAt:verified.updated_at||null
+  }
+  upsertIsolation(mapped)
+  return mapped
 }
 export async function deleteClinicalIsolation(id){
   if(!IS_PRODUCTION)return deleteIsolation(id)
