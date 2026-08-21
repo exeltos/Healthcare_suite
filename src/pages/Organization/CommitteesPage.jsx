@@ -153,7 +153,20 @@ export default function CommitteesPage(){
       nextMeeting:form.nextMeeting||addInterval(form.lastMeeting,form.frequency),
     }
     try {
-      await saveOperationalCommittee(saved)
+      const persisted=await saveOperationalCommittee(saved)
+      const expectedMembers=Array.isArray(saved.members)?saved.members:[]
+      const persistedMembers=Array.isArray(persisted?.members)?persisted.members:[]
+      for(const expected of expectedMembers){
+        const match=persistedMembers.find(item=>
+          (expected.employeeId&&String(item.employeeId||'')===String(expected.employeeId))
+          ||(expected.relationalId&&String(item.relationalId||'')===String(expected.relationalId))
+          ||(!expected.employeeId&&!expected.relationalId&&String(item.fullName||'').trim()===String(expected.fullName||'').trim())
+        )
+        if(!match)throw new Error(L('Δεν επιβεβαιώθηκε μέλος της επιτροπής στη Supabase.','A committee member was not confirmed in Supabase.'))
+        if(String(match.role||'')!==String(expected.role||'') || String(match.duties||'')!==String(expected.duties||'')){
+          throw new Error(L('Οι αλλαγές μέλους δεν επιβεβαιώθηκαν στη Supabase.','Committee member changes were not confirmed in Supabase.'))
+        }
+      }
       setRows(await loadOperationalCommittees())
       close()
     } catch (error) {
@@ -225,9 +238,18 @@ export default function CommitteesPage(){
     })
   }
 
-  function updateMember(id,patch){
+  function updateMember(memberKey,patch){
     setForm(c=>{
-      let members=c.members.map(x=>x.id===id?{...x,...patch}:x)
+      const key=String(memberKey||'')
+      let members=c.members.map(x=>{
+        const matches=[
+          x.id,
+          x.employeeId,
+          x.relationalId,
+          x.employeeId?`employee-${x.employeeId}`:'',
+        ].filter(Boolean).some(value=>String(value)===key)
+        return matches?{...x,...patch}:x
+      })
       if(patch.role==='Πρόεδρος') members=members.map(x=>x.id!==id&&x.role==='Πρόεδρος'?{...x,role:'Μέλος'}:x)
       if(patch.role==='Γραμματέας') members=members.map(x=>x.id!==id&&x.role==='Γραμματέας'?{...x,role:'Μέλος'}:x)
       const chair=members.find(x=>x.role==='Πρόεδρος')?.fullName||''
@@ -459,10 +481,10 @@ export default function CommitteesPage(){
                 <strong>{m.fullName}</strong>
                 <small>{[m.department,m.capacity,committeeDisplayValue(m.manual?'Χειροκίνητη καταχώρηση':'Από μητρώο προσωπικού',language)].filter(Boolean).join(' · ')}</small>
               </div>
-              <select aria-label={L('Ρόλος στην επιτροπή','Committee role')} value={m.role||'Μέλος'} onChange={e=>updateMember(m.id,{role:e.target.value})}>
+              <select aria-label={L('Ρόλος στην επιτροπή','Committee role')} value={m.role||'Μέλος'} onChange={e=>updateMember(m.employeeId||m.relationalId||m.id,{role:e.target.value})}>
                 {MEMBER_ROLES.map(x=><option key={x} value={x}>{committeeDisplayValue(x,language)}</option>)}
               </select>
-              <input aria-label={L('Αρμοδιότητες','Responsibilities')} placeholder={L('Αρμοδιότητες','Responsibilities')} value={m.duties||''} onChange={e=>updateMember(m.id,{duties:e.target.value})}/>
+              <input aria-label={L('Αρμοδιότητες','Responsibilities')} placeholder={L('Αρμοδιότητες','Responsibilities')} value={m.duties||''} onChange={e=>updateMember(m.employeeId||m.relationalId||m.id,{duties:e.target.value})}/>
             </div>):<div className="org-empty">{L('Δεν έχουν προστεθεί μέλη.','No members have been added.')}</div>}
           </div>
         </FormSection>

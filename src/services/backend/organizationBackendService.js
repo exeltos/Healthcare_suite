@@ -84,7 +84,18 @@ export async function saveOperationalCommittee(input={}){
   const {data:saved,error}=await c.from('committees').upsert(payload,{onConflict:'id'}).select().single();if(error)throw error
   await syncCommitteeRelations(c,{org,actor,row,staffMap})
   const hydrated=await hydrateRelationalCommittees(c,[mapCommittee(saved)])
-  return hydrated[0]
+  const verified=hydrated[0]
+  for(const expected of members){
+    const match=(verified?.members||[]).find(item=>
+      (expected.employeeId&&String(item.employeeId||'')===String(expected.employeeId))
+      ||(expected.relationalId&&String(item.relationalId||'')===String(expected.relationalId))
+      ||(!expected.employeeId&&!expected.relationalId&&String(item.fullName||'').trim()===String(expected.fullName||'').trim())
+    )
+    if(!match)throw new Error('Committee member relational verification failed.')
+    if(String(match.role||'')!==String(expected.role||'')||String(match.duties||'')!==String(expected.duties||''))
+      throw new Error('Committee member relational field verification failed.')
+  }
+  return verified
 }
 export async function deleteOperationalCommittee(id){
   if(!IS_PRODUCTION)return deleteCommittee(id)
