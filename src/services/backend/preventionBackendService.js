@@ -29,15 +29,20 @@ export async function savePreventionRecord(type,input={}){
  const c=requireSupabase(),org=await orgId(c),row={...input,id:input.id||`${type}-${Date.now()}`}
  let resolvedDepartment=await departmentId(c,org,row.department),employee=null
  if(type==='staff_vaccination'&&row.employeeId){
-   const {data:employeeRow,error:employeeError}=await c.from('employees').select('id,status,department_id,department:departments(id,name)').eq('organization_id',org).eq('id',String(row.employeeId)).maybeSingle()
+   const {data:employeeRow,error:employeeError}=await c.from('employees')
+     .select('id,status,first_name,last_name,professional_category,department_id,department:departments(id,name)')
+     .eq('organization_id',org).eq('id',String(row.employeeId)).maybeSingle()
    if(employeeError)throw employeeError
    employee=employeeRow
    if(!employee)throw new Error('Employee not found in the current organization.')
    if(employee.status==='inactive')throw new Error('Vaccination cannot be added to an inactive employee.')
    const employeeDepartment=one(employee.department)
-   if(!resolvedDepartment&&employee.department_id)resolvedDepartment=employee.department_id
-   if(!String(row.department||'').trim()&&employeeDepartment?.name)row.department=employeeDepartment.name
-   if(!String(row.status||'').trim())row.status='recorded'
+   // Canonical staff snapshot: never trust duplicated display fields from the UI.
+   resolvedDepartment=employee.department_id||null
+   row.department=employeeDepartment?.name||''
+   row.employeeName=[employee.last_name,employee.first_name].filter(Boolean).join(' ')
+   row.professionalCategory=employee.professional_category||''
+   row.status='recorded'
    const vaccinationDate=date(row.date)
    const {data:duplicate,error:duplicateError}=await c.from('prevention_records').select('id')
      .eq('organization_id',org).eq('record_type','staff_vaccination').eq('employee_id',String(row.employeeId))
@@ -52,6 +57,15 @@ export async function savePreventionRecord(type,input={}){
  if(type==='staff_vaccination'&&row.employeeId&&String(verified.employee_id||'')!==String(row.employeeId))throw new Error('Supabase vaccination verification failed for the employee link.')
  if(type==='staff_vaccination'&&resolvedDepartment&&String(verified.department_id||'')!==String(resolvedDepartment))throw new Error('Supabase vaccination verification failed for the department link.')
  if(type==='staff_vaccination'&&String(verified.status||'')!=='recorded')throw new Error('Supabase vaccination verification failed for status.')
+ if(type==='staff_vaccination'){
+   const snapshot=verified.data||{}
+   if(String(snapshot.employeeId||'')!==String(row.employeeId||''))throw new Error('Supabase vaccination snapshot failed for employee.')
+   if(String(snapshot.department||'')!==String(row.department||''))throw new Error('Supabase vaccination snapshot failed for department.')
+   if(String(snapshot.employeeName||'')!==String(row.employeeName||''))throw new Error('Supabase vaccination snapshot failed for employee name.')
+   if(String(snapshot.professionalCategory||'')!==String(row.professionalCategory||''))throw new Error('Supabase vaccination snapshot failed for professional category.')
+   if(String(snapshot.vaccine||'')!==String(row.vaccine||''))throw new Error('Supabase vaccination snapshot failed for vaccine.')
+   if(String(snapshot.date||'')!==String(row.date||''))throw new Error('Supabase vaccination snapshot failed for date.')
+ }
  await loadPreventionRecords(type);return {...row,id:verified.id,_persisted:true}
 }
 export async function deletePreventionRecord(type,id){
