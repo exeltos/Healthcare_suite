@@ -211,7 +211,16 @@ export async function saveClinicalPatientSample(input={}){
     department_id:departmentId,
     data:cleanData(row,['id','patientId','patientName','patientCode','department','clinicalCaseId','surveillanceCaseId','parentSampleId','rootSampleId','sampleType','category','sampleReason','collectionDate','collectionTime','receivedDate','resultDate','status','microorganism','resistance','sampleAcceptance','rejectionReason','validatedAt','criticalResult','criticalCommunicatedTo','criticalCommunicatedAt']),
   }
-  const { data,error }=await client.from('patient_samples').upsert(payload,{onConflict:'id'})
+  const {data:existingSample,error:existingSampleError}=await client.from('patient_samples')
+    .select('id').eq('organization_id',organizationId).eq('id',String(row.id)).maybeSingle()
+  if(existingSampleError)throw existingSampleError
+
+  let sampleWrite=client.from('patient_samples')
+  sampleWrite=existingSample
+    ? sampleWrite.update(payload).eq('organization_id',organizationId).eq('id',String(row.id))
+    : sampleWrite.insert(payload)
+
+  const { data,error }=await sampleWrite
     .select('*,department:departments(id,name,code),patient:patients(id,patient_code,first_name,last_name,admission_date)').single()
   if(error)throw error
   if(String(data?.patient_id||'')!==String(patientId))throw new Error('Patient sample patient verification failed.')
