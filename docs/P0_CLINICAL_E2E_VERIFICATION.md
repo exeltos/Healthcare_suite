@@ -25,3 +25,6 @@ Use this matrix on a dedicated Supabase test organization before v1.0. Do not us
 
 ## Pass criteria
 All UI checks, database invariants and cross-module reflections must pass in both EL and EN where the action is exposed. Capture the organization ID, test user role, timestamp and evidence screenshots/log identifiers for the release record.
+
+## Automated live contract layer (rc.215+)
+Run `npm run e2e:supabase-clinical` with the secret environment variables described in `.env.e2e.example` before the manual UI matrix above. A second user in another organization is strongly recommended so tenant-isolation is tested against the live RLS policies.

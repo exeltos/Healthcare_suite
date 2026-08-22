@@ -1,4 +1,5 @@
 import { IS_PRODUCTION } from '../../core/runtime'
+import { withProductionCacheWrite } from '../../core/storage'
 import { requireSupabase } from '../../integrations/supabase'
 import { loadStaffSamples,loadEnvironmentalSamples,loadWaterRecords,saveStaffSamples,saveEnvironmentalSamples,saveWaterRecords,upsertStaffSample,upsertEnvironmentalSample,upsertWaterRecord,deleteStaffSample,deleteEnvironmentalSample,deleteWaterRecord } from '../laboratorySourcesService'
 import { loadIsolations,upsertIsolation,deleteIsolation } from '../isolationsService'
@@ -18,9 +19,9 @@ export async function loadClinicalSourceSamples(){
   // Supabase hydration updates the local mirrors silently. Emitting the same
   // domain events here would immediately re-trigger Laboratory workspace
   // hydration, causing an unbounded GET loop (patients/source samples/notifications).
-  saveStaffSamples(staff,{emit:false})
-  saveEnvironmentalSamples(environment,{emit:false})
-  saveWaterRecords(water,{emit:false})
+  withProductionCacheWrite(()=>saveStaffSamples(staff,{emit:false}))
+  withProductionCacheWrite(()=>saveEnvironmentalSamples(environment,{emit:false}))
+  withProductionCacheWrite(()=>saveWaterRecords(water,{emit:false}))
   return rows
 }
 export async function saveClinicalSourceSample(input={}){
@@ -92,9 +93,11 @@ export async function loadClinicalIsolations(patientId=''){
   const {data,error}=await q;if(error)throw error
   const rows=(data||[]).map(r=>({...r.data,id:r.id,patientId:r.patient_id,clinicalCaseId:r.surveillance_case_id||r.data?.clinicalCaseId||'',patientCode:one(r.patient)?.patient_code||'',patientName:[one(r.patient)?.first_name,one(r.patient)?.last_name].filter(Boolean).join(' '),department:one(r.department)?.name||'',isolationType:r.isolation_type,pathogen:r.pathogen||r.data?.pathogen||'',status:r.status,startDate:r.start_date||'',endDate:r.end_date||'',reason:r.reason||''}))
   if(!patientId){
-    const current=loadIsolations()
-    for(const item of current)deleteIsolation(item.id)
-    for(const item of rows)upsertIsolation(item)
+    withProductionCacheWrite(()=>{
+      const current=loadIsolations()
+      for(const item of current)deleteIsolation(item.id)
+      for(const item of rows)upsertIsolation(item)
+    })
   }
   return rows
 }
@@ -159,12 +162,18 @@ export async function saveClinicalIsolation(input={}){
     status:verified.status||'',startDate:verified.start_date||'',endDate:verified.end_date||'',
     reason:verified.reason||'',createdAt:verified.created_at||null,updatedAt:verified.updated_at||null
   }
-  upsertIsolation(mapped)
-  return mapped
+  withProductionCacheWrite(()=>upsertIsolation(mapped))
+  return {...mapped,_persisted:true}
 }
 export async function deleteClinicalIsolation(id){
   if(!IS_PRODUCTION)return deleteIsolation(id)
-  const c=requireSupabase();const {error}=await c.from('patient_isolations').delete().eq('id',String(id));if(error)throw error;deleteIsolation(id);return true
+  const c=requireSupabase(),org=await orgId(c)
+  const {data,error}=await c.from('patient_isolations')
+    .delete().eq('organization_id',org).eq('id',String(id)).select('id')
+  if(error)throw error
+  if(!data?.length)throw new Error('Η διαγραφή απομόνωσης δεν επιβεβαιώθηκε στο Supabase.')
+  withProductionCacheWrite(()=>deleteIsolation(id))
+  return true
 }
 
 export async function loadClinicalAttachments(patientId){
@@ -203,18 +212,18 @@ export async function signedClinicalAttachmentUrl(record,expires=300){
 export async function loadClinicalNotifiableDiseases(){
   if(!IS_PRODUCTION)return loadNotifiableDiseases()
   const c=requireSupabase();const {data,error}=await c.from('notifiable_diseases').select('*,department:departments(id,name),patient:patients(id,patient_code,first_name,last_name)').order('created_at',{ascending:false});if(error)throw error
-  const rows=(data||[]).map(mapDisease);saveNotifiableDiseases(rows);return rows
+  const rows=(data||[]).map(mapDisease);withProductionCacheWrite(()=>saveNotifiableDiseases(rows));return rows
 }
 export async function saveClinicalNotifiableDisease(input={}){
   if(!IS_PRODUCTION){const rows=loadNotifiableDiseases();const row={...input,id:input.id||`YDN-${Date.now()}`};saveNotifiableDiseases([row,...rows.filter(x=>x.id!==row.id)]);return row}
   const c=requireSupabase(),org=await orgId(c),pid=await optionalPatientIdFor(c,input),dep=await departmentId(c,org,input.department)
   const row={...input,id:input.id||`YDN-${Date.now()}`}
   const payload={id:String(row.id),organization_id:org,patient_id:pid,department_id:dep,disease:String(row.disease||''),deadline:String(row.deadline||''),diagnosis_date:date(row.diagnosisDate),declaration_date:date(row.declarationDate),status:String(row.status||'Προς δήλωση'),case_classification:String(row.caseClassification||''),physician:String(row.physician||''),notes:String(row.notes||''),data:rest(row,['id','patientId','patientCode','patientName','department','disease','deadline','diagnosisDate','declarationDate','status','caseClassification','physician','notes'])}
-  const {data,error}=await c.from('notifiable_diseases').upsert(payload,{onConflict:'id'}).select('*,department:departments(id,name),patient:patients(id,patient_code,first_name,last_name)').single();if(error)throw error;const mapped=mapDisease(data);saveNotifiableDiseases([mapped,...loadNotifiableDiseases().filter(x=>String(x.id)!==String(mapped.id))]);return mapped
+  const {data,error}=await c.from('notifiable_diseases').upsert(payload,{onConflict:'id'}).select('*,department:departments(id,name),patient:patients(id,patient_code,first_name,last_name)').single();if(error)throw error;const mapped=mapDisease(data);withProductionCacheWrite(()=>saveNotifiableDiseases([mapped,...loadNotifiableDiseases().filter(x=>String(x.id)!==String(mapped.id))]));return mapped
 }
 export async function deleteClinicalNotifiableDisease(id){
   if(!IS_PRODUCTION){saveNotifiableDiseases(loadNotifiableDiseases().filter(x=>String(x.id)!==String(id)));return true}
-  const c=requireSupabase();const {error}=await c.from('notifiable_diseases').delete().eq('id',String(id));if(error)throw error;saveNotifiableDiseases(loadNotifiableDiseases().filter(x=>String(x.id)!==String(id)));return true
+  const c=requireSupabase();const {error}=await c.from('notifiable_diseases').delete().eq('id',String(id));if(error)throw error;withProductionCacheWrite(()=>saveNotifiableDiseases(loadNotifiableDiseases().filter(x=>String(x.id)!==String(id))));return true
 }
 
 

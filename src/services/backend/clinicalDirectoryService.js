@@ -1,10 +1,12 @@
 import { IS_PRODUCTION } from '../../core/runtime'
+import { withProductionCacheWrite } from '../../core/storage'
 import { requireSupabase } from '../../integrations/supabase'
 import { loadMasterData } from '../masterDataService'
 import { deletePatient, loadPatientRegistry, savePatientRegistry, upsertPatient } from '../patientService'
 import { deletePatientSample, loadPatientSamples, savePatientSamples, upsertPatientSample } from '../patientSamplesService'
 import { deleteInfection, loadInfections, replaceInfections, upsertInfection } from '../infectionsService'
 import { deleteSurveillanceCase, loadSurveillanceCases, replaceSurveillanceCases, upsertSurveillanceCase } from '../surveillanceCasesService'
+import { hydratePatientSampleLaboratoryResults, syncPatientSampleLaboratoryResults } from './clinicalLaboratoryResults'
 
 export async function loadClinicalPatients(){
   if(!IS_PRODUCTION) return loadPatientRegistry()
@@ -14,7 +16,7 @@ export async function loadClinicalPatients(){
     .order('last_name').order('first_name')
   if(error)throw error
   const rows=(data||[]).map(mapPatientFromDb)
-  savePatientRegistry(rows,{emit:false})
+  withProductionCacheWrite(()=>savePatientRegistry(rows,{emit:false}))
   return rows
 }
 
@@ -96,7 +98,7 @@ export async function loadClinicalSurveillanceCases(patientId=''){
   const { data,error }=await query
   if(error)throw error
   const rows=(data||[]).map(mapCaseFromDb)
-  if(!patientId) replaceSurveillanceCases(rows,{emit:false})
+  if(!patientId) withProductionCacheWrite(()=>replaceSurveillanceCases(rows,{emit:false}))
   else mergeCasesIntoCache(rows,patientId)
   return rows
 }
@@ -193,8 +195,12 @@ export async function saveClinicalSurveillanceCase(input={}){
 export async function deleteClinicalSurveillanceCase(id){
   if(!IS_PRODUCTION)return deleteSurveillanceCase(id)
   const client=requireSupabase()
-  const { error }=await client.from('surveillance_cases').delete().eq('id',String(id))
+  const organizationId=await currentOrganizationId(client)
+  const {data,error}=await client.from('surveillance_cases')
+    .delete().eq('organization_id',organizationId).eq('id',String(id)).select('id')
   if(error)throw error
+  if(!data?.length)throw new Error('Surveillance case delete could not be verified in Supabase.')
+  withProductionCacheWrite(()=>deleteSurveillanceCase(id))
   return true
 }
 
@@ -210,7 +216,7 @@ export async function loadClinicalPatientSamples(patientId=''){
   if(error)throw error
   const base=(data||[]).map(mapSampleFromDb)
   const rows=await hydratePatientSampleLaboratoryResults(client,base)
-  if(!patientId)savePatientSamples(rows,{emit:false})
+  if(!patientId)withProductionCacheWrite(()=>savePatientSamples(rows,{emit:false}))
   else mergeSamplesIntoCache(rows,patientId)
   return rows
 }
@@ -317,19 +323,32 @@ export async function saveClinicalPatientSample(input={}){
       throw new Error('Surveillance case initial sample link verification failed.')
   }
 
-  const mapped=mapSampleFromDb(data)
+  const {data:verifiedSample,error:verifiedSampleError}=await client.from('patient_samples')
+    .select('*,department:departments(id,name,code),patient:patients(id,patient_code,first_name,last_name,admission_date)')
+    .eq('organization_id',organizationId).eq('id',String(data.id)).eq('patient_id',String(patientId)).maybeSingle()
+  if(verifiedSampleError)throw verifiedSampleError
+  if(!verifiedSample?.id)throw new Error('Patient sample write could not be verified after laboratory result synchronization.')
+  if(String(verifiedSample.surveillance_case_id||'')!==String(caseId||''))throw new Error('Patient sample surveillance-case read-back verification failed.')
+  if(String(verifiedSample.parent_sample_id||'')!==String(payload.parent_sample_id||''))throw new Error('Patient sample parent relationship verification failed.')
+  if(String(verifiedSample.root_sample_id||'')!==String(payload.root_sample_id||''))throw new Error('Patient sample root relationship verification failed.')
+
+  const mapped=mapSampleFromDb(verifiedSample)
   await Promise.all([
     loadClinicalPatientSamples(patientId),
     caseId?loadClinicalSurveillanceCases(patientId):Promise.resolve(),
   ])
-  return mapped
+  return {...mapped,_persisted:true}
 }
 
 export async function deleteClinicalPatientSample(id){
   if(!IS_PRODUCTION)return deletePatientSample(id)
   const client=requireSupabase()
-  const { error }=await client.from('patient_samples').delete().eq('id',String(id))
+  const organizationId=await currentOrganizationId(client)
+  const { data,error }=await client.from('patient_samples')
+    .delete().eq('organization_id',organizationId).eq('id',String(id)).select('id')
   if(error)throw error
+  if(!data?.length)throw new Error('Patient sample delete could not be verified in Supabase.')
+  withProductionCacheWrite(()=>deletePatientSample(id))
   return true
 }
 
@@ -344,7 +363,7 @@ export async function loadClinicalInfections(patientId=''){
   const { data,error }=await query
   if(error)throw error
   const rows=(data||[]).map(mapInfectionFromDb)
-  if(!patientId)replaceInfections(rows,{emit:false})
+  if(!patientId)withProductionCacheWrite(()=>replaceInfections(rows,{emit:false}))
   else mergeInfectionsIntoCache(rows,patientId)
   return rows
 }
@@ -418,156 +437,6 @@ export async function hydrateClinicalPatient(patientOrId){
 }
 
 
-async function hydratePatientSampleLaboratoryResults(client,rows){
-  if(!rows.length)return rows
-  const ids=rows.map(row=>String(row.id))
-  const {data:organisms,error:orgError}=await client.from('laboratory_sample_organisms')
-    .select('*').in('patient_sample_id',ids).order('created_at')
-  if(orgError)throw orgError
-  const organismIds=(organisms||[]).map(item=>item.id)
-  let antibiograms=[]
-  if(organismIds.length){
-    const {data,error}=await client.from('laboratory_antibiogram_results')
-      .select('*').in('organism_result_id',organismIds).order('created_at')
-    if(error)throw error
-    antibiograms=data||[]
-  }
-  const orgBySample=(organisms||[]).reduce((map,item)=>{
-    const key=String(item.patient_sample_id||'')
-    if(!map.has(key))map.set(key,[])
-    map.get(key).push(item)
-    return map
-  },new Map())
-  const abByOrg=(antibiograms||[]).reduce((map,item)=>{
-    const key=String(item.organism_result_id||'')
-    if(!map.has(key))map.set(key,[])
-    map.get(key).push(item)
-    return map
-  },new Map())
-  return rows.map(row=>{
-    const rel=orgBySample.get(String(row.id))||[]
-    if(!rel.length)return row
-    const microorganismResults=rel.map(item=>({
-      id:item.id,
-      relationalId:item.id,
-      name:item.microorganism||'',
-      resistance:item.resistance||'',
-      isPrimary:!!item.is_primary,
-    }))
-    const primary=rel.find(item=>item.is_primary)||rel[0]
-    const antibiogram=(abByOrg.get(String(primary?.id||''))||[]).map(item=>({
-      id:item.id,
-      relationalId:item.id,
-      antibiotic:item.antibiotic||'',
-      sensitivity:item.sensitivity||'',
-      mic:item.mic||'',
-    }))
-    return {
-      ...row,
-      microorganismResults,
-      microorganisms:microorganismResults.map(item=>item.name),
-      microorganism:microorganismResults.map(item=>item.name).join(', '),
-      resistance:primary?.resistance||row.resistance||'',
-      antibiogram,
-    }
-  })
-}
-
-async function syncPatientSampleLaboratoryResults(client,{organizationId,sampleId,microorganismResults,antibiogram,fallbackMicroorganism,fallbackResistance}){
-  const canonical=(microorganismResults||[])
-    .map(item=>({
-      id:item.relationalId||item.id||'',
-      name:String(item.name||item.microorganism||'').trim(),
-      resistance:String(item.resistance||'').trim(),
-      isPrimary:Boolean(item.isPrimary),
-    }))
-    .filter(item=>item.name)
-  if(!canonical.length && fallbackMicroorganism){
-    canonical.push({id:'',name:fallbackMicroorganism,resistance:fallbackResistance||'',isPrimary:true})
-  }
-  if(canonical.length && !canonical.some(item=>item.isPrimary))canonical[0].isPrimary=true
-
-  const {data:existing,error:readError}=await client.from('laboratory_sample_organisms')
-    .select('*').eq('organization_id',organizationId).eq('patient_sample_id',sampleId)
-  if(readError)throw readError
-  const keep=new Set()
-  let primarySaved=null
-
-  for(const item of canonical){
-    const current=(existing||[]).find(row=>
-      (item.id&&String(row.id)===String(item.id))
-      || String(row.microorganism||'').trim().toLocaleLowerCase('el-GR')===item.name.toLocaleLowerCase('el-GR')
-    )
-    const payload={
-      organization_id:organizationId,
-      patient_sample_id:sampleId,
-      source_sample_id:null,
-      microorganism:item.name,
-      resistance:item.resistance,
-      is_primary:!!item.isPrimary,
-    }
-    let saved
-    if(current){
-      const {data,error}=await client.from('laboratory_sample_organisms').update(payload).eq('id',current.id).select().single()
-      if(error)throw error
-      saved=data
-    }else{
-      const {data,error}=await client.from('laboratory_sample_organisms').insert(payload).select().single()
-      if(error)throw error
-      saved=data
-    }
-    keep.add(String(saved.id))
-    if(saved.is_primary)primarySaved=saved
-    item.relationalId=saved.id
-  }
-
-  for(const stale of (existing||[]).filter(row=>!keep.has(String(row.id)))){
-    const {error}=await client.from('laboratory_sample_organisms').delete().eq('id',stale.id)
-    if(error)throw error
-  }
-
-  if(!primarySaved && canonical.length){
-    const {data,error}=await client.from('laboratory_sample_organisms')
-      .select('*').eq('organization_id',organizationId).eq('patient_sample_id',sampleId).eq('is_primary',true).maybeSingle()
-    if(error)throw error
-    primarySaved=data
-  }
-  if(!primarySaved)return
-
-  const {data:existingAb,error:abReadError}=await client.from('laboratory_antibiogram_results')
-    .select('*').eq('organization_id',organizationId).eq('organism_result_id',primarySaved.id)
-  if(abReadError)throw abReadError
-  const abKeep=new Set()
-  for(const item of (antibiogram||[]).filter(item=>String(item.antibiotic||'').trim())){
-    const antibiotic=String(item.antibiotic||'').trim()
-    const current=(existingAb||[]).find(row=>
-      (item.relationalId&&String(row.id)===String(item.relationalId))
-      || String(row.antibiotic||'').trim().toLocaleLowerCase('el-GR')===antibiotic.toLocaleLowerCase('el-GR')
-    )
-    const payload={
-      organization_id:organizationId,
-      organism_result_id:primarySaved.id,
-      antibiotic,
-      sensitivity:String(item.sensitivity||''),
-      mic:String(item.mic||''),
-    }
-    let saved
-    if(current){
-      const {data,error}=await client.from('laboratory_antibiogram_results').update(payload).eq('id',current.id).select().single()
-      if(error)throw error
-      saved=data
-    }else{
-      const {data,error}=await client.from('laboratory_antibiogram_results').insert(payload).select().single()
-      if(error)throw error
-      saved=data
-    }
-    abKeep.add(String(saved.id))
-  }
-  for(const stale of (existingAb||[]).filter(row=>!abKeep.has(String(row.id)))){
-    const {error}=await client.from('laboratory_antibiogram_results').delete().eq('id',stale.id)
-    if(error)throw error
-  }
-}
 function mapPatientFromDb(row={}){
   const department=one(row.department)
   const flags=row.flags||{}
@@ -643,13 +512,13 @@ function mapInfectionFromDb(row={}){
 }
 
 function mergeCasesIntoCache(rows,patientId){
-  replaceSurveillanceCases([...loadSurveillanceCases().filter(x=>String(x.patientKey||x.patientId)!==String(patientId)),...rows],{emit:false})
+  withProductionCacheWrite(()=>replaceSurveillanceCases([...loadSurveillanceCases().filter(x=>String(x.patientKey||x.patientId)!==String(patientId)),...rows],{emit:false}))
 }
 function mergeSamplesIntoCache(rows,patientId){
-  savePatientSamples([...loadPatientSamples().filter(x=>String(x.patientId||'')!==String(patientId)),...rows],{emit:false})
+  withProductionCacheWrite(()=>savePatientSamples([...loadPatientSamples().filter(x=>String(x.patientId||'')!==String(patientId)),...rows],{emit:false}))
 }
 function mergeInfectionsIntoCache(rows,patientId){
-  replaceInfections([...loadInfections().filter(x=>String(x.patientId||'')!==String(patientId)),...rows],{emit:false})
+  withProductionCacheWrite(()=>replaceInfections([...loadInfections().filter(x=>String(x.patientId||'')!==String(patientId)),...rows],{emit:false}))
 }
 async function currentOrganizationId(client){
   const {data,error}=await client.rpc('current_organization_id');if(error)throw error

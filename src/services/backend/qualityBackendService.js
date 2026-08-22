@@ -1,4 +1,5 @@
 import { IS_PRODUCTION } from '../../core/runtime'
+import { withProductionCacheWrite } from '../../core/storage'
 import { requireSupabase } from '../../integrations/supabase'
 import { loadIncidents,saveIncidents,loadCapa,saveCapa,loadAuditExecutions,saveAuditExecutions,upsertAuditExecution,deleteAuditExecution,loadRisks,saveRisks } from '../qualityService'
 
@@ -94,15 +95,15 @@ function one(v){return Array.isArray(v)?v[0]:v}
 function mirrorQuality(type,rows){
   if(type==='incidents'){
     const current=loadIncidents()
-    if(JSON.stringify(current)!==JSON.stringify(rows))saveIncidents(rows)
+    if(JSON.stringify(current)!==JSON.stringify(rows))withProductionCacheWrite(()=>saveIncidents(rows))
   }else if(type==='capa'){
     const current=loadCapa()
-    if(JSON.stringify(current)!==JSON.stringify(rows))saveCapa(rows)
+    if(JSON.stringify(current)!==JSON.stringify(rows))withProductionCacheWrite(()=>saveCapa(rows))
   }else if(type==='risks'){
     const current=loadRisks()
-    if(JSON.stringify(current)!==JSON.stringify(rows))saveRisks(rows)
+    if(JSON.stringify(current)!==JSON.stringify(rows))withProductionCacheWrite(()=>saveRisks(rows))
   }else{
     const current=loadAuditExecutions()
-    if(JSON.stringify(current)!==JSON.stringify(rows))saveAuditExecutions(rows)
+    if(JSON.stringify(current)!==JSON.stringify(rows))withProductionCacheWrite(()=>saveAuditExecutions(rows))
   }
 }

@@ -1,4 +1,5 @@
 import { IS_PRODUCTION } from '../../core/runtime'
+import { withProductionCacheWrite } from '../../core/storage'
 import { emitAppEvent } from '../../core/events'
 import { requireSupabase } from '../../integrations/supabase'
 import { INDICATORS_EVENT, loadCustomIndicators, loadIndicatorSettings, saveCustomIndicators, saveIndicatorSettings } from '../indicatorsService'
@@ -23,12 +24,12 @@ export async function hydrateIndicatorBackend(){
   const custom=(customResult.data||[]).map(r=>({...r.data,id:r.id}))
   const grouped={daily_census:[],antibiotic_ddd:[],structural_snapshot:[],prevalence_snapshot:[]}
   for(const r of sourceResult.data||[])grouped[r.source_type]?.push({...r.data,id:r.record_key,date:r.record_date||r.data?.date||''})
-  saveIndicatorSettings(settings)
-  saveCustomIndicators(custom)
-  saveDailyCensus(grouped.daily_census)
-  saveAntibioticDDD(grouped.antibiotic_ddd)
-  saveStructuralSnapshots(grouped.structural_snapshot)
-  savePrevalenceSnapshots(grouped.prevalence_snapshot)
+  withProductionCacheWrite(()=>saveIndicatorSettings(settings))
+  withProductionCacheWrite(()=>saveCustomIndicators(custom))
+  withProductionCacheWrite(()=>saveDailyCensus(grouped.daily_census))
+  withProductionCacheWrite(()=>saveAntibioticDDD(grouped.antibiotic_ddd))
+  withProductionCacheWrite(()=>saveStructuralSnapshots(grouped.structural_snapshot))
+  withProductionCacheWrite(()=>savePrevalenceSnapshots(grouped.prevalence_snapshot))
   return {settings,custom,dailyCensus:grouped.daily_census,antibioticDDD:grouped.antibiotic_ddd,structuralSnapshots:grouped.structural_snapshot,prevalenceSnapshots:grouped.prevalence_snapshot}
 }
 
@@ -42,7 +43,7 @@ export async function saveIndicatorSettingsBackend(settings={}){
   const remove=(existing||[]).map(x=>x.indicator_id).filter(id=>!ids.includes(id))
   if(remove.length){const {error}=await c.from('indicator_settings').delete().eq('organization_id',org).in('indicator_id',remove);if(error)throw error}
   if(rows.length){const {error}=await c.from('indicator_settings').upsert(rows,{onConflict:'organization_id,indicator_id'});if(error)throw error}
-  saveIndicatorSettings(settings);return settings
+  withProductionCacheWrite(()=>saveIndicatorSettings(settings));return settings
 }
 export async function saveCustomIndicatorsBackend(rows=[]){
   validateCustomIndicatorGovernance(rows)
@@ -53,7 +54,7 @@ export async function saveCustomIndicatorsBackend(rows=[]){
   const remove=(existing||[]).map(x=>String(x.id)).filter(id=>!ids.includes(id))
   if(remove.length){const {error}=await c.from('custom_indicators').delete().eq('organization_id',org).in('id',remove);if(error)throw error}
   if(rows.length){const {error}=await c.from('custom_indicators').upsert(rows.map(r=>({id:String(r.id),organization_id:org,data:r})),{onConflict:'id'});if(error)throw error}
-  saveCustomIndicators(rows);return rows
+  withProductionCacheWrite(()=>saveCustomIndicators(rows));return rows
 }
 export async function updateIndicatorSettingBackend(id,patch){
   const current=loadIndicatorSettings();return saveIndicatorSettingsBackend({...current,[id]:{...(current[id]||{}),...patch}})
@@ -78,7 +79,7 @@ export async function saveIndicatorSourceBackend(type,rows=[]){
     const payload=rows.map((r,i)=>({organization_id:org,source_type:type,record_key:String(r.id||r.key||`${type}-${i}-${r.date||''}`),record_date:date(r.date),data:r}))
     const {error}=await c.from('indicator_source_records').insert(payload);if(error)throw error
   }
-  local(rows);return rows
+  withProductionCacheWrite(()=>local(rows));return rows
 }
 
 export async function saveIndicatorSourceRecordBackend(type,row={}){
@@ -104,7 +105,7 @@ export async function saveIndicatorSourceRecordBackend(type,row={}){
   const saved={...(verified.data||{}),id:verified.record_key,date:verified.record_date||verified.data?.date||''}
   const current=localReader(type)()
   const next=current.some(x=>String(x.id)===key)?current.map(x=>String(x.id)===key?saved:x):[saved,...current]
-  local(next);return saved
+  withProductionCacheWrite(()=>local(next));return saved
 }
 
 export async function deleteIndicatorSourceRecordBackend(type,keyValue){
@@ -116,7 +117,7 @@ export async function deleteIndicatorSourceRecordBackend(type,keyValue){
     .eq('organization_id',org).eq('source_type',type).eq('record_key',key).select('record_key')
   if(error)throw error
   if(!(data||[]).some(x=>String(x.record_key)===key))throw new Error('Supabase did not confirm deletion of the record.')
-  const next=localReader(type)().filter(x=>String(x.id)!==key);local(next);return true
+  const next=localReader(type)().filter(x=>String(x.id)!==key);withProductionCacheWrite(()=>local(next));return true
 }
 
 function localWriter(type){if(type==='daily_census')return saveDailyCensus;if(type==='antibiotic_ddd')return saveAntibioticDDD;if(type==='structural_snapshot')return saveStructuralSnapshots;if(type==='prevalence_snapshot')return savePrevalenceSnapshots;throw new Error('Unknown indicator source type.')}

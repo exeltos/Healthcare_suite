@@ -27,7 +27,7 @@ export default function LoginPage() {
   function enterDemo() {
     setEntryLoading(true)
     if(!IS_DEMO) {
-      try{window.sessionStorage?.setItem(DEMO_RUNTIME_KEY,'true')}catch{}
+      writeSessionValue(DEMO_RUNTIME_KEY,'true')
       const target=`${APP_ROUTES.LOGIN}?demo=1&enter=1`
       window.requestAnimationFrame(() => window.location.assign(target))
       return

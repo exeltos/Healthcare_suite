@@ -1,4 +1,4 @@
-import { removeStoredValue } from '../core/storage'
+import { removeStoredValue, withProductionCacheWrite } from '../core/storage'
 import { readMasterData, writeMasterData } from '../repositories/masterDataRepository'
 import { savePatientRegistry } from '../services/patientService'
 import { saveEmployees } from '../services/employeesService'
@@ -14,6 +14,7 @@ import { saveIncidents, saveCapa, saveAuditExecutions } from '../services/qualit
 import { replaceTrainingCollection, replaceCommitteesCollection, replaceDocumentsCollection } from '../services/organizationService'
 
 export function clearProductionLocalOperationalCache(){
+  return withProductionCacheWrite(()=>{
   // Keep reference/master libraries, but never retain operational patients in
   // the historical patients-library compatibility bucket.
   const masterData = readMasterData()
@@ -57,4 +58,5 @@ export function clearProductionLocalOperationalCache(){
   replaceTrainingCollection([])
   replaceCommitteesCollection([])
   replaceDocumentsCollection([])
+  })
 }

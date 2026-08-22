@@ -1,4 +1,5 @@
 import { IS_PRODUCTION } from '../../core/runtime'
+import { withProductionCacheWrite } from '../../core/storage'
 import { requireSupabase } from '../../integrations/supabase'
 import { loadFormTemplates,saveFormTemplates } from '../formTemplatesService'
 import { loadFormResponses,saveFormResponses } from '../formResponsesService'
@@ -14,7 +15,7 @@ export async function hydrateFormsBackend(){
  if(t.error)throw t.error;if(r.error)throw r.error
  const templates=(t.data||[]).map(x=>({...x.data,id:x.id,name:x.name,type:x.form_type,category:x.category,status:x.status,description:x.description,appliesTo:x.applies_to||[],scoring:x.scoring||{},questions:x.questions||[],createdAt:x.created_at,updatedAt:x.updated_at}))
  const responses=(r.data||[]).map(x=>({...x.data,id:x.id,templateId:x.template_id||'',subjectType:x.subject_type,subjectId:x.subject_id,date:x.response_date||'',status:x.status,answers:x.answers||{},createdAt:x.created_at,updatedAt:x.updated_at}))
- saveFormTemplates(templates);saveFormResponses(responses);return {templates,responses}
+ withProductionCacheWrite(()=>{saveFormTemplates(templates);saveFormResponses(responses)});return {templates,responses}
 }
 export async function saveFormTemplateBackend(input={}){
  if(!IS_PRODUCTION){const rows=loadFormTemplates(),row={...input,id:input.id||`TPL-${Date.now()}`};saveFormTemplates([row,...rows.filter(x=>x.id!==row.id)]);return row}
@@ -69,26 +70,26 @@ export async function hydratePatientSourceConfigBackend(){
  if(error)throw error
  const row=Array.isArray(data?.rows)?data.rows[0]:null
  const config={...loadPatientSourceConfig(),...(row&&typeof row==='object'?row:{})}
- savePatientSourceConfig(config)
+ withProductionCacheWrite(()=>savePatientSourceConfig(config))
  return config
 }
 export async function savePatientSourceConfigBackend(config={}){
  const next={...loadPatientSourceConfig(),...config}
- if(!IS_PRODUCTION)return savePatientSourceConfig(next)
+ if(!IS_PRODUCTION)return withProductionCacheWrite(()=>savePatientSourceConfig(next))
  const c=requireSupabase(),org=await orgId(c)
  const {error}=await c.from('master_data_libraries').upsert(
    {organization_id:org,library_key:'patient-source-config',rows:[next]},
    {onConflict:'organization_id,library_key'}
  )
  if(error)throw error
- savePatientSourceConfig(next)
+ withProductionCacheWrite(()=>savePatientSourceConfig(next))
  return next
 }
 
 export async function hydrateStudioBackend(){
  if(!IS_PRODUCTION)return Object.fromEntries(Object.keys(studioModules).map(k=>[k,loadStudioRows(k)]))
  const c=requireSupabase(),org=await orgId(c);const {data,error}=await c.from('studio_configuration').select('module_key,rows').eq('organization_id',org);if(error)throw error
- for(const r of data||[])if(studioModules[r.module_key])saveStudioRows(r.module_key,Array.isArray(r.rows)?r.rows:[])
+ withProductionCacheWrite(()=>{for(const r of data||[])if(studioModules[r.module_key])saveStudioRows(r.module_key,Array.isArray(r.rows)?r.rows:[])})
  return Object.fromEntries(Object.keys(studioModules).map(k=>[k,loadStudioRows(k)]))
 }
 export async function saveStudioRowsBackend(moduleKey,rows=[]){
@@ -97,7 +98,7 @@ export async function saveStudioRowsBackend(moduleKey,rows=[]){
  const cleanRows=Array.isArray(rows)?rows:[]
  const ids=cleanRows.map(row=>String(row.id||'').trim()).filter(Boolean)
  if(new Set(ids).size!==ids.length)throw new Error('Studio configuration contains duplicate row identifiers.')
- const c=requireSupabase(),org=await orgId(c);const {error}=await c.from('studio_configuration').upsert({organization_id:org,module_key:moduleKey,rows:Array.isArray(rows)?rows:[]},{onConflict:'organization_id,module_key'});if(error)throw error;saveStudioRows(moduleKey,rows);return rows
+ const c=requireSupabase(),org=await orgId(c);const {error}=await c.from('studio_configuration').upsert({organization_id:org,module_key:moduleKey,rows:Array.isArray(rows)?rows:[]},{onConflict:'organization_id,module_key'});if(error)throw error;withProductionCacheWrite(()=>saveStudioRows(moduleKey,rows));return rows
 }
 async function orgId(c){const {data,error}=await c.rpc('current_organization_id');if(error)throw error;if(!data)throw new Error('Organization context not found.');return data}
 function date(v){const s=String(v||'').trim();return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:null}

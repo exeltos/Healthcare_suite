@@ -84,7 +84,8 @@ if(!preventionConfigurationMigrated){
 const productionStorageGuard=
   /IS_PRODUCTION/.test(storage) &&
   /PRODUCTION_PREFERENCE_KEYS/.test(storage) &&
-  /Production browser-only persistence is blocked/.test(storage) &&
+  /Production operational write blocked/.test(storage) &&
+  /withProductionCacheWrite/.test(storage) &&
   /export function writeJsonCache/.test(storage)
 
 if(!productionStorageGuard){
