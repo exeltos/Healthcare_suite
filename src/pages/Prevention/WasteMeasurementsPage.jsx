@@ -22,7 +22,7 @@ import {
 import { normalizeText, selectedRows, sortRows, uniqueSortedValues } from '../../core/utils/entityList'
 import { downloadCsv, printRows } from '../../core/utils/listExport'
 import { WASTE_MEASUREMENTS_EVENT, deleteWasteMeasurement, loadWasteMeasurements, upsertWasteMeasurement } from '../../services/preventionService'
-import { deleteWasteMeasurementRelational, loadWasteMeasurementsRelational, saveWasteMeasurementRelational } from '../../services/backend/preventionBackendService'
+import { deleteWasteMeasurementRelational, saveWasteMeasurementRelational } from '../../services/backend/preventionBackendService'
 import '../Records/RecordsUnified.css'
 import { masterNames } from '../../services/masterDataService'
 import { loadDailyCensus } from '../../services/indicatorSourceDataService'
@@ -47,7 +47,7 @@ function monthlyBedDays(dateValue,department){if(!dateValue||!department)return 
 export default function WasteMeasurementsPage(){
   const { language } = useI18n()
   const L = (el,en) => language === 'en' ? en : el
-  const [records, refreshRecords, setRecords] = useServiceCollection(loadWasteMeasurementsRelational, WASTE_MEASUREMENTS_EVENT)
+  const [records, refreshRecords, setRecords] = useServiceCollection(loadWasteMeasurements, WASTE_MEASUREMENTS_EVENT)
   useEffect(()=>{loadWasteMeasurementsRelational().then(setRecords).catch(()=>{})},[])
   const [search,setSearch]=useState('')
   const [departmentFilter,setDepartmentFilter]=useState('')
