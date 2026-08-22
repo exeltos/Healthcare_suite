@@ -1,5 +1,5 @@
 import { confirmAction, notifyAction } from '../../components/core/feedback/index'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useServiceCollection } from '../../core/hooks'
 import { Boxes, Download, Gauge, Plus, Printer, Recycle, Trash2, Weight } from 'lucide-react'
 import {
@@ -48,7 +48,6 @@ export default function WasteMeasurementsPage(){
   const { language } = useI18n()
   const L = (el,en) => language === 'en' ? en : el
   const [records, refreshRecords, setRecords] = useServiceCollection(loadWasteMeasurements, WASTE_MEASUREMENTS_EVENT)
-  useEffect(()=>{loadWasteMeasurementsRelational().then(setRecords).catch(()=>{})},[])
   const [search,setSearch]=useState('')
   const [departmentFilter,setDepartmentFilter]=useState('')
   const [typeFilter,setTypeFilter]=useState('')
@@ -71,8 +70,8 @@ export default function WasteMeasurementsPage(){
   function openRecord(record){setSelectedId(record.id);setFormData({...EMPTY_RECORD,...record});setDrawerOpen(true)}
   function close(){setDrawerOpen(false);setSelectedId(null);setFormData(EMPTY_RECORD)}
   function setField(name,value){setFormData(current=>{const next={...current,[name]:value};if((name==='date'||name==='department')&&!next.patientDays){const days=monthlyBedDays(next.date,next.department);if(days)next.patientDays=String(days)}return next})}
-  async function save(event){event.preventDefault();if(!formData.date||!formData.department||!formData.wasteType||number(formData.weightKg)<=0){notifyAction(L('Συμπληρώστε ημερομηνία, τμήμα, κατηγορία και βάρος.','Enter date, department, category and weight.'));return}await saveWasteMeasurementRelational({...formData,id:selectedId||`WASTE-${Date.now()}`,weightKg:String(number(formData.weightKg)),containers:formData.containers===''?'':String(number(formData.containers)),patientDays:formData.patientDays===''?'':String(number(formData.patientDays)),indicator:recordIndicator(formData),updatedAt:new Date().toISOString()});setRecords(await loadWasteMeasurementsRelational());close()}
-  async function remove(){if(!selectedId||!confirmAction(L('Να διαγραφεί η μέτρηση αποβλήτων;','Delete this waste measurement?')))return;await deleteWasteMeasurementRelational(selectedId);setRecords(await loadWasteMeasurementsRelational());close()}
+  async function save(event){event.preventDefault();if(!formData.date||!formData.department||!formData.wasteType||number(formData.weightKg)<=0){notifyAction(L('Συμπληρώστε ημερομηνία, τμήμα, κατηγορία και βάρος.','Enter date, department, category and weight.'));return}await saveWasteMeasurementRelational({...formData,id:selectedId||`WASTE-${Date.now()}`,weightKg:String(number(formData.weightKg)),containers:formData.containers===''?'':String(number(formData.containers)),patientDays:formData.patientDays===''?'':String(number(formData.patientDays)),indicator:recordIndicator(formData),updatedAt:new Date().toISOString()});setRecords(loadWasteMeasurements());close()}
+  async function remove(){if(!selectedId||!confirmAction(L('Να διαγραφεί η μέτρηση αποβλήτων;','Delete this waste measurement?')))return;await deleteWasteMeasurementRelational(selectedId);setRecords(loadWasteMeasurements());close()}
   function clearFilters(){setSearch('');setDepartmentFilter('');setTypeFilter('');setDateFrom('');setDateTo('')}
   function exportSelected(){downloadCsv({filename:`apovlita-${new Date().toISOString().slice(0,10)}.csv`,columns:exportColumns,rows:selectedRecords})}
   function printSelected(){printRows({title:L('Μετρήσεις Αποβλήτων','Waste Measurements'),columns:exportColumns,rows:selectedRecords})}
