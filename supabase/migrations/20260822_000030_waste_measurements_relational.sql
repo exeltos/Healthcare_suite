@@ -1,0 +1,3 @@
+-- Waste measurement relational schema was applied and backfilled before rc.205.
+-- Canonical table: public.waste_measurement_records
+-- Indicator is derived from weight_kg / patient_days and is not stored.

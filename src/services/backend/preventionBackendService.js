@@ -55,6 +55,18 @@ export async function loadPreventionRecords(type){
    if(JSON.stringify(d.load())!==JSON.stringify(rows))d.save(rows)
    return rows
  }
+ if(type==='waste'){
+   const org=await orgId(c)
+   const {data,error}=await c.from('waste_measurement_records')
+     .select('*,department:departments(id,name)')
+     .eq('organization_id',org)
+     .order('record_date',{ascending:false})
+     .order('created_at',{ascending:false})
+   if(error)throw error
+   const rows=(data||[]).map(mapWasteMeasurement)
+   if(JSON.stringify(d.load())!==JSON.stringify(rows))d.save(rows)
+   return rows
+ }
  if(type==='hand_hygiene'){
    const org=await orgId(c)
    const {data:sessions,error:sessionError}=await c.from('hand_hygiene_sessions')
@@ -148,6 +160,67 @@ export async function savePreventionRecord(type,input={}){
    }
 
    const mapped=mapAntisepticConsumption(verified)
+   await loadPreventionRecords(type)
+   return {...mapped,_persisted:true}
+ }
+
+ if(type==='waste'){
+   const row={...input,id:input.id||`WASTE-${Date.now()}`}
+   const recordDate=normalizedDate(row.date)
+   if(!recordDate)throw new Error('Waste measurement date is required.')
+   if(!String(row.wasteType||'').trim())throw new Error('Waste type is required.')
+   const resolvedDepartment=await departmentId(c,org,row.department)
+
+   const payload={
+     id:String(row.id),
+     organization_id:org,
+     department_id:resolvedDepartment,
+     record_date:recordDate,
+     waste_type:String(row.wasteType||'').trim(),
+     weight_kg:numberOrNull(row.weightKg),
+     containers:numberOrNull(row.containers),
+     patient_days:numberOrNull(row.patientDays),
+     responsible:String(row.responsible||''),
+     document_number:String(row.documentNumber||''),
+     collection_company:String(row.collectionCompany||''),
+     notes:String(row.notes||''),
+     legacy_prevention_record_id:String(row.legacyPreventionRecordId||row.legacyId||'').trim()||null,
+   }
+
+   const {data:existing,error:existingError}=await c.from('waste_measurement_records')
+     .select('id').eq('organization_id',org).eq('id',String(row.id)).maybeSingle()
+   if(existingError)throw existingError
+
+   let write=c.from('waste_measurement_records')
+   write=existing
+     ? write.update(payload).eq('organization_id',org).eq('id',String(row.id))
+     : write.insert(payload)
+
+   const {data:saved,error}=await write
+     .select('*,department:departments(id,name)').single()
+   if(error)throw error
+
+   const {data:verified,error:verifyError}=await c.from('waste_measurement_records')
+     .select('*,department:departments(id,name)')
+     .eq('organization_id',org).eq('id',String(saved.id)).maybeSingle()
+   if(verifyError)throw verifyError
+   if(!verified?.id)throw new Error('Supabase waste write could not be verified.')
+
+   const checks={
+     record_date:recordDate,
+     waste_type:String(row.wasteType||'').trim(),
+     weight_kg:numberOrNull(row.weightKg),
+     containers:numberOrNull(row.containers),
+     patient_days:numberOrNull(row.patientDays),
+     responsible:String(row.responsible||''),
+     document_number:String(row.documentNumber||''),
+     collection_company:String(row.collectionCompany||''),
+   }
+   for(const [key,value] of Object.entries(checks)){
+     if(String(verified[key]??'')!==String(value??''))throw new Error(`Waste verification failed: ${key}.`)
+   }
+
+   const mapped=mapWasteMeasurement(verified)
    await loadPreventionRecords(type)
    return {...mapped,_persisted:true}
  }
@@ -370,6 +443,19 @@ export async function deletePreventionRecord(type,id){
    return true
  }
 
+ if(type==='waste'){
+   const {data:deleted,error}=await c.from('waste_measurement_records')
+     .delete().eq('organization_id',org).eq('id',String(id)).select('id').maybeSingle()
+   if(error)throw error
+   if(!deleted?.id)throw new Error('Supabase delete did not remove the waste record.')
+   const {data:verified,error:verifyError}=await c.from('waste_measurement_records')
+     .select('id').eq('organization_id',org).eq('id',String(id)).maybeSingle()
+   if(verifyError)throw verifyError
+   if(verified)throw new Error('Supabase waste delete could not be verified.')
+   await loadPreventionRecords(type)
+   return true
+ }
+
  if(type==='promoted_antibiotic'){
    const {data:deleted,error}=await c.from('promoted_antibiotic_requests')
      .delete().eq('organization_id',org).eq('id',String(id)).select('id').maybeSingle()
@@ -454,6 +540,29 @@ function mapEmployeeVaccination(r={}){
 }
 
 
+
+function mapWasteMeasurement(r={}){
+ const department=one(r.department)||{}
+ const weight=numberOrNull(r.weight_kg)
+ const patientDays=numberOrNull(r.patient_days)
+ return {
+   id:r.id,
+   legacyPreventionRecordId:r.legacy_prevention_record_id||'',
+   date:r.record_date||'',
+   department:department.name||'',
+   wasteType:r.waste_type||'',
+   weightKg:r.weight_kg==null?'':String(r.weight_kg),
+   containers:r.containers==null?'':String(r.containers),
+   patientDays:r.patient_days==null?'':String(r.patient_days),
+   indicator:patientDays&&weight!=null?weight/patientDays:0,
+   responsible:r.responsible||'',
+   documentNumber:r.document_number||'',
+   collectionCompany:r.collection_company||'',
+   notes:r.notes||'',
+   createdAt:r.created_at||null,
+   updatedAt:r.updated_at||null,
+ }
+}
 function mapAntisepticConsumption(r={}){
  const department=one(r.department)||{}
  const consumption=numberOrNull(r.consumption)
