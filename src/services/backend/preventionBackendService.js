@@ -19,66 +19,6 @@ export async function loadPreventionRecords(type){
  const d=defs[type];if(!d)throw new Error('Unknown prevention record type.')
  if(!IS_PRODUCTION)return d.load()
  const c=requireSupabase()
- if(type==='antiseptic'){
-   const row={...input,id:input.id||`ANT-${Date.now()}`}
-   const recordDate=normalizedDate(row.date)
-   if(!recordDate)throw new Error('Antiseptic record date is required.')
-   if(!String(row.product||'').trim())throw new Error('Antiseptic product is required.')
-   const resolvedDepartment=await departmentId(c,org,row.department)
-
-   const payload={
-     id:String(row.id),
-     organization_id:org,
-     department_id:resolvedDepartment,
-     record_date:recordDate,
-     product:String(row.product||'').trim(),
-     opening_stock:numberOrNull(row.openingStock),
-     received:numberOrNull(row.received),
-     closing_stock:numberOrNull(row.closingStock),
-     consumption:numberOrNull(row.consumption),
-     patient_days:numberOrNull(row.patientDays),
-     responsible:String(row.responsible||''),
-     notes:String(row.notes||''),
-     legacy_prevention_record_id:String(row.legacyPreventionRecordId||row.legacyId||'').trim()||null,
-   }
-
-   const {data:existing,error:existingError}=await c.from('antiseptic_consumption_records')
-     .select('id').eq('organization_id',org).eq('id',String(row.id)).maybeSingle()
-   if(existingError)throw existingError
-
-   let write=c.from('antiseptic_consumption_records')
-   write=existing
-     ? write.update(payload).eq('organization_id',org).eq('id',String(row.id))
-     : write.insert(payload)
-
-   const {data:saved,error}=await write
-     .select('*,department:departments(id,name)').single()
-   if(error)throw error
-
-   const {data:verified,error:verifyError}=await c.from('antiseptic_consumption_records')
-     .select('*,department:departments(id,name)')
-     .eq('organization_id',org).eq('id',String(saved.id)).maybeSingle()
-   if(verifyError)throw verifyError
-   if(!verified?.id)throw new Error('Supabase antiseptic write could not be verified.')
-
-   const checks={
-     record_date:recordDate,
-     product:String(row.product||'').trim(),
-     opening_stock:numberOrNull(row.openingStock),
-     received:numberOrNull(row.received),
-     closing_stock:numberOrNull(row.closingStock),
-     consumption:numberOrNull(row.consumption),
-     patient_days:numberOrNull(row.patientDays),
-   }
-   for(const [key,value] of Object.entries(checks)){
-     if(String(verified[key]??'')!==String(value??''))throw new Error(`Antiseptic verification failed: ${key}.`)
-   }
-
-   const mapped=mapAntisepticConsumption(verified)
-   await loadPreventionRecords(type)
-   return {...mapped,_persisted:true}
- }
-
  if(type==='promoted_antibiotic'){
    const org=await orgId(c)
    const {data,error}=await c.from('promoted_antibiotic_requests')
@@ -151,6 +91,66 @@ export async function savePreventionRecord(type,input={}){
  const d=defs[type];if(!d)throw new Error('Unknown prevention record type.')
  if(!IS_PRODUCTION){const row={...input,id:input.id||`${type}-${Date.now()}`};d.save([row,...d.load().filter(x=>x.id!==row.id)]);return row}
  const c=requireSupabase(),org=await orgId(c)
+
+ if(type==='antiseptic'){
+   const row={...input,id:input.id||`ANT-${Date.now()}`}
+   const recordDate=normalizedDate(row.date)
+   if(!recordDate)throw new Error('Antiseptic record date is required.')
+   if(!String(row.product||'').trim())throw new Error('Antiseptic product is required.')
+   const resolvedDepartment=await departmentId(c,org,row.department)
+
+   const payload={
+     id:String(row.id),
+     organization_id:org,
+     department_id:resolvedDepartment,
+     record_date:recordDate,
+     product:String(row.product||'').trim(),
+     opening_stock:numberOrNull(row.openingStock),
+     received:numberOrNull(row.received),
+     closing_stock:numberOrNull(row.closingStock),
+     consumption:numberOrNull(row.consumption),
+     patient_days:numberOrNull(row.patientDays),
+     responsible:String(row.responsible||''),
+     notes:String(row.notes||''),
+     legacy_prevention_record_id:String(row.legacyPreventionRecordId||row.legacyId||'').trim()||null,
+   }
+
+   const {data:existing,error:existingError}=await c.from('antiseptic_consumption_records')
+     .select('id').eq('organization_id',org).eq('id',String(row.id)).maybeSingle()
+   if(existingError)throw existingError
+
+   let write=c.from('antiseptic_consumption_records')
+   write=existing
+     ? write.update(payload).eq('organization_id',org).eq('id',String(row.id))
+     : write.insert(payload)
+
+   const {data:saved,error}=await write
+     .select('*,department:departments(id,name)').single()
+   if(error)throw error
+
+   const {data:verified,error:verifyError}=await c.from('antiseptic_consumption_records')
+     .select('*,department:departments(id,name)')
+     .eq('organization_id',org).eq('id',String(saved.id)).maybeSingle()
+   if(verifyError)throw verifyError
+   if(!verified?.id)throw new Error('Supabase antiseptic write could not be verified.')
+
+   const checks={
+     record_date:recordDate,
+     product:String(row.product||'').trim(),
+     opening_stock:numberOrNull(row.openingStock),
+     received:numberOrNull(row.received),
+     closing_stock:numberOrNull(row.closingStock),
+     consumption:numberOrNull(row.consumption),
+     patient_days:numberOrNull(row.patientDays),
+   }
+   for(const [key,value] of Object.entries(checks)){
+     if(String(verified[key]??'')!==String(value??''))throw new Error(`Antiseptic verification failed: ${key}.`)
+   }
+
+   const mapped=mapAntisepticConsumption(verified)
+   await loadPreventionRecords(type)
+   return {...mapped,_persisted:true}
+ }
 
  if(type==='promoted_antibiotic'){
    const row={...input}
