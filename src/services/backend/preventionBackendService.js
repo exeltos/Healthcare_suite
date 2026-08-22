@@ -501,6 +501,106 @@ export async function deletePreventionRecord(type,id){
  if(verified)throw new Error('Supabase delete could not be verified.')
  await loadPreventionRecords(type);return true
 }
+
+export async function loadWasteMeasurementsRelational(){
+ if(!IS_PRODUCTION)return loadWasteMeasurements()
+ const c=requireSupabase(),org=await orgId(c)
+ const {data,error}=await c.from('waste_measurement_records')
+   .select('*,department:departments(id,name)')
+   .eq('organization_id',org)
+   .order('record_date',{ascending:false})
+   .order('created_at',{ascending:false})
+ if(error)throw error
+ const rows=(data||[]).map(mapWasteMeasurement)
+ saveWasteMeasurements(rows)
+ return rows
+}
+
+export async function saveWasteMeasurementRelational(input={}){
+ if(!IS_PRODUCTION){
+   const row={...input,id:input.id||`WASTE-${Date.now()}`}
+   saveWasteMeasurements([row,...loadWasteMeasurements().filter(x=>String(x.id)!==String(row.id))])
+   return row
+ }
+ const c=requireSupabase(),org=await orgId(c)
+ const row={...input,id:input.id||`WASTE-${Date.now()}`}
+ const recordDate=normalizedDate(row.date)
+ if(!recordDate)throw new Error('Waste measurement date is required.')
+ if(!String(row.wasteType||'').trim())throw new Error('Waste type is required.')
+ const resolvedDepartment=await departmentId(c,org,row.department)
+
+ const payload={
+   id:String(row.id),
+   organization_id:org,
+   department_id:resolvedDepartment,
+   record_date:recordDate,
+   waste_type:String(row.wasteType||'').trim(),
+   weight_kg:numberOrNull(row.weightKg),
+   containers:numberOrNull(row.containers),
+   patient_days:numberOrNull(row.patientDays),
+   responsible:String(row.responsible||''),
+   document_number:String(row.documentNumber||''),
+   collection_company:String(row.collectionCompany||''),
+   notes:String(row.notes||''),
+   legacy_prevention_record_id:String(row.legacyPreventionRecordId||row.legacyId||'').trim()||null,
+ }
+
+ const {data:existing,error:existingError}=await c.from('waste_measurement_records')
+   .select('id').eq('organization_id',org).eq('id',String(row.id)).maybeSingle()
+ if(existingError)throw existingError
+
+ let write=c.from('waste_measurement_records')
+ write=existing
+   ? write.update(payload).eq('organization_id',org).eq('id',String(row.id))
+   : write.insert(payload)
+
+ const {data:saved,error}=await write
+   .select('*,department:departments(id,name)').single()
+ if(error)throw error
+
+ const {data:verified,error:verifyError}=await c.from('waste_measurement_records')
+   .select('*,department:departments(id,name)')
+   .eq('organization_id',org).eq('id',String(saved.id)).maybeSingle()
+ if(verifyError)throw verifyError
+ if(!verified?.id)throw new Error('Supabase waste write could not be verified.')
+
+ const checks={
+   record_date:recordDate,
+   waste_type:String(row.wasteType||'').trim(),
+   weight_kg:numberOrNull(row.weightKg),
+   containers:numberOrNull(row.containers),
+   patient_days:numberOrNull(row.patientDays),
+   responsible:String(row.responsible||''),
+   document_number:String(row.documentNumber||''),
+   collection_company:String(row.collectionCompany||''),
+ }
+ for(const [key,value] of Object.entries(checks)){
+   if(String(verified[key]??'')!==String(value??''))throw new Error(`Waste verification failed: ${key}.`)
+ }
+
+ const mapped=mapWasteMeasurement(verified)
+ await loadWasteMeasurementsRelational()
+ return {...mapped,_persisted:true}
+}
+
+export async function deleteWasteMeasurementRelational(id){
+ if(!IS_PRODUCTION){
+   saveWasteMeasurements(loadWasteMeasurements().filter(x=>String(x.id)!==String(id)))
+   return true
+ }
+ const c=requireSupabase(),org=await orgId(c)
+ const {data:deleted,error}=await c.from('waste_measurement_records')
+   .delete().eq('organization_id',org).eq('id',String(id)).select('id').maybeSingle()
+ if(error)throw error
+ if(!deleted?.id)throw new Error('Supabase delete did not remove the waste record.')
+ const {data:verified,error:verifyError}=await c.from('waste_measurement_records')
+   .select('id').eq('organization_id',org).eq('id',String(id)).maybeSingle()
+ if(verifyError)throw verifyError
+ if(verified)throw new Error('Supabase waste delete could not be verified.')
+ await loadWasteMeasurementsRelational()
+ return true
+}
+
 export async function hydratePreventionBackend(){return Object.fromEntries(await Promise.all(Object.keys(defs).map(async type=>[type,await loadPreventionRecords(type)])))}
 function mapPromotedAntibiotic(r={}){
  const patient=one(r.patient)||{}
