@@ -21,7 +21,7 @@ const checks=[
  ['Generic New Entry infection/sample writes through clinical backend',newEntry.includes('await saveClinicalInfection(')&&newEntry.includes('await saveClinicalPatientSample(')],
  ['Generic New Entry staff/environment/water writes through source backend',(newEntry.match(/await saveClinicalSourceSample\(/g)||[]).length>=3],
  ['WHO New Entry writes through prevention backend',newEntry.includes("await savePreventionRecord('hand_hygiene'")],
- ['Antimicrobial DDD writes through indicator Supabase backend',antimicrobial.includes("await saveIndicatorSourceRecordBackend('antibiotic_ddd',row)")],
+ ['Antimicrobial DDD writes through indicator Supabase backend',antimicrobial.includes("await saveIndicatorSourceBackend('antibiotic_ddd',next)")],
  ['Antimicrobial page hydrates Supabase source data',antimicrobial.includes('hydrateIndicatorBackend().then')],
  ['Legacy Patient Samples writes through clinical backend',patientSamples.includes('await saveClinicalPatientSample(nextRecord)')&&patientSamples.includes('await deleteClinicalPatientSample(recordId)')],
  ['Promoted therapy has production-aware async sync',prevention.includes('syncPromotedTherapyAsync')&&prevention.includes("savePreventionRecord('promoted_antibiotic',local)")],

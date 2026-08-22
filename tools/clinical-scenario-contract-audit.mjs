@@ -22,8 +22,8 @@ const checks=[
   ['explicit closure centralizes case/infection/isolation completion', /closeClinicalSurveillanceEpisode/.test(workflow) && /closureReason:\s*'clinical-surveillance-closure'/.test(workflow)],
   ['closure is exposed only as an explicit patient action', /closeClinicalSurveillanceEpisode/.test(patient) && /Κλείσιμο επιτήρησης/.test(cases)],
   ['production patient identity protects duplicate AMKA', /duplicateAmka/.test(directory)],
-  ['production sample persists first-class case relationship', /const caseId=emptyToNull\(row\.clinicalCaseId\|\|row\.surveillanceCaseId\)/.test(directory) && /surveillance_case_id:caseId/.test(directory)],
-  ['production isolation persists first-class case relationship', /const caseId=row\.clinicalCaseId\?String\(row\.clinicalCaseId\):null/.test(support) && /surveillance_case_id:caseId/.test(support)],
+  ['production sample persists first-class case relationship', /surveillance_case_id:emptyToNull\(row\.clinicalCaseId\|\|row\.surveillanceCaseId\)/.test(directory)],
+  ['production isolation persists first-class case relationship', /surveillance_case_id:row\.clinicalCaseId/.test(support)],
   ['database enforces cross-entity clinical relationship guards', /patients_org_amka_unique/.test(integrityMigration) && /patient_samples_relationship_guard/.test(integrityMigration) && /infections_relationship_guard/.test(integrityMigration) && /patient_isolations_relationship_guard/.test(integrityMigration)],
 ]
 

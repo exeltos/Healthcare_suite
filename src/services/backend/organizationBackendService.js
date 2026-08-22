@@ -1,16 +1,13 @@
 import { IS_PRODUCTION } from '../../core/runtime'
-import { withProductionCacheWrite } from '../../core/storage'
 import { requireSupabase } from '../../integrations/supabase'
 import { loadTraining,upsertTraining,deleteTraining,loadCommittees,upsertCommittee,deleteCommittee,loadDocuments,upsertDocument,deleteDocument,replaceTrainingCollection,replaceCommitteesCollection,replaceDocumentsCollection } from '../organizationService'
-import { stripDocumentAttachmentForJson, syncDocumentAttachments, ensureControlledDocumentVersion, hydrateRelationalDocuments } from './organizationDocumentBackend'
-import { mapTraining, mapCommittee, mapDocument } from './organizationBackendMappers'
 
 export async function loadOperationalTraining(){
   if(!IS_PRODUCTION)return loadTraining()
   const c=requireSupabase();const {data,error}=await c.from('training_records').select('*,department:departments(id,name)').order('training_date',{ascending:false});if(error)throw error
   const base=(data||[]).map(mapTraining)
   const rows=await hydrateRelationalTraining(c,base)
-  if(JSON.stringify(loadTraining())!==JSON.stringify(rows))withProductionCacheWrite(()=>replaceTrainingCollection(rows))
+  if(JSON.stringify(loadTraining())!==JSON.stringify(rows))replaceTrainingCollection(rows)
   return rows
 }
 export async function saveOperationalTraining(input={}){
@@ -179,7 +176,7 @@ export async function loadOperationalCommittees(){
   const c=requireSupabase();const {data,error}=await c.from('committees').select('*').order('name');if(error)throw error
   const base=(data||[]).map(mapCommittee)
   const rows=await hydrateRelationalCommittees(c,base)
-  if(JSON.stringify(loadCommittees())!==JSON.stringify(rows))withProductionCacheWrite(()=>replaceCommitteesCollection(rows));return rows
+  if(JSON.stringify(loadCommittees())!==JSON.stringify(rows))replaceCommitteesCollection(rows);return rows
 }
 export async function saveOperationalCommittee(input={}){
   if(!IS_PRODUCTION)return upsertCommittee(input)
@@ -239,7 +236,7 @@ export async function loadOperationalDocuments(){
   if(error)throw error
   const base=(data||[]).map(mapDocument)
   const rows=await hydrateRelationalDocuments(c,base)
-  if(JSON.stringify(loadDocuments())!==JSON.stringify(rows))withProductionCacheWrite(()=>replaceDocumentsCollection(rows))
+  if(JSON.stringify(loadDocuments())!==JSON.stringify(rows))replaceDocumentsCollection(rows)
   return rows
 }
 export async function saveOperationalDocument(input={}){
@@ -295,6 +292,165 @@ export async function deleteOperationalDocument(id){
   const {error}=await c.from('controlled_documents').delete().eq('id',String(id))
   if(error)throw error
   return true
+}
+
+
+const DOCUMENT_BUCKET='operationalattachments'
+
+function safeObjectName(name='file'){
+  return String(name||'file').normalize('NFKD').replace(/[^\w.\-]+/g,'_').replace(/_+/g,'_').slice(0,140)||'file'
+}
+function dataUrlToBlob(dataUrl){
+  const match=String(dataUrl||'').match(/^data:([^;,]+)?(?:;base64)?,(.*)$/s)
+  if(!match)throw new Error('Invalid attachment data.')
+  const mime=match[1]||'application/octet-stream'
+  const encoded=match[2]||''
+  const isBase64=String(dataUrl).includes(';base64,')
+  const binary=isBase64?atob(encoded):decodeURIComponent(encoded)
+  const bytes=new Uint8Array(binary.length)
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i)
+  return new Blob([bytes],{type:mime})
+}
+function stripDocumentAttachmentForJson(file){
+  return {
+    id:file.id||file.relationalId||'',
+    name:file.name||file.file_name||'',
+    size:Number(file.size||file.size_bytes||0),
+    type:file.type||file.mime_type||'application/octet-stream',
+    bucket:file.bucket||DOCUMENT_BUCKET,
+    objectPath:file.objectPath||file.object_path||'',
+    uploadedAt:file.uploadedAt||file.created_at||new Date().toISOString(),
+  }
+}
+async function signDocumentAttachment(c,row){
+  if(!row?.object_path)return null
+  const bucket=row.bucket||DOCUMENT_BUCKET
+  const {data,error}=await c.storage.from(bucket).createSignedUrl(row.object_path,3600)
+  if(error)return null
+  return {
+    id:row.id,relationalId:row.id,name:row.file_name||'',size:Number(row.size_bytes||0),type:row.mime_type||'application/octet-stream',
+    bucket,objectPath:row.object_path,uploadedAt:row.created_at||'',uploadedBy:row.uploaded_by||'',url:data?.signedUrl||''
+  }
+}
+async function syncDocumentAttachments(c,{org,actor,documentId,attachments}){
+  const {data:existing,error:readError}=await c.from('attachments').select('*').eq('organization_id',org).eq('entity_type','controlled_document').eq('entity_id',documentId)
+  if(readError)throw readError
+  const existingById=new Map((existing||[]).map(x=>[String(x.id),x]))
+  const existingByPath=new Map((existing||[]).map(x=>[String(x.object_path),x]))
+  const kept=new Set()
+  const normalized=[]
+  for(const file of attachments||[]){
+    let meta=null
+    const knownId=String(file.relationalId||file.id||'')
+    const knownPath=String(file.objectPath||file.object_path||'')
+    if(knownId&&existingById.has(knownId))meta=existingById.get(knownId)
+    else if(knownPath&&existingByPath.has(knownPath))meta=existingByPath.get(knownPath)
+    if(!meta&&file.data){
+      const blob=dataUrlToBlob(file.data)
+      const path=`${org}/documents/${documentId}/${crypto.randomUUID()}-${safeObjectName(file.name)}`
+      const {error:uploadError}=await c.storage.from(DOCUMENT_BUCKET).upload(path,blob,{contentType:file.type||blob.type||'application/octet-stream',upsert:false})
+      if(uploadError)throw uploadError
+      const insertPayload={organization_id:org,entity_type:'controlled_document',entity_id:documentId,bucket:DOCUMENT_BUCKET,object_path:path,file_name:String(file.name||'file'),mime_type:String(file.type||blob.type||'application/octet-stream'),size_bytes:Number(file.size||blob.size||0),uploaded_by:actor}
+      const {data:inserted,error:metaError}=await c.from('attachments').insert(insertPayload).select().single()
+      if(metaError){
+        await c.storage.from(DOCUMENT_BUCKET).remove([path])
+        throw metaError
+      }
+      meta=inserted
+    }
+    if(!meta&&knownPath){
+      const insertPayload={organization_id:org,entity_type:'controlled_document',entity_id:documentId,bucket:file.bucket||DOCUMENT_BUCKET,object_path:knownPath,file_name:String(file.name||'file'),mime_type:String(file.type||'application/octet-stream'),size_bytes:Number(file.size||0),uploaded_by:actor}
+      const {data:inserted,error:metaError}=await c.from('attachments').insert(insertPayload).select().single()
+      if(metaError)throw metaError
+      meta=inserted
+    }
+    if(meta){
+      kept.add(String(meta.id))
+      const signed=await signDocumentAttachment(c,meta)
+      normalized.push(signed||{...stripDocumentAttachmentForJson(meta),id:meta.id,relationalId:meta.id})
+    }
+  }
+  const stale=(existing||[]).filter(x=>!kept.has(String(x.id)))
+  for(const old of stale){
+    const {data:versionRefs,error:refError}=await c.from('attachments').select('id').eq('bucket',old.bucket).eq('object_path',old.object_path).eq('entity_type','controlled_document_version').limit(1)
+    if(refError)throw refError
+    const {error:deleteMetaError}=await c.from('attachments').delete().eq('id',old.id)
+    if(deleteMetaError)throw deleteMetaError
+    if(!(versionRefs||[]).length&&old.bucket===DOCUMENT_BUCKET){
+      const {error:removeError}=await c.storage.from(DOCUMENT_BUCKET).remove([old.object_path])
+      if(removeError)throw removeError
+    }
+  }
+  return normalized
+}
+async function ensureControlledDocumentVersion(c,{org,actor,row}){
+  const version=String(row.version||'').trim()
+  if(!version)return null
+  const {data:existing,error:existingError}=await c.from('controlled_document_versions').select('*').eq('document_id',String(row.id)).eq('version',version).maybeSingle()
+  if(existingError)throw existingError
+  if(existing)return existing
+  const snapshot={
+    documentId:String(row.id),title:String(row.title||''),code:String(row.code||''),category:String(row.category||''),version,
+    owner:String(row.owner||''),status:String(row.status||''),reviewDate:date(row.reviewDate),description:row.description||'',scope:row.scope||'',keywords:row.keywords||'',
+    attachments:(row.attachments||[]).map(stripDocumentAttachmentForJson)
+  }
+  const payload={
+    organization_id:org,document_id:String(row.id),version,title:String(row.title||''),code:String(row.code||''),category:String(row.category||''),
+    status:'Σε ισχύ',change_summary:String(row.changeSummary||''),effective_date:date(row.effectiveDate),review_date:date(row.reviewDate),
+    prepared_by_name:String(row.preparedBy||''),prepared_at:row.submittedAt||null,
+    reviewed_by_name:String(row.reviewedBy||''),reviewed_at:row.reviewedAt||null,
+    approved_by_name:String(row.approvedBy||''),approved_at:row.approvedAt||null,
+    snapshot,created_by:actor
+  }
+  const {data:created,error}=await c.from('controlled_document_versions').insert(payload).select().single()
+  if(error)throw error
+  for(const file of row.attachments||[]){
+    const objectPath=file.objectPath||file.object_path
+    if(!objectPath)continue
+    const meta={organization_id:org,entity_type:'controlled_document_version',entity_id:String(created.id),bucket:file.bucket||DOCUMENT_BUCKET,object_path:objectPath,file_name:String(file.name||''),mime_type:String(file.type||'application/octet-stream'),size_bytes:Number(file.size||0),uploaded_by:actor}
+    const {error:fileError}=await c.from('attachments').insert(meta)
+    if(fileError)throw fileError
+  }
+  return created
+}
+async function hydrateRelationalDocuments(c,rows){
+  if(!rows.length)return rows
+  const documentIds=rows.map(r=>String(r.id))
+  const [currentRes,versionsRes]=await Promise.all([
+    c.from('attachments').select('*').eq('entity_type','controlled_document').in('entity_id',documentIds).order('created_at'),
+    c.from('controlled_document_versions').select('*').in('document_id',documentIds).order('created_at',{ascending:false}),
+  ])
+  if(currentRes.error)throw currentRes.error
+  if(versionsRes.error)throw versionsRes.error
+  const versionIds=(versionsRes.data||[]).map(v=>String(v.id))
+  let versionFiles=[]
+  if(versionIds.length){
+    const res=await c.from('attachments').select('*').eq('entity_type','controlled_document_version').in('entity_id',versionIds).order('created_at')
+    if(res.error)throw res.error
+    versionFiles=res.data||[]
+  }
+  const group=(arr,key)=>arr.reduce((m,x)=>{const k=String(x[key]||'');if(!m.has(k))m.set(k,[]);m.get(k).push(x);return m},new Map())
+  const currentGroups=group(currentRes.data||[],'entity_id')
+  const versionGroups=group(versionsRes.data||[],'document_id')
+  const fileGroups=group(versionFiles,'entity_id')
+  const signList=async list=>Promise.all((list||[]).map(async item=>(await signDocumentAttachment(c,item))||{id:item.id,relationalId:item.id,name:item.file_name,size:Number(item.size_bytes||0),type:item.mime_type,bucket:item.bucket,objectPath:item.object_path,uploadedAt:item.created_at}))
+  const hydrated=[]
+  for(const row of rows){
+    const currentMeta=currentGroups.get(String(row.id))||[]
+    const attachments=currentMeta.length?await signList(currentMeta):(row.attachments||[])
+    const relVersions=versionGroups.get(String(row.id))||[]
+    const versions=[]
+    for(const v of relVersions){
+      const files=await signList(fileGroups.get(String(v.id))||[])
+      versions.push({
+        id:String(v.id),relationalId:v.id,version:v.version,date:v.effective_date||String(v.created_at||'').slice(0,10),status:v.status,
+        note:v.change_summary||'Εγκεκριμένη έκδοση',attachments:files,approvedBy:v.approved_by_name||'',approvedAt:v.approved_at||'',
+        effectiveDate:v.effective_date||'',reviewDate:v.review_date||'',preparedBy:v.prepared_by_name||'',reviewedBy:v.reviewed_by_name||''
+      })
+    }
+    hydrated.push({...row,attachments,versions:relVersions.length?versions:(row.versions||[])})
+  }
+  return hydrated
 }
 
 
@@ -362,14 +518,8 @@ async function syncCommitteeRelations(c,{org,actor,row,staffMap}){
     const {error:meetingError}=await c.from('committee_meetings').upsert(meetingPayload,{onConflict:'id'});if(meetingError)throw meetingError
     const {error:attendeeDeleteError}=await c.from('committee_meeting_attendees').delete().eq('meeting_id',meetingId);if(attendeeDeleteError)throw attendeeDeleteError
     const memberRows=await c.from('committee_members').select('id,employee_id,full_name,role').eq('committee_id',String(row.id));if(memberRows.error)throw memberRows.error
-    const memberLookup=new Map((memberRows.data||[]).map(x=>[String(x.employee_id||x.full_name||'').trim().toLocaleLowerCase('el-GR'),x]))
-    const attendance=(mt.attendance||[]).map(a=>{
-      const key=String(a.employeeId||a.fullName||'').trim().toLocaleLowerCase('el-GR')
-      const cm=memberLookup.get(key)
-      if(!cm)throw new Error('Meeting attendance contains a person who is not a committee member.')
-      if(a.employeeId&&cm.employee_id&&String(a.employeeId)!==String(cm.employee_id))throw new Error('Meeting attendance employee does not match the committee member registry.')
-      return {organization_id:org,meeting_id:meetingId,committee_member_id:cm.id,employee_id:cm.employee_id||null,full_name:String(cm.full_name||a.fullName||''),role:String(cm.role||a.role||''),attendance_status:a.present?'Παρόν':'Απών',attendance_notes:String(a.attendanceNotes||'')}
-    })
+    const memberLookup=new Map((memberRows.data||[]).map(x=>[String(x.employee_id||x.full_name||'').toLocaleLowerCase('el-GR'),x]))
+    const attendance=(mt.attendance||[]).map(a=>{const key=String(a.employeeId||a.fullName||'').toLocaleLowerCase('el-GR'),cm=memberLookup.get(key);return {organization_id:org,meeting_id:meetingId,committee_member_id:cm?.id||null,employee_id:a.employeeId||cm?.employee_id||null,full_name:String(a.fullName||cm?.full_name||''),role:String(a.role||cm?.role||''),attendance_status:a.present?'Παρόν':'Απών',attendance_notes:String(a.attendanceNotes||'')}})
     if(attendance.length){const {error}=await c.from('committee_meeting_attendees').insert(attendance);if(error)throw error}
     const agendaIds=new Set()
     const agendaRelationMap=new Map()
@@ -402,6 +552,9 @@ function ensureCommitteeRelationalIds(row){
 function uuidOrNew(value){const s=String(value||'');return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s)?s:crypto.randomUUID()}
 async function actorId(c){const {data,error}=await c.auth.getUser();if(error)throw error;const id=data?.user?.id;if(!id)throw new Error('Authenticated user context not found.');return id}
 
+function mapTraining(r){return {...r.data,id:r.id,title:r.title,category:r.category,department:one(r.department)?.name||'',trainer:r.trainer,date:r.training_date||'',status:r.status,durationHours:Number(r.duration_hours||0),validUntil:r.valid_until||'',attendance:Array.isArray(r.attendance)?r.attendance:[],attachments:Array.isArray(r.attachments)?r.attachments:[],notes:r.notes,createdAt:r.created_at,updatedAt:r.updated_at}}
+function mapCommittee(r){return {...r.data,id:r.id,name:r.name,type:r.committee_type,chair:r.chair,secretary:r.secretary,lastMeeting:r.last_meeting||'',nextMeeting:r.next_meeting||'',status:r.status,frequency:r.frequency,memberIds:Array.isArray(r.member_ids)?r.member_ids:[],members:Array.isArray(r.members)?r.members:[],agenda:Array.isArray(r.agenda)?r.agenda:[],meetings:Array.isArray(r.meetings)?r.meetings:[],attachments:Array.isArray(r.attachments)?r.attachments:[],purpose:r.purpose,notes:r.notes,createdAt:r.created_at,updatedAt:r.updated_at}}
+function mapDocument(r){return {...r.data,id:r.id,title:r.title,code:r.code,category:r.category,version:r.version,owner:r.owner,status:r.status,reviewDate:r.review_date||'',attachments:Array.isArray(r.attachments)?r.attachments:[],versions:Array.isArray(r.versions)?r.versions:[],createdAt:r.created_at,updatedAt:r.updated_at}}
 async function orgId(c){const {data,error}=await c.rpc('current_organization_id');if(error)throw error;if(!data)throw new Error('Organization context not found.');return data}
 async function departmentId(c,org,name){if(!name)return null;const {data,error}=await c.from('departments').select('id').eq('organization_id',org).eq('name',String(name)).limit(1);if(error)throw error;return data?.[0]?.id||null}
 function date(v){const s=String(v||'').trim();if(!s)return null;if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:null}

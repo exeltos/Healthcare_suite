@@ -21,7 +21,7 @@ export default function AppLayout() {
   let cachedUser=null; try{cachedUser=JSON.parse(readSessionValue('healthcare-suite.user')||'null')}catch{}
   const [user,setUser]=useState(cachedUser)
   const [authState,setAuthState]=useState(IS_PRODUCTION?'checking':'ready')
-  const [dataState,setDataState]=useState(IS_PRODUCTION?'loading':'ready')
+  const [dataState,setDataState]=useState(IS_PRODUCTION?'waiting':'ready')
   const [collapsed,setCollapsed]=useState(false),[mobileOpen,setMobileOpen]=useState(false),[launcherOpen,setLauncherOpen]=useState(false),[launcherInitialType,setLauncherInitialType]=useState(''),[goodbye,setGoodbye]=useState(false)
 
   useEffect(()=>{

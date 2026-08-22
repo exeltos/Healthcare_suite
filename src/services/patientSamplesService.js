@@ -33,9 +33,7 @@ export function loadPatientSamples() {
   const storedSamples = patientSamplesRepository.findAll()
   const baseSamples = storedSamples.length > 0 ? storedSamples.map(normalizePatientSample) : []
   const mergedSamples = mergeLegacyLabRecords(baseSamples)
-  // Reads must stay side-effect free in Production. Supabase backend services
-  // are responsible for verified cache mirroring after authoritative reads/writes.
-  if (!IS_PRODUCTION) patientSamplesRepository.replaceAll(mergedSamples)
+  patientSamplesRepository.replaceAll(mergedSamples)
   return mergedSamples
 }
 

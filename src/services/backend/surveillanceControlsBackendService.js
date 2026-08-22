@@ -1,5 +1,4 @@
 import { IS_PRODUCTION } from '../../core/runtime'
-import { withProductionCacheWrite } from '../../core/storage'
 import { requireSupabase } from '../../integrations/supabase'
 import { loadControlPrograms,saveControlPrograms,loadControlExecutions,saveControlExecutions,upsertControlProgram,deleteControlProgram,completeProgram } from '../surveillanceControlsService'
 import { saveClinicalSourceSample } from './clinicalSupportBackendService'
@@ -7,7 +6,7 @@ import { saveClinicalSourceSample } from './clinicalSupportBackendService'
 export async function loadSurveillanceControlPrograms(){
  if(!IS_PRODUCTION)return loadControlPrograms()
  const c=requireSupabase();const {data,error}=await c.from('surveillance_control_programs').select('*,department:departments(id,name)').order('next_due_date');if(error)throw error
- const rows=(data||[]).map(mapProgram);withProductionCacheWrite(()=>saveControlPrograms(rows));return rows
+ const rows=(data||[]).map(mapProgram);saveControlPrograms(rows);return rows
 }
 export async function saveSurveillanceControlProgram(input={}){
  if(!IS_PRODUCTION)return upsertControlProgram(input)
@@ -23,7 +22,7 @@ export async function deleteSurveillanceControlProgram(id){
 export async function loadSurveillanceControlExecutions(){
  if(!IS_PRODUCTION)return loadControlExecutions()
  const c=requireSupabase();const {data,error}=await c.from('surveillance_control_executions').select('*,department:departments(id,name)').order('performed_date',{ascending:false});if(error)throw error
- const rows=(data||[]).map(mapExecution);withProductionCacheWrite(()=>saveControlExecutions(rows));return rows
+ const rows=(data||[]).map(mapExecution);saveControlExecutions(rows);return rows
 }
 export async function completeSurveillanceControlProgram(program,execution){
  if(!IS_PRODUCTION)return completeProgram(program,execution)

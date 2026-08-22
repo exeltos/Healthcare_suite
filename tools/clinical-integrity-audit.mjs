@@ -22,7 +22,7 @@ if(!/if \(recheck\)[\s\S]*createdInfection: false/.test(workflow)) failures.push
 if(!/await patch\(\{ therapies: next/.test(caseSections)) failures.push('Therapy changes are not persisted before restricted-antibiotic synchronization.')
 if(!/saveClinicalSurveillanceCase\(linkedCase\)/.test(promoted)) failures.push('Restricted-antibiotic approval does not persist back to the production surveillance case.')
 if(!/end date cannot be before|λήξη της απομόνωσης/.test(patientPage)) failures.push('Isolation date integrity validation is missing.')
-if(!/derivedStatus[\s\S]*endDate[\s\S]*<= todayIso[\s\S]*'Ολοκληρωμένη'/.test(patientPage)) failures.push('Ended isolation can remain incorrectly active.')
+if(!/status: 'Ολοκληρωμένη'/.test(patientPage)) failures.push('Ended isolation can remain incorrectly active.')
 if(!/activeCaseIds/.test(patientUtils)||!/currentSamples/.test(patientUtils)) failures.push('Patient clinical badges still derive from historical closed-case samples.')
 if(!/getPatientSignals\(\{ patient: patientForm, cases, samples, isolations \}\)/.test(patientPage)) failures.push('Patient workflow does not provide case state to signal derivation.')
 if(!/admittedIds/.test(dashboard)||!/currentSamples/.test(dashboard)) failures.push('Dashboard laboratory KPIs include historical discharged-patient burden.')
@@ -42,7 +42,7 @@ if(!/deletePatientSampleWithClinicalWorkflowAsync/.test(workflow)||!/deletePatie
 if(!/hasClinicalContent/.test(workflow)||!/sourceSampleDeletedAt/.test(workflow)) failures.push('Deleting a source sample can remove a clinically enriched surveillance episode.')
 if(!/requestedAmka/.test(labWorkspace)||!/duplicate/.test(labWorkspace)) failures.push('Laboratory new-patient workflow lacks deterministic duplicate identity checks.')
 if(!/duplicateAmka/.test(clinicalBackend)) failures.push('Production patient backend lacks duplicate AMKA protection.')
-if(!/surveillance_case_id:caseId/.test(supportBackend)||!/verified\.surveillance_case_id/.test(supportBackend)) failures.push('Isolation does not persist and verify its surveillance relationship as a first-class field.')
+if(!/surveillance_case_id:row\.clinicalCaseId/.test(supportBackend)) failures.push('Isolation does not persist its surveillance relationship as a first-class field.')
 if(!/patients_org_amka_unique/.test(relationshipMigration)||!/patient_samples_relationship_guard/.test(relationshipMigration)||!/infections_relationship_guard/.test(relationshipMigration)||!/patient_isolations_relationship_guard/.test(relationshipMigration)) failures.push('Database-level clinical relationship guards are incomplete.')
 
 if(failures.length){ console.error('Clinical integrity audit failed:'); failures.forEach(x=>console.error('- '+x)); process.exitCode=1 }

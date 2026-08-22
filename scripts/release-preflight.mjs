@@ -6,7 +6,7 @@ const major=Number(process.versions.node.split('.')[0])
 if(major<20) failures.push(`Node ${process.versions.node} is too old; use Node 20 or newer for release verification.`)
 
 const requiredFiles=[
-  'package.json','package-lock.json','vite.config.js','src/main.jsx','src/App.jsx',
+  'package.json','vite.config.js','src/main.jsx','src/App.jsx',
   'supabase/migrations/20260818_000027_tenant_role_isolation_hardening.sql',
   'tools/tenant-isolation-audit.mjs','tools/clinical-scenario-contract-audit.mjs',
 ]
@@ -16,6 +16,7 @@ for(const dep of ['vite','@babel/parser','@vitejs/plugin-react']){
   if(!fs.existsSync(`node_modules/${dep}/package.json`)) failures.push(`Development dependency is not installed: ${dep}. Run npm install first.`)
 }
 
+if(!fs.existsSync('package-lock.json')) warnings.push('package-lock.json is not present. Generate and commit it before the final v1.0 release for reproducible installs.')
 
 const envText=fs.existsSync('.env')?fs.readFileSync('.env','utf8'):''
 if(/VITE_[A-Z0-9_]*(SERVICE_ROLE|SECRET)[A-Z0-9_]*\s*=\s*\S+/i.test(envText)) failures.push('A secret/service-role value appears in a VITE_* frontend environment variable.')

@@ -1,6 +1,5 @@
 import { APP_EVENTS, emitAppEvent } from '../core/events'
 import { formsRepository } from '../repositories/formsRepository'
-import { IS_PRODUCTION } from '../core/runtime'
 
 export const FORM_TEMPLATES_EVENT = APP_EVENTS.FORM_TEMPLATES_UPDATED
 
@@ -110,10 +109,10 @@ function normalizeTemplate(template = {}) {
 }
 export function loadFormTemplates() {
   const value = formsRepository.findTemplates()
-  if (!value.length) { if (!IS_PRODUCTION) formsRepository.replaceTemplates(seedTemplates); return seedTemplates }
+  if (!value.length) { formsRepository.replaceTemplates(seedTemplates); return seedTemplates }
   const existingIds = new Set(value.map((item) => item.id))
   const missingSeeds = seedTemplates.filter((item) => !existingIds.has(item.id))
-  if (missingSeeds.length) { const merged = [...missingSeeds, ...value]; if (!IS_PRODUCTION) formsRepository.replaceTemplates(merged); return merged }
+  if (missingSeeds.length) { const merged = [...missingSeeds, ...value]; formsRepository.replaceTemplates(merged); return merged }
   return value
 }
 export function saveFormTemplates(templates = []) { const rows = Array.isArray(templates) ? templates : []; formsRepository.replaceTemplates(rows); emitAppEvent(FORM_TEMPLATES_EVENT, rows); return rows }

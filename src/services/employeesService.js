@@ -103,9 +103,7 @@ export function loadAllEmployees() {
   if (Array.isArray(current) && current.length) {
     const normalized = current.map(normalizeEmployee)
     const needsCleanup = current.some((item, index) => JSON.stringify(item) !== JSON.stringify(normalized[index]))
-    // Production hydration/cache reads must stay side-effect free. Supabase is authoritative.
-    // Legacy/demo cleanup is persisted only outside Production.
-    if (needsCleanup && !IS_PRODUCTION) persistEmployees(masterData, normalized)
+    if (needsCleanup) persistEmployees(masterData, normalized)
     return normalized
   }
 
@@ -114,8 +112,7 @@ export function loadAllEmployees() {
     const legacy = masterData[legacyKey]
     if (Array.isArray(legacy) && legacy.length) {
       const migrated = legacy.map(normalizeEmployee)
-      // Never migrate legacy browser records during a Production read/render.
-      if (!IS_PRODUCTION) persistEmployees(masterData, migrated)
+      persistEmployees(masterData, migrated)
       return migrated
     }
   }
