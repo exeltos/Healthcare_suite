@@ -1,7 +1,7 @@
 import { clinicalHelpSections } from './helpContentClinical'
 import { adminHelpSections } from './helpContentAdmin'
 
-export const HELP_VERSION = '0.12.0-rc.217'
+export const HELP_VERSION = '0.12.0-rc.218'
 export const helpSections=[...clinicalHelpSections,...adminHelpSections]
 
 export function inferHelpSection(){

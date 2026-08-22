@@ -28,6 +28,7 @@ const groups = [
     'scripts/audit-clinical-write-verification.mjs',
     'scripts/audit-production-persistence.mjs',
     'scripts/audit-production-fail-closed.mjs',
+    'scripts/audit-production-read-purity.mjs',
     'scripts/audit-form-action-consistency.mjs',
   ]],
   ['Supabase & release safety', [
