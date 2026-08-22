@@ -1,4 +1,4 @@
-# Healthcare Suite 0.12.0-rc.218 — Runtime hydration hotfix
+# Healthcare Suite 0.12.0-rc.219 — Runtime hydration hotfix
 
 ## Fixed
 - Production dashboard white-screen after successful login caused by `loadPatientSamples()` attempting an operational repository write during synchronous UI read/render.
