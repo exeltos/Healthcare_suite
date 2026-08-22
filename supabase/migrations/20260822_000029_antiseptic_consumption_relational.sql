@@ -1,0 +1,3 @@
+-- Antiseptic consumption relational schema was applied and backfilled before rc.203.
+-- Canonical table: public.antiseptic_consumption_records
+-- Indicator is derived from consumption / patient_days and is not stored.
